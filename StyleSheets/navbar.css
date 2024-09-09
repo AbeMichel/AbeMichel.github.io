@@ -1,3 +1,4 @@
+/* Styles for the entire navbar */
 .navbar {
     background-color: #3B3355;
     color: #F7FFF7;
@@ -9,21 +10,71 @@
     padding: 10px;
 }
 
-.navbar ul {
+/* Styles for the nav links on larger screens */
+#nav-links ul {
     list-style: none;
     display: flex;
     justify-content: space-around;
     text-align: center;
 }
 
-.navbar ul li a {
+/* Styling links in the navbar */
+#nav-links ul li a {
     color: #F7FFF7;
     text-decoration: none;
     font-weight: bold;
+    font-size: 14pt;
     transition: font-size 0.2s;
 }
 
-.navbar ul li a:hover {
-    font-size: large;
-    color: aquamarine;
+/* Hover effect on links */
+#nav-links ul li a:hover {
+    font-size: 16pt;
+    color: #FFFFFF;
+}
+
+/* Hide the menu button on larger screens by default */
+#nav-menu-btn {
+    display: none;
+}
+
+/* MEDIA QUERY for smaller screens */
+@media screen and (max-width: 800px) {
+
+    /* Display the menu button for smaller screens */
+    #nav-menu-btn {
+        display: inline;
+        color: #F7FFF7;
+        background: none;
+        border: none;
+        font-size: 20pt;
+        cursor: pointer;
+        transition: font-size 0.2s;
+    }
+
+    #nav-menu-btn:hover{
+        font-size: 22pt;
+        color: #FFFFFF;
+    }
+
+    /* Hide the navigation links on smaller screens */
+    #nav-links {
+        display: none;
+    }
+
+    /* Show the navigation links when the 'active' class is added */
+    #nav-links.active {
+        display: block;
+    }
+
+    /* Ensure the menu items are stacked vertically */
+    #nav-links ul {
+        display: block;
+        text-align: left;
+    }
+
+    /* Align the individual list items properly */
+    #nav-links ul li {
+        padding: 10px 0;
+    }
 }
