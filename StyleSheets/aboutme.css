@@ -29,7 +29,7 @@
     padding: 10px;
 }
 
-button {
+.slider button {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
