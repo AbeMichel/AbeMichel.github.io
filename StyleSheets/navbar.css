@@ -1,0 +1,29 @@
+.navbar {
+    background-color: #3B3355;
+    color: #F7FFF7;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    padding: 10px;
+}
+
+.navbar ul {
+    list-style: none;
+    display: flex;
+    justify-content: space-around;
+    text-align: center;
+}
+
+.navbar ul li a {
+    color: #F7FFF7;
+    text-decoration: none;
+    font-weight: bold;
+    transition: font-size 0.2s;
+}
+
+.navbar ul li a:hover {
+    font-size: large;
+    color: aquamarine;
+}

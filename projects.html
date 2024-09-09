@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Abraham Michel</title>
+    <title>Projects - Abraham Michel</title>
 
     <link rel="stylesheet" href="StyleSheets/main.css"> 
+    <link rel="stylesheet" href="StyleSheets/navbar.css"> 
+    <link rel="stylesheet" href="StyleSheets/projects.css"> 
 </head>
 <body>
     <nav class="navbar">
@@ -15,12 +17,347 @@
             <li><a href="experience.html">Work Experience</a></li>
             <li><a href="projects.html">Projects</a></li>
             <li><a href="aboutme.html">About Me</a></li>
+            <li><a href="https://www.linkedin.com/in/abrahammichel">LinkedIn</a></li>
+            <li><a href="https://github.com/AbeMichel">GitHub</a></li>
         </ul>
     </nav>
 
     <!-- Main Content -->
     <main>
-        
+        <h1>Projects</h1>
+        <h3>Filters</h3>
+
+        <div class="filters">
+            <label for="affiliations">Affiliation:</label>
+            <select id="affiliations">
+                <option value="">Any</option>
+                <option value="jd">Deere & Company</option>
+                <option value="loras">Loras College</option>
+                <option value="personal">Personal</option>
+            </select>
+        </div>
+
+        <div class="filters">
+            <label for="tags">Tag:</label>
+            <select id="tags">
+                <option value="">All</option>
+                <option value="csharp">C#</option>
+                <option value="python">Python</option>
+                <option value="java">Java</option>
+                <option value="opengl">OpenGL</option>
+                <option value="javascript">JavaScript</option>
+                <option value="git">Git</option>
+                <option value="ml">Machine Learning</option>
+                <option value="game">Game Development</option>
+                <option value="cnc">CNC</option>
+            </select>
+        </div>
+
+        <div class="project-gallery">
+
+            <a class="project-card" href="Projects/RPG.html"> <!-- Project Page -->
+                <div class="project-affiliation">Personal</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="ASL Recognition"> <!-- Image -->
+                <div class="project-info">
+                    <h3>2D Adventure RPG</h3> <!-- Name -->
+                    <p>I love making video games and so I've done just that.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>Game</p></div> <!-- Tag -->
+                        <div><p>CSharp</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+            
+            <a class="project-card" href="Projects/LinkedInToCV.html">
+                <div class="project-affiliation">Personal</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="LinkedInToCV"> <!-- Image -->
+                <div class="project-info">
+                    <h3>LinkedIn Profile to CV Generator</h3> <!-- Name -->
+                    <p>A web scraper application which creates a CV from any LinkedIn profile.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>Python</p></div> <!-- Tag -->
+                        <div><p>Git</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+
+            <a class="project-card" href="Projects/DialogLanguageForVideoGames.html">
+                <div class="project-affiliation">Personal</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="Dialog Language"> <!-- Image -->
+                <div class="project-info">
+                    <h3>Dialog Langauge for Video Games</h3> <!-- Name -->
+                    <p>A custom dialog writing language to speed up game development.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>Game</p></div> <!-- Tag -->
+                        <div><p>CSharp</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+            
+            <a class="project-card" href="Projects/ScriptGeneration.html">
+                <div class="project-affiliation">JD</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="Protobuf Script Generation"> <!-- Image -->
+                <div class="project-info">
+                    <h3>Protocol Buffer Script Generation for MQTT Messages</h3> <!-- Name -->
+                    <p>Dynamic script generation for interpreting incoming MQTT messages.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>Python</p></div> <!-- Tag -->
+                        <div><p>Git</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+            
+            <a class="project-card" href="Projects/ASLRecognition.html">
+                <div class="project-affiliation">Loras</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="ASL Recognition"> <!-- Image -->
+                <div class="project-info">
+                    <h3>Dynamic ASL Recognition</h3> <!-- Name -->
+                    <p>Multi-sign ASL recognition.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>Python</p></div> <!-- Tag -->
+                        <div><p>Git</p></div> <!-- Tag -->
+                        <div><p>ML</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+            
+            <a class="project-card" href="Projects/PhysicsFPS.html">
+                <div class="project-affiliation">Loras</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="Java Physics"> <!-- Image -->
+                <div class="project-info">
+                    <h3>Physics Sim & FPS</h3> <!-- Name -->
+                    <p>A physics simulation extended to be a basic FPS game.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>Java</p></div> <!-- Tag -->
+                        <div><p>Game</p></div> <!-- Tag -->
+                        <div><p>OpenGL</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+            
+            <a class="project-card" href="Projects/AIEnabledMovement.html">
+                <div class="project-affiliation">JD</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="AI Enabled Movement"> <!-- Image -->
+                <div class="project-info">
+                    <h3>AI Enabled Movement on Heavy Machinery</h3> <!-- Name -->
+                    <p>My main job at Deere: Obstacle Intelligence testing.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>Git</p></div> <!-- Tag -->
+                        <div><p>TODO ADD MORE</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+            
+            <a class="project-card" href="Projects/TestResultReporting.html">
+                <div class="project-affiliation">JD</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="Test Result Reporting"> <!-- Image -->
+                <div class="project-info">
+                    <h3>Automated Test Results Visualization and Reporting</h3> <!-- Name -->
+                    <p>Automation solution for organizing, visualizing, and managing test results.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>Python</p></div> <!-- Tag -->
+                        <div><p>Git</p></div> <!-- Tag -->
+                        <div><p>Groovy</p></div> <!-- Tag -->
+                        <div><p>Jenkins</p></div> <!-- Tag -->
+                        <div><p>Rally</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+            
+            <a class="project-card" href="Projects/MetalSigns.html">
+                <div class="project-affiliation">Personal</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="Metal Signs"> <!-- Image -->
+                <div class="project-info">
+                    <h3>Custom Metal Signs</h3> <!-- Name -->
+                    <p>Metal signs cut using CNC.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>CNC</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+            
+            <a class="project-card" href="Projects/ImageToDWF.html">
+                <div class="project-affiliation">Personal</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="Image to DWF"> <!-- Image -->
+                <div class="project-info">
+                    <h3>Image to .DWF</h3> <!-- Name -->
+                    <p>A small program to convert images to .dwf files for CNC applications</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>CNC</p></div> <!-- Tag -->
+                        <div><p>Python</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+            
+            <a class="project-card" href="Projects/DefectDuplicationScript.html">
+                <div class="project-affiliation">JD</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="Defect Duplication"> <!-- Image -->
+                <div class="project-info">
+                    <h3>Automated Defect Duplication</h3> <!-- Name -->
+                    <p>Utility script that creates a copy of Rally defects in Jira.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>Python</p></div> <!-- Tag -->
+                        <div><p>Rally</p></div> <!-- Tag -->
+                        <div><p>Jira</p></div> <!-- Tag -->
+                        <div><p>Git</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+            
+            <a class="project-card" href="Projects/TestPlanApp.html">
+                <div class="project-affiliation">JD</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="Test Plan App"> <!-- Image -->
+                <div class="project-info">
+                    <h3>Test Plan Manager Application</h3> <!-- Name -->
+                    <p>A all-in-one test plan managing application.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>Python</p></div> <!-- Tag -->
+                        <div><p>Git</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+            
+            <a class="project-card" href="Projects/ThermoelectricCharger.html">
+                <div class="project-affiliation">Loras</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="Thermoelectric Phone Charger"> <!-- Image -->
+                <div class="project-info">
+                    <h3>Thermoelectric Phone Charger</h3> <!-- Name -->
+                    <p>My engineering capstone project.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>Circuits</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+            
+            <a class="project-card" href="Projects/CuriousCaveman.html">
+                <div class="project-affiliation">Personal</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="Curious Caveman"> <!-- Image -->
+                <div class="project-info">
+                    <h3>Curious Caveman</h3> <!-- Name -->
+                    <p>A short game about a very curious caveman.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>CSharp</p></div> <!-- Tag -->
+                        <div><p>Game</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+            
+            <a class="project-card" href="Projects/FacialRecognition.html">
+                <div class="project-affiliation">Personal</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="Facial Recognition"> <!-- Image -->
+                <div class="project-info">
+                    <h3>Facial Recognition Program</h3> <!-- Name -->
+                    <p>Facial recognition utilizing Haar cascade filters.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>Python</p></div> <!-- Tag -->
+                        <div><p>ML</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+            
+            <a class="project-card" href="Projects/Flywheel.html">
+                <div class="project-affiliation">Personal</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="Flywheel Trainer"> <!-- Image -->
+                <div class="project-info">
+                    <h3>Flywheel Trainer</h3> <!-- Name -->
+                    <p>A homemade flywheel used for low impact training.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p></p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+            
+            <a class="project-card" href="Projects/Fog.html">
+                <div class="project-affiliation">Personal</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="Fog"> <!-- Image -->
+                <div class="project-info">
+                    <h3>Fog</h3> <!-- Name -->
+                    <p>An arcade style video game about driving through a dense fog.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>CSharp</p></div> <!-- Tag -->
+                        <div><p>Game</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+            
+            <a class="project-card" href="Projects/ShootEm.html">
+                <div class="project-affiliation">Personal</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="Shoot 'em"> <!-- Image -->
+                <div class="project-info">
+                    <h3>Shoot 'em</h3> <!-- Name -->
+                    <p>An arcade style survivor-like video game.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>CSharp</p></div> <!-- Tag -->
+                        <div><p>Game</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+            
+            <a class="project-card" href="Projects/FloatingChair.html">
+                <div class="project-affiliation">Personal</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="Floating Chair"> <!-- Image -->
+                <div class="project-info">
+                    <h3>"Floating" Chair</h3> <!-- Name -->
+                    <p>A chair which is only connected by chains.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>Welding</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+            
+            <a class="project-card" href="Projects/Speedrunner.html">
+                <div class="project-affiliation">Personal</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="Speedrunner"> <!-- Image -->
+                <div class="project-info">
+                    <h3>Speedrunner</h3> <!-- Name -->
+                    <p>A 2D platformer game designed around speed running.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>CSharp</p></div> <!-- Tag -->
+                        <div><p>Game</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+            
+            <a class="project-card" href="Projects/CustomSign.html">
+                <div class="project-affiliation">Personal</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="Acrylic Light Up Sign"> <!-- Image -->
+                <div class="project-info">
+                    <h3>Acrylic Light Up Sign</h3> <!-- Name -->
+                    <p>An illuminated cutout of the Chicago skyline.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>CNC</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+            
+            <a class="project-card" href="Projects/WindUpCar.html">
+                <div class="project-affiliation">Loras</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="Wind-Up Car"> <!-- Image -->
+                <div class="project-info">
+                    <h3>Wind-Up Car</h3> <!-- Name -->
+                    <p>A wind-up car utilizing gear ratios.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>CNC</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+            
+            <a class="project-card" href="Projects/ChopWoodCarryWater.html">
+                <div class="project-affiliation">Personal</div> <!-- Affiliation -->
+                <img src="Assets/PlaceholderImage.png" alt="Chop Wood Carry Water"> <!-- Image -->
+                <div class="project-info">
+                    <h3>Chop Wood, Carry Water</h3> <!-- Name -->
+                    <p>A video game about collecting resources to make it to the next day.</p> <!-- Short Description -->
+                    <div class="project-tags">
+                        <div><p>CSharp</p></div> <!-- Tag -->
+                        <div><p>Game</p></div> <!-- Tag -->
+                    </div>
+                </div>
+            </a>
+        </div>
     </main>
+    <!-------------->
+
+    <script src="Scripts/projects.js"></script>
 </body>
 </html>
