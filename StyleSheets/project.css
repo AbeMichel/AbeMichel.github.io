@@ -37,3 +37,9 @@ p a {
     font-style: italic;
     font-size: 10pt;
 }
+
+@media screen and (max-width: 600px) {
+    .img-group{
+        flex-direction: column;
+    }
+}
