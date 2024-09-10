@@ -1,0 +1,39 @@
+#project-header h1{
+    font-size: 20pt;
+}
+
+section h1{
+    font-size: 15pt;
+}
+
+a {
+    text-decoration: none;
+    color: #F7FFF7;
+}
+
+p a {
+    font-style: italic;
+    text-decoration: underline;
+}
+
+.img-group {
+    display: flex;
+    align-items: center;
+}
+
+.img-and-desc {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+}
+
+.img-and-desc img{
+    max-width: 300px;
+    max-height: 300px;
+}
+
+.img-and-desc p{
+    font-style: italic;
+    font-size: 10pt;
+}

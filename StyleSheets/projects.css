@@ -43,7 +43,7 @@ body {
     
 }
 
-.filters option {
+.filters option, .filters optgroup {
     background-color: #5D5D81;
 }
 
@@ -59,11 +59,11 @@ body {
     bottom: 0;
     left: 0;
     right: 0;
-    background: rgba(0, 0, 0, 0.3); /* Semi-transparent background */
+    background: rgba(0, 0, 0, 0.7); /* Semi-transparent background */
     color: #F7FFF7;
     padding: 10px;
     box-sizing: border-box; /* Ensures padding is included in the element's total width and height */
-    line-height: 15px;
+    line-height: 18px;
 }
 
 .project-info h3 {
