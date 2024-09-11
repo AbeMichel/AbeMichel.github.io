@@ -13,9 +13,16 @@ body {
     padding: 20px;
 }
 
+a {
+    /* color: #FFFF99; */
+    /* color: #FFD700; */
+    color: #FFCC33;
+}
+
 /* Adding top padding to main content to avoid overlap with fixed navbar */
 main {
     padding-top: 60px;
+    flex-grow: 1;
 }
 
 section {

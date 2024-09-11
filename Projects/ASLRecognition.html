@@ -29,15 +29,22 @@
     <main>
         <section id="project-header">
             <div>
-                <h1>ASL Recognition</h1>
+                <h1>
+                    ASL Recognition -
+                    <a href="https://github.com/AbeMichel/ML_ASL_Dynamic_Recognition">
+                        GitHub
+                    </a>
+                </h1>
             </div>
         </section>
         <section id="content">
-            <h1>Summary of Lessons</h1>
-            <ol>
-                <li><p>Split big complex problems into small digestable ones</p></li>
+            <h1>Lessons Learned</h1>
+            <ol id="lessons-list">
+                <li><a href="#l0">Split big complex problems into small digestable ones</a></li>
+                <li><a href="#l1">A little time preparing saves a lot of time doing</a></li>
             </ol>
-            <h1>The full version</h1>
+            <br/>
+            <h1>---</h1>
             <p>
                 This might be one of my favorite projects to date. Since I was little I've been facinated with non-traditional languages
                 and the expressive nature of American Sign Language (ASL) so it seemed like a fantastic challenge to building a machine Learning
@@ -47,29 +54,48 @@
                 since my last attempt at machine learning was code structure and documentation. A lot of that was from my time at <a href="../experience.html#jd">John Deere</a>.
                 <br/>
                 <br/>
-                There were a couple problems I faced with this project: where do I find enough data and how do I store such a large amount of data.
+                There were a couple problems I faced with this project: 
+                <ul style="list-style-position: inside;">
+                    <li>How do I store such a large amount of data?</li>
+                    <li>Where do I find enough data?</li>
+                </ul>
+                <br/>
+                These were addressed, in a way, by decreasing the amount of "noise" in the data.
+                This was done by using the 
+                <a href="https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker">mediapipe hand landmarker</a>
+                model. By passing our data through this the data was reduced from the thousands of pixel values that are associated with each frame
+                to less than 100 data points per frame. This process not only allowed the model to focus only on the important parts of the frame but also largely addressed
+                the issue of storing the data. 
                 <br/>
                 <br/>
-                The first was partially addressed by choosing to work with GIFs, as they're basically muted videos, and decreasing the frame rate I recorded at.
-                I treated each frame in the GIF as
-                a series of images and ran them through a hand recognition library 
-                (<a href="https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker">mediapipe</a>). This process filtered out the noise of the images that commonly
-                causes issues in machine learning and let my model focus on the important parts: hand position and shape. I learned that it's easier to 
+                <div class="img-group">
+                    <div class="img-and-desc">
+                        <img src="../Assets/ASL_Preview.jpg" alt="Hand recognition example"/>
+                        <p>A frame of the sign "hello" with hand landmarks shown</p>
+                    </div>
+                </div>
+                <br/>
+                At one point I played with a posture recognition model to further enhance the data, but found this to be overkill and removed it for efficiency.
+                As an additional step in the process, to double the speed and coverage of data collection, I added the option to flip the data over the 
+                y-axis to mimic someone signing from the opposite side. This reinforced the idea that it's easier to 
                 <b class="lesson" id="l0">split big complex problems into small digestable ones</b>.
-
+                <br/>
+                <br/>
+                While working on this project I found that a large amount of my time was taken up by waiting for
+                TensorFlow (the ML library I used) to load when I wanted to do any testing or data creation which prompted
+                me to combine the GUI for each step into a single application. This significally sped up development. 
+                <b class="lesson" id="l1">A little time preparing saves a lot of time doing</b>. Converting the scripts to a single application
+                led to me changing the goal, instead of being about successful recognition of ASL it became creating a tool which highlights the
+                process of machine learning and neural networks. This change prompted the addition of allowing the model to be defined within the
+                application.
             </p>
-            
-        </section>
-        <section>
-            <h1>Photo Credits</h1>
-            <ol>
-            </ol>
         </section>
     </main>
     <!-------------->
 
     <!-- Scripts -->
     <script src="../Scripts/navbarMenuToggle.js"></script>
+    <script src="../Scripts/projecthighlight.js"></script>
     <!-------------->
 </body>
 </html>

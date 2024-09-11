@@ -33,32 +33,35 @@
             </div>
         </section>
         <section id="content">
-            <h1>Summary of Lessons</h1>
-            <ol>
+            <h1>Lessons Learned</h1>
+            <ol id="lessons-list">
                 <li><a href="#l0">Details matter</a></li>
                 <li><a href="#l1">Just because I knew what something meant doesn't mean others will too</a></li>
             </ol>
-            <h1>The full version</h1>
+            <br/>
+            <h1>---</h1>
             <p>
                 The title of this project (or a series of projects) is fancy verbage
                 for "wrote, executed, and reviewed test plans while trying to run stuff over with giant
                 machines" which was A LOT of fun. If all things went right I would be halted to a stop before
                 hitting the poor unsuspecting mannequin.
-            </p>
-            <div class="img-group">
-                <a class="img-and-desc" href="#p1">
-                    <img src="../Assets/jd_644k_hybrid_4_large1.jpg" alt="Picture of JD Machine"/>
-                    <p>This was one of the main machines I got to try to run stuff over with!</p>
-                </a>
-                <a class="img-and-desc" href="#me">
-                    <img src="../Assets/Me_and_Mannequin.jpg" alt="Me and the mannequin"/>
-                    <p>...and this was said unsuspecting mannequin.</p>
-                </a>
-            </div>
-            <p>
+                <br/>
+                <br/>
+                <div class="img-group">
+                    <a class="img-and-desc" href="#p1">
+                        <img src="../Assets/jd_644k_hybrid_4_large1.jpg" alt="Picture of JD Machine"/>
+                        <p>This was one of the main machines I got to try to run stuff over with!</p>
+                    </a>
+                    <div class="img-and-desc">
+                        <img src="../Assets/Me_and_Mannequin.jpg" alt="Me and the mannequin"/>
+                        <p>...and this was said unsuspecting mannequin.</p>
+                    </div>
+                </div>
+                <br/>
                 While I enjoyed the actual testing of software, a lot of the job was looking at the bits and verifying the correct ones would
                 flip when doing specific things. This got really confusing a couple times when trying to remember if I wrote the test in big or
                 little-endian which brings us to my first lesson while doing this: <b class="lesson" id="l0">details matter</b>.
+                <br/>
                 <br/>
                 In 8th grade, when I was thinking that it was silly we were
                 writing detailed tests for simple procedures, I never would
@@ -69,20 +72,25 @@
                 to see how conscise and detailed I could make a test step. This is also where "ensuring" and "verifying" began to mean different
                 things to me. The time I spent writing test plans led me to long for something more than what Excel could give me (mainly being able to "ctrl+left" to traverse sentences in a cell)
                 and so I began developing <a href="TestPlanApp.html">my first tool</a> at Deere.
+                <br/>
+                <br/>
+                These projects were also the purpose of most of the meetings I was involved in. We had practiced a Scrum-like framework which at first was
+                a lot to take in, but after a few google searches and a couple sprints I enjoyed the process.
             </p>
-        </section>
-        <section>
-            <h1>Photo Credits</h1>
-            <ol class="credit list">
-                <li><a id="p1" href="http://blog.machinefinder.com/12041/john-deere-644k-deeres-first-hybrid-construction-machine">JD 644k Loader (Click for source)</a></li>
-                <li><a id="me">Me</a></li>
-            </ol>
+            <br/>
+            <section>
+                <h1>Photo Credits</h1>
+                <ol class="credit-list">
+                    <li><a id="p1" href="http://blog.machinefinder.com/12041/john-deere-644k-deeres-first-hybrid-construction-machine">JD 644k Loader (Click for source)</a></li>
+                </ol>
+            </section>
         </section>
     </main>
     <!-------------->
 
     <!-- Scripts -->
     <script src="../Scripts/navbarMenuToggle.js"></script>
+    <script src="../Scripts/projecthighlight.js"></script>
     <!-------------->
 </body>
 </html>

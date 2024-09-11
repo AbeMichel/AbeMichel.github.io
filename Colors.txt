@@ -1,0 +1,12 @@
+Navbar: #3B3355
+
+Background: #5D5D81
+
+Text: #F7FFF7
+
+Links:
+#FFFF99 
+#FFD700 
+#FFCC33 <-
+
+Highlight: #FFA500
