@@ -6,15 +6,15 @@ section h1{
     font-size: 15pt;
 }
 
-.lesson{
+.lesson, h4{
     transition: background-color 0.4s ease-out;
 }
 
-.lesson.highlight{
+.lesson.highlight, h4.highlight{
     background-color: #FFA500;
 }
 
-.lessons-list ol li, .credit-list ol li{
+ol li{
     list-style: upper-roman;
     list-style-position: inside;
 }
