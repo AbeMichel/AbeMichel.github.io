@@ -30,7 +30,7 @@
 
 /* Hover effect on links */
 #nav-links ul li a:hover {
-    font-size: 16pt;
+    font-size: 15pt;
     color: #FFFFFF;
 }
 
@@ -54,7 +54,7 @@
     }
 
     #nav-menu-btn:hover{
-        font-size: 22pt;
+        font-size: 21pt;
         color: #FFFFFF;
     }
 
