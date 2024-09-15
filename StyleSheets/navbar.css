@@ -3,6 +3,7 @@
     background-color: #3b3355;
     color: #F7FFF7;
     position: fixed;
+    box-shadow: 0 4px 4px rgba(0, 0, 0, 0.3);
     top: 0;
     left: 0;
     width: 100vw;
