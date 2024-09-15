@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Java Physics - Abraham Michel</title>
+
+    <link rel="stylesheet" href="../StyleSheets/main.css"> 
+    <link rel="stylesheet" href="../StyleSheets/project.css"> 
+    <link rel="stylesheet" href="../StyleSheets/navbar.css"> 
+</head>
+<body>
+    <nav class="navbar">
+        <button id="nav-menu-btn">&#9776;</button>
+        <div id="nav-links">
+            <ul>
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="../experience.html">Work Experience</a></li>
+                <li><a href="../projects.html">Projects</a></li>
+                <li><a href="../aboutme.html">About Me</a></li>
+                <li><a href="https://www.linkedin.com/in/abrahammichel">LinkedIn</a></li>
+                <li><a href="https://github.com/AbeMichel">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main>
+        <section id="project-header">
+            <div>
+                <h1>
+                    Java Physics
+                </h1>
+            </div>
+        </section>
+        <section id="content">
+            <h1>---</h1>
+            <p>
+                After watching a <a href="https://www.youtube.com/watch?v=Qz0KTGYJtUk">Sebastian Lague video</a> on ray tracing 
+                and messing around with shaders on <a href="shadertoy.com">shadertoy.com</a> I found myself incredibly excited for
+                the computer graphics class I was about to take. The class itself was an awesome introduction into computer graphics
+                and our lectures were very hands on which was great! We began learning how to draw shapes onto the screen, then how to change their position
+                and color using shaders, eventually we were able to create meshes for spheres, pyramids, and squares.
+                <br/>
+                <br/>
+                I was having a blast with the control I had when using Java and GLSL to create things so for our final two projects I decided to
+                make a physics simulation and then build off of that to make a FPS-like (First-Person Shooter). The original 
+                physics simulation implemented rigidbodies, adding forces, friction, and bouncing. This was a blast to play 
+                around with making an object have no gravity or friction and making it bounce around the box it was in at mach 10.
+                <br/>
+                <br/>
+                <div class="img-group">
+                    <div class="img-and-desc">
+                        <iframe width="560" height="315" src="https://www.youtube.com/embed/XrcZSfDEmUM?si=ibwR03qN9KUts4LK" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+                        <p>Demonstration of the physics</p>
+                    </div>
+                </div>
+                <br/>
+                Although it's not shown in the video I started messing around with moving the camera and implemented camera shake into
+                the simulation. This isn't used later, but my understanding of how the camera was able to move began here.
+                Just before we were assigned our final project for the class I saw a video of someone that created a very basic FPS using only shaders.
+                That video influenced the functionality I wanted to add into my final project. Building off of the physics simulation was easy because of
+                the way I structured the classes around a component system much like in the Unity Engine. The big changes I implemented during this
+                were object collisions, camera movement and rotations, and dynamic object creation (previously the program required objects to be constant in the scene).
+                <br/>
+                <br/>
+                The collisions were simple enough, I never had enough objects in the scene to notice the performance drop of checking
+                a simple signed distance function for each pair of objects. Creating and removing objects was as easy as reserving
+                memory for more objects than I'd have and keeping track of the free locations in that memory. The most challenging part
+                for me was figuring out the camera rotations. I wanted to allow the player to look up, down, left, and right and individually they
+                were easy to implement. The challenge came when I wanted to rotate left or right after changing the vertical orientation of the camera. As seen
+                in the image below if the player looks up (rotate around the Z axis) the X and Y axes are different and rotating around either of them would result in
+                a different orientation than expected. 
+                <br/>
+                <br/>
+                <div class="img-group">
+                    <div class="img-and-desc">
+                        <img width="100%" src="../Assets/JavaPhysics/AxisDemo.png" alt="Axis original vs rotated"/>
+                        <p>What the XYZ axes looks like before and after rotating around the Z axis</p>
+                    </div>
+                </div>
+                <br/>
+                After playing around with the matrix math I was using for the camera I took a step back and separated the axes. I used one matrix to handle horizontal
+                rotations and a second to handle the vertical. Applying both was as easy as multiplying the horizontal by the vertical (it had to be this order because
+                horizontal rotations don't change the vertical axis).
+                <br/>
+                <br/>
+                <div class="img-group">
+                    <div class="img-and-desc">
+                        <iframe width="560" height="315" src="https://www.youtube.com/embed/eNGgPZTh-ps?si=gBJtYSS97dZ75Rj4" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+                        <p>Demonstration of the FPS</p>
+                    </div>
+                </div>
+            </p>
+        </section>
+    </main>
+    <!-------------->
+
+    <!-- Scripts -->
+    <script src="../Scripts/navbarMenuToggle.js"></script>
+    <script src="../Scripts/projecthighlight.js"></script>
+    <!-------------->
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Image to DXF - Abraham Michel</title>
+
+    <link rel="stylesheet" href="../StyleSheets/main.css"> 
+    <link rel="stylesheet" href="../StyleSheets/project.css"> 
+    <link rel="stylesheet" href="../StyleSheets/navbar.css"> 
+</head>
+<body>
+    <nav class="navbar">
+        <button id="nav-menu-btn">&#9776;</button>
+        <div id="nav-links">
+            <ul>
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="../experience.html">Work Experience</a></li>
+                <li><a href="../projects.html">Projects</a></li>
+                <li><a href="../aboutme.html">About Me</a></li>
+                <li><a href="https://www.linkedin.com/in/abrahammichel">LinkedIn</a></li>
+                <li><a href="https://github.com/AbeMichel">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main>
+        <section id="project-header">
+            <div>
+                <h1>
+                    Image to DXF
+                </h1>
+            </div>
+        </section>
+        <section id="content">
+            <h1>Lessons Learned</h1>
+            <ol id="lessons-list">
+                <li><a href="#l0">Some problems are just easier (and occansionally more efficient) if you find ways to ignore them</a></li>
+            </ol>
+            <h1>---</h1>
+            <p>
+                When working on projects that need DXF (Drawing Exchange Format) files like CNC and 3D printing I found it tedious to
+                go into programs such as CorelDraw to trace images I wanted to work from and this seemed to be a sentiment held by one
+                of my professors when 3D printing Loras merchandise, so I started work on this program. I found it difficult to account
+                for the variety of detail in various photos so instead I made it really easy to use guess and check. This was one of my first projects
+                in Python that utilized a GUI. <b class="lesson" id="l0">Some problems are just easier (and occansionally more efficient) if you find ways to ignore them</b>.
+                Below is the simple GUI that the application uses.
+                <br/>
+                <br/>
+                <div class="img-group">
+                    <div class="img-and-desc">
+                        <img src="../Assets/ImageToDXF/GUI.jpg" alt="GUI"/>
+                        <p>The application's GUI</p>
+                    </div>
+                </div>
+                <br/>
+                Then a simple example using a very clear image of a smilely face,
+                <br/>
+                <br/>
+                <div class="img-group">
+                    <div class="img-and-desc">
+                        <img src="../Assets/ImageToDXF/Smiley.png" alt="simple smilely face"/>
+                        <p>A simple smilely face drawing</p>
+                    </div>
+                    <div class="img-and-desc">
+                        <img src="../Assets/ImageToDXF/SmilelyPreview.jpg" alt="preview mode of smilely face"/>
+                        <p>The preview the application gives</p>
+                    </div>
+                    <div class="img-and-desc">
+                        <img src="../Assets/ImageToDXF/SmilelyDWFView.jpg" alt="resulting DXF of smilely"/>
+                        <p>Viewing the resulting DXF file using an online tool</p>
+                    </div>
+                </div>
+                <br/>
+                To showcase a more complex use case I've used the photo of me and the mannequin from my time testing
+                <a href="AIEnabledMovement.html">AI enabled movement</a> at Deere,
+                <br/>
+                <br/>
+                <div class="img-group">
+                    <div class="img-and-desc">
+                        <img src="../Assets/JD/Me_and_Mannequin.jpg" alt="Me and mannequin"/>
+                        <p>A photo of me and a mannequin</p>
+                    </div>
+                    <div class="img-and-desc">
+                        <img src="../Assets/ImageToDXF/MeNManDXFPreview.png" alt="preview mode of me and mannequin"/>
+                        <p>The preview the application gives</p>
+                    </div>
+                    <div class="img-and-desc">
+                        <img src="../Assets/ImageToDXF/MeNManDXFView.png" alt="resulting DXF of me and mannequin"/>
+                        <p>Viewing the resulting DXF file using an online tool</p>
+                    </div>
+                </div>
+                <br/>
+                While there is some obvious room for improvement (me missing my face) much of that can be handled by fine-tuning the
+                tolerances used. This tool has saved at least one person from having to hand (mouse?) draw vectors and I call that a success!
+            </p>
+        </section>
+    </main>
+    <!-------------->
+
+    <!-- Scripts -->
+    <script src="../Scripts/navbarMenuToggle.js"></script>
+    <script src="../Scripts/projecthighlight.js"></script>
+    <!-------------->
+</body>
+</html>

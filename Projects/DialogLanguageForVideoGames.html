@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Dialog Language - Abraham Michel</title>
+
+    <link rel="stylesheet" href="../StyleSheets/main.css"> 
+    <link rel="stylesheet" href="../StyleSheets/project.css"> 
+    <link rel="stylesheet" href="../StyleSheets/navbar.css"> 
+</head>
+<body>
+    <nav class="navbar">
+        <button id="nav-menu-btn">&#9776;</button>
+        <div id="nav-links">
+            <ul>
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="../experience.html">Work Experience</a></li>
+                <li><a href="../projects.html">Projects</a></li>
+                <li><a href="../aboutme.html">About Me</a></li>
+                <li><a href="https://www.linkedin.com/in/abrahammichel">LinkedIn</a></li>
+                <li><a href="https://github.com/AbeMichel">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main>
+        <section id="project-header">
+            <div>
+                <h1>
+                    Dialog Language for Video Games
+                </h1>
+            </div>
+        </section>
+        <section id="content">
+            <h1>Lessons Learned</h1>
+            <ol id="lessons-list">
+                <li><a href="#l0">Don't waste too much time developing things you may never need.</a></li>
+            </ol>
+            <br/>
+            <h1>---</h1>
+            <p>
+                Writing immersive dialog for a video game is a daunting task and it kept me from making much progress
+                on <a href="RPG.html">my dream game</a> for a while. But there's a funny way that ideas come out of 
+                no where. I was working on the <a href="ScriptGeneration.html">MQTT message parsing</a> for Deere which
+                involved a lot of string parsing and that gave me both the inspiration and know how to finally attempt to
+                create a dialog writing system of my own. I iterated on it a few times, but landed on a very simple format
+                for writing dialog and even added in functionality to support commands and conditionals.
+                <br/>
+                <br/>
+                Not only was the development of this language fun (it felt a little like a I was making my own coding language), but
+                it became fun to write dialog and has saved me a lot of time doing so. For a while I was <b class="lesson" id="l0">adding in more
+                functionality than I actually needed</b> which was fun, but wasted quite a bit of time on things I wasn't going to or couldn't use
+                and after creating a few of them I realized what I was doing and cut myself off on development for the time being. 
+                Yet again scope creep had snuck in and claimed precious time.
+                <br/>
+                <br/>
+                Through this development I grew a lot more comfortable with string
+                parsing in C# (most of my previous experience had been in Python) and further reinforced my love for writing documentation.
+                Below I've included a download for the text file I put together as documentation and an example dialog to showcase the simple yet
+                expansive capabilities of the
+                <br/>
+                <br/>
+                <h1>Reading the Dialog</h1>
+                <a href="../Downloadables/Dialog System Guide.txt">Download Full Dialog Guide</a>
+                <br/>
+                There are a few formatting rules that you should be aware of before reading the dialog below:
+                <ul style="list-style: inside;">
+                    <li>'{}' Curly brackets hold file variables such as the name of the speaker.</li>
+                    <li>'-' Indicates the start of a new dialog block</li>
+                    <li>'_' Indicates a choice given after the previous dialog block is shown.</li>
+                    <li>'[]' Square brackets above a dialog block or choice hold parameters.</li>
+                </ul>
+                <br/>
+                <h1>Example Dialog File</h1>
+                <pre class="code">
+                    <code>
+{
+name="John"
+}
+
+# this is just a comment so it won't be shown
+
+-Would you like to buy this item for 5 gold?
+[next=sold]
+_Yes please!
+[next=notake]
+_No thanks!
+
+# if the vender sold an item we should give it to the player
+[id=sold, req=gold take 5 > poorboy, end=true, checkpoint=allout, cmd=item g 0]
+-Wonderful! It's all yours!
+
+# if the player didn't want to take the item
+[id=notake, end=true]
+-Unfortunate... 
+It's wonderful sword :(
+
+# if the player didn't have enough gold for the item
+[id=poorboy, end=true]
+-Aww come back when you have enough gold.
+
+# once the item is sold
+[id=allout, end=true]
+-Thanks again for buying that!
+                    </code>
+                </pre>
+            </p>
+        </section>
+    </main>
+    <!-------------->
+
+    <!-- Scripts -->
+    <script src="../Scripts/navbarMenuToggle.js"></script>
+    <script src="../Scripts/projecthighlight.js"></script>
+    <!-------------->
+</body>
+</html>

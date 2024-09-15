@@ -36,16 +36,34 @@ ol li{
     align-items: center;
     text-decoration: none;
     max-width: 400px;
+    padding-left: 10px;
+    padding-right: 10px;
 }
 
+.img-and-desc iframe,
+.img-and-desc video,
 .img-and-desc img{
     max-width: 400px;
     max-height: 400px;
+    border-radius: 8px;
 }
 
 .img-and-desc p{
     font-style: italic;
     font-size: 10pt;
+}
+
+.code {
+    background-color: #46465f;
+    border-radius: 4px;
+    padding: 10px;
+    position: relative;
+    overflow-y: hidden;
+    overflow-x: auto;
+}
+
+.code code{
+    text-align: left;
 }
 
 @media screen and (max-width: 600px) {
