@@ -1,81 +1,126 @@
-/* Styles for the entire navbar */
 .navbar {
-    background-color: #3b3355;
     color: #F7FFF7;
     position: fixed;
-    box-shadow: 0 4px 4px rgba(0, 0, 0, 0.3);
     top: 0;
     left: 0;
     width: 100vw;
     z-index: 1000;
-    padding: 10px;
+    display: flex;
+    justify-content: center;
 }
 
-/* Styles for the nav links on larger screens */
+#nav-container{
+    width: 100%;
+    background-color: #3b3355;
+    box-shadow: 0 4px 4px rgba(0, 0, 0, 0.3);
+    display: flex;
+    justify-content: flex-end;
+    padding: 10px 10px 10px 10px;
+    border-radius: 0px 0px 4px 4px;
+}
+
 #nav-links ul {
     list-style: none;
     display: flex;
-    justify-content: space-around;
-    text-align: center;
+    align-content: center;
 }
 
-/* Styling links in the navbar */
+#nav-links ul li {
+    display: flex;
+    align-content: center;
+}
+
 #nav-links ul li a {
+    display: flex;
+    align-items: center;
     color: #F7FFF7;
     text-decoration: none;
     font-weight: bold;
     font-size: 14pt;
-    transition: font-size 0.2s;
+
+    padding-left: 10px;
+    padding-right: 10px;
+
+    border-color: transparent;
+    border-radius: 8px;
+    border-width: 1px;
+    border-style: solid;
 }
 
-/* Hover effect on links */
 #nav-links ul li a:hover {
-    font-size: 15pt;
-    color: #FFFFFF;
+    /* border-color: #F7FFF7; */
+    /* color: #F7E2B3 ; */
+    background-color: #362f4e;
 }
 
-/* Hide the menu button on larger screens by default */
 #nav-menu-btn {
     display: none;
+
+    color: #F7FFF7;
+    background: none;
+    border: none;
+    font-size: 20pt;
+    cursor: pointer;
+    
+    border-color: transparent;
+    border-radius: 8px;
+    border-width: 1px;
+    border-style: solid;
+    
+    transition: font-size 0.2s, rotate 0.2s;
 }
 
-/* MEDIA QUERY for smaller screens */
+#icons a{
+    position: relative;
+}
+
+#icons img{
+    width: 25px;
+    height: 25px;
+    display: block;
+}
+
 @media screen and (max-width: 600px) {
+    /* Mobile layout for #nav-container */
+    #nav-container {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        padding-right: 14px; 
+    }
 
-    /* Display the menu button for smaller screens */
     #nav-menu-btn {
-        display: inline;
-        color: #F7FFF7;
-        background: none;
-        border: none;
-        font-size: 20pt;
-        cursor: pointer;
-        transition: font-size 0.2s;
+        display: block;
     }
 
-    #nav-menu-btn:hover{
-        font-size: 21pt;
-        color: #FFFFFF;
+    #nav-menu-btn:hover {
+        background-color: #362f4e;
     }
 
-    /* Hide the navigation links on smaller screens */
+    #nav-menu-btn.active {
+        rotate: 90deg;
+    }
+
     #nav-links {
         display: none;
     }
 
-    /* Show the navigation links when the 'active' class is added */
     #nav-links.active {
-        display: block;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
     }
 
-    /* Ensure the menu items are stacked vertically */
     #nav-links ul {
-        display: block;
-        text-align: left;
+        display: flex;
+        flex-direction: column;
+        text-align: right;
     }
 
-    /* Align the individual list items properly */
     #nav-links ul li {
-        padding: 10px 0;
+        display: flex;
+        padding: 8px 0;
+        justify-content: flex-end;
     }
 }
+

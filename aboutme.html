@@ -12,38 +12,97 @@
 </head>
 <body>
     <nav class="navbar">
-        <button id="nav-menu-btn">&#9776;</button>
-        <div id="nav-links">
-            <ul>
-                <li><a href="index.html" onclick="">Home</a></li>
-                <li><a href="experience.html">Work Experience</a></li>
-                <li><a href="projects.html">Projects</a></li>
-                <li><a href="aboutme.html">About Me</a></li>
-                <li><a href="https://www.linkedin.com/in/abrahammichel">LinkedIn</a></li>
-                <li><a href="https://github.com/AbeMichel">GitHub</a></li>
-            </ul>
+        <div id="nav-container">
+            <button id="nav-menu-btn">&#9776;</button>
+            <div id="nav-links">
+                <ul>
+                    <li><a href="index.html" onclick="">Home</a></li>
+                    <li><a href="experience.html">Work</a></li>
+                    <li><a href="projects.html">Projects</a></li>
+                    <li><a href="aboutme.html">About Me</a></li>
+                    <li id="icons">
+                        <a href="https://www.linkedin.com/in/abrahammichel"><img src="Assets/LinkedInLogo.png"/></a>
+                        <a href="https://github.com/AbeMichel"><img src="Assets/GitHubLogo.png"/></a>
+                    </li>
+                </ul>
+            </div>
         </div>
     </nav>
     <!-- Main Content -->
     <main>
         <h1>About Me</h1>
-        <p>Hi! My name is Abe and my passion is learning.</p>
-        <p></p>
-        <div class="slider">
-            <div class="slides">
-                <div class="slide">
-                    <img src="Assets/PlaceholderImage.png" alt="Project 1">
-                    <div class="caption">Project 1</div>
+        <p>
+            Hi, my name is <span id="name">Abe</span>!
+            <br/>
+            I love <b>learning</b>, I love to be <b>challenged</b>, and
+            I love <b>helping others</b> do the same. I've found a lot of opportunity for all 3 in
+            college which is the primary why I want to become a professor.
+            <br/>
+            <br/>
+            <h2>Goals</h2>
+
+            <br/>
+            <br/>
+            <h2>Education</h2>
+            I went to college with the intention of graduating early, but quickly fell in love with
+            the educational atmosphere of college and now I'm graduating with a double major in
+            electro-mechanical engineering and computer science with minors in psychology, mathematics,
+            physics, and analytics.
+            <br/>
+            <br/>
+            <h2>Hobbies</h2>
+            I really enjoy trying and experiencing new things. Some of my favorite things to do are
+            cook, travel, create, and play.
+            <div class="slider">
+                <div class="slides">
+                    <div class="slide">
+                        <img src="Assets/PlaceholderImage.png" alt="Project 1">
+                        <div class="caption">Project 1</div>
+                    </div>
+                    <div class="slide">
+                        <img src="Assets/PlaceholderImage.png" alt="Project 2">
+                        <div class="caption">Project 2</div>
+                    </div>
+                    <!-- Add more slides as needed -->
                 </div>
-                <div class="slide">
-                    <img src="Assets/PlaceholderImage.png" alt="Project 2">
-                    <div class="caption">Project 2</div>
-                </div>
-                <!-- Add more slides as needed -->
+                <button class="prev">❮</button>
+                <button class="next">❯</button>
             </div>
-            <button class="prev">❮</button>
-            <button class="next">❯</button>
-        </div>
+            <div class="slider">
+                <div class="slides">
+                    <div class="slide">
+                        <img src="Assets/PlaceholderImage.png" alt="Project 1">
+                        <div class="caption">Project 1</div>
+                    </div>
+                    <div class="slide">
+                        <img src="Assets/PlaceholderImage.png" alt="Project 2">
+                        <div class="caption">Project 2</div>
+                    </div>
+                    <!-- Add more slides as needed -->
+                </div>
+                <button class="prev">❮</button>
+                <button class="next">❯</button>
+            </div>
+            <div class="slider">
+                <div class="slides">
+                    <div class="slide">
+                        <img src="Assets/PlaceholderImage.png" alt="Project 1">
+                        <div class="caption">Project 1</div>
+                    </div>
+                    <div class="slide">
+                        <img src="Assets/PlaceholderImage.png" alt="Project 2">
+                        <div class="caption">Project 2</div>
+                    </div>
+                    <!-- Add more slides as needed -->
+                </div>
+                <button class="prev">❮</button>
+                <button class="next">❯</button>
+            </div>
+        </p>
+        
+            
+        
+        
     </main>
     <!-------------->
     

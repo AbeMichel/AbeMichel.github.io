@@ -3,6 +3,8 @@
     width: 80%;
     margin: auto;
     overflow: hidden;
+    max-width: 45vw;
+    min-width: 200px;
 }
 
 .slides {
@@ -18,6 +20,7 @@
 .slide img {
     width: 100%;
     height: auto;
+    border-radius: 8px;
 }
 
 .caption {
@@ -27,6 +30,7 @@
     background: rgba(0, 0, 0, 0.5);
     color: #fff;
     padding: 10px;
+    border-radius: 8px;
 }
 
 .slider button {
@@ -38,6 +42,7 @@
     border: none;
     padding: 10px;
     cursor: pointer;
+    border-radius: 8px;
 }
 
 .prev {
