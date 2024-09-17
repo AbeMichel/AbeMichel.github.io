@@ -30,7 +30,7 @@
     align-content: center;
 }
 
-#nav-links ul li a {
+#nav-container a {
     display: flex;
     align-items: center;
     color: #F7FFF7;
@@ -47,7 +47,7 @@
     border-style: solid;
 }
 
-#nav-links ul li a:hover {
+#nav-container a:hover {
     /* border-color: #F7FFF7; */
     /* color: #F7E2B3 ; */
     background-color: #362f4e;
@@ -78,6 +78,19 @@
     width: 25px;
     height: 25px;
     display: block;
+}
+
+#home-btn{
+    text-decoration: none;
+    position: absolute;
+    left: 0;
+    text-align: center;
+    align-self: center;
+}
+
+#extra-nav-btns{
+    display: flex;
+    flex-direction: row;
 }
 
 @media screen and (max-width: 600px) {

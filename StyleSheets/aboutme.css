@@ -3,9 +3,10 @@
     font-size: xx-large;
 }
 
-#name {
-    font-weight: bold;
-    font-style: italic;
+.slider-group{
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
 }
 
 .slider {
@@ -13,7 +14,7 @@
     width: 80%;
     margin: auto;
     overflow: hidden;
-    max-width: 45vw;
+    max-width: 400px;
     min-width: 200px;
 }
 
@@ -66,4 +67,10 @@
 
 .next {
     right: 10px;
+}
+
+@media screen and (max-width: 600px) {
+    .slider-group{
+        flex-direction: column;
+    }
 }
