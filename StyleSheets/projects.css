@@ -20,6 +20,7 @@ body {
     aspect-ratio: 16 / 9; /* Maintains a 16:9 ratio. Adjust as needed */
     position: relative;
     z-index: 0;
+    min-width: 300px;
     max-width: 500px;
     transition: all 0.2s ease;
 }
@@ -60,6 +61,7 @@ body {
     bottom: 0;
     left: 0;
     right: 0;
+    max-height: 60%;
     background: rgba(0, 0, 0, 0.7); /* Semi-transparent background */
     color: #F7FFF7;
     padding: 10px;
@@ -68,11 +70,11 @@ body {
 }
 
 .project-info h3 {
-    margin: 10px 0;
+    margin: 5px 0;
 }
 
 .project-info p {
-    padding: 0 10px 10px;
+    padding: 0 0 5px 0px;
 }
 
 .project-info .project-tags{
@@ -83,7 +85,7 @@ body {
 }
 
 .project-info .project-tags div {
-    background-color: rgba(128, 0, 128, 0.347);
+    background-color: rgba(128, 0, 128, 0.65);
     border-radius: 4px;
 }
 

@@ -11,6 +11,8 @@ body {
     font-family: Arial, Helvetica, sans-serif;
     line-height: 1.6;
     padding: 20px;
+    display: flex;
+    justify-content: center;
 }
 
 a {
@@ -22,6 +24,7 @@ a {
 /* Adding top padding to main content to avoid overlap with fixed navbar */
 main {
     padding-top: 60px;
+    max-width: 1000px;
     flex-grow: 1;
 }
 

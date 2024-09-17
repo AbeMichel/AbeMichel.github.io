@@ -1,3 +1,13 @@
+
+#intro{
+    font-size: xx-large;
+}
+
+#name {
+    font-weight: bold;
+    font-style: italic;
+}
+
 .slider {
     position: relative;
     width: 80%;
@@ -13,8 +23,13 @@
 }
 
 .slide {
+    display: none;
     min-width: 100%;
     box-sizing: border-box;
+}
+
+.slide.active{
+    display: inline;
 }
 
 .slide img {
