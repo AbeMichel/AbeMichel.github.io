@@ -1,0 +1,96 @@
+.quick-links{
+    position: sticky;
+    top: 51px;
+    background-color: #5D5D81;
+    height: 25px;
+    z-index: 1;
+}
+
+.job-entry{
+    background-color: transparent;
+}
+
+.job-title {
+    position: sticky;
+    background-color: #5D5D81;
+    /* top: 75px; */
+    top: 51px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    /* padding-top: 5px; */
+    padding-top: 10px;
+    padding-left: 20px;
+    padding-bottom: 10px;
+    border-bottom: solid 2px #F7FFF7;
+}
+
+.job-title .logo{
+    border-radius: 8px;
+    width: 75px;
+    height: 75px;
+}
+
+.logo.jd{
+    background-color: #367C2B;
+    border: solid #FFD700 3px;
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: bolder;
+    color: #FFD700;
+    text-align: center;
+    align-content: center;
+}
+
+.logo.jd::after{
+    content: "John Deere";
+}
+
+.logo.loras{
+    background-color: #4B306A;
+    border: solid #D4AF37 3px;
+    text-align: center;
+    align-content: center;
+    font-family: 'Georgia', serif;
+    color: #D4AF37;
+}
+
+.logo.loras::after{
+    content: "Loras College";
+}
+
+.job-title h2{
+    font-size: 2em;
+}
+
+.job-content .date{
+    padding-top: 10px;
+    font-style: italic;
+}
+
+.job-content{
+    padding-left: 10%;
+}
+
+.logo-container {
+    width: 250px;
+    height: 150px;
+    background-color: #4B306A; /* Loras College Purple */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 15px;
+}
+
+.text {
+    font-family: 'Georgia', serif;
+    font-size: 28px;
+    color: #FFD700; /* Gold for the text */
+    text-align: center;
+}
+
+.text span {
+    display: block;
+    font-size: 16px;
+    font-weight: bold;
+}
