@@ -43,13 +43,121 @@
             </div>
         </section>
         <section id="content">
-            <h1>Lessons Learned</h1>
+            <!-- <h1>Lessons Learned</h1>
             <ol id="lessons-list">
                 <li><a href="#l0"></a></li>
             </ol>
-            <br/>
+            <br/> -->
             <h1>---</h1>
             <p>
+                <h1>Game Description</h1>
+                This is a 2D top-down action RPG with a bit of roguelite progression. The story begins with the player waking up in a
+                strange cave surrounded by faintly illuminated crystals. The player, despite their best efforts, cannot recall anything prior
+                to their waking. As they start to explore the cave they find an opening and sitting on a stump just outside the cave is a scraggly 
+                old man. The old man tells the player of the magic of the island that is rooted in the emotions of its inhabitants—that their emotions
+                hold immense power. The player is told of the mysteries of the forest that surrounds the island, how it is everchanging, and that the key
+                to remembering is somewhere within, but to find it would require the player to learn to live with and accept their emotions, to harness
+                the power they provide.
+                <br/>
+                <br/>
+                <h1>Reflection</h1>
+                Just like any other game developer, my dream game is an open world role-playing game (RPG). I've always loved the RPG
+                genre, having extremely fond memories of playing games like Skyrim and Pokemon. Although I attempted this a few times
+                in the past, I always ran into roadblocks when I would need to implement some of the more complex systems. These roadblocks
+                were largely due to me just being an unexperienced programmer and game developer, but as I tried and failed to implement
+                these systems I would learn a little more each time. Even with this game I have completely scrapped the project 5 times after
+                deciding that the way I organized my files was wrong or the way I implemented this other system was too intertwined with another.
+                As I iterated I both gathered valuable knowledge on what worked for me, learned the importance of planning ahead, and slowly
+                broke myself of <i>needing</i> the code to be completely clean. While clean code is an ideal and singleton patterns are never
+                to be spoke of, I found that the best way to progress is to use some of the "nevers" that existed. The singleton pattern
+                exists for a reason, it is <i>really really</i> difficult to make every script follow the SOLID principles, and it is okay
+                to go down a rabbit hole, slightly expanding your scope, because you learn so much from little adventures off the trail.
+                <br/>
+                <br/>
+                The thing I love most about this project is the expansive variety of work that needs done because it's almost impossible to get bored of
+                everything. If you hit a block while coding then go do some art, if that gets boring try making some sounds effects. An artifact of this
+                jumping about is that I often pick up in the middle of a drawing or script or system. I've found that writing very simplistic descriptions 
+                of my tasks before doing them gives me a nice cliff notes summary to regain some context when coming back to it. <a href="https://miro.com/">Miro</a>
+                has also been a fantastic resource for planning and tracking progress while giving a decent amount of functionality with the free version.
+                <br/>
+                <br/>
+                I've iterated on quite a few of the major systems within the game:
+                <br/>
+                <h2>Spellcasting</h2>
+                Spellcasting is designed to be the main focus of this game's combat system. I wanted to mimic the feeling of discovery that someone gets when they begin
+                to learn something new. This led to the original idea of having players draw symbols to cast spells. It was fascinating to try different methods of
+                capturing player input. I started out by tracking the player's input using pixel colors on a PNG and scaling it to a predetermined size so I could compare
+                the input to a bunch of predrawn symbols. This worked alright. It was fairly accurate, but lacked the capability to detect the direction the player drew the
+                symbol. This meant that clockwise and counterclockwise symbols were seen as the same, which I didn't want. This is when I went to my professors to discuss possible
+                ideas (One of my favorite things about college is having a group of experts in their field that you can just go talk to) and came up with implementing a
+                machine learning model or using a grid system. 
+                <br/>
+                <br/>
+                After implementing a quick version of the machine learning model I got a good frame rate stutter when I would cast a spell,
+                causing me to move on to the grid system. This involved splitting the screen into an invisible grid, tracking the order that the cursor traveled through the grid,
+                then comparing the sequence to predefined sequences to get the best match. This worked fine. I was able to consistantly cast the correct spells, but I found that
+                this quickly fell apart when testing on different screen sizes. I tried dynamically creating the grid based on the resolution of the screen but this created made it 
+                difficult to create those predefined sequences. 
+                <br/>
+                <br/>
+                After the grid system I had a UI appear with crystals that could be activated in a specific order. This method gave rise to the
+                idea of crystals powered by emotions, but more importantly it resulted in a very clear way for players to cast/explore spells. It was no longer shapes but an order
+                (though I kept the line renderer to trace mouse movement because it looked cool). This was great, I had a working system that allowed for numerous combinations and
+                as a result tons of spells for players to discover. The thing I didn't like as I tested it was that by activating a UI the player's focus was being taken out of the
+                game to interact with a UI which broke the immersion. To address this I made teh crystals appear as physical objects within the game world, but still had the player
+                use their mouse to select the order of crystals. This helped, but didn't solve the underlying issue: the player still had to stop moving to cast a spell which broke the
+                dynamic combat sequences I wanted.
+                <br/>
+                <br/>
+                My final change to this was to make the crystals randomly appear around the environment and make the player go break them. Breaking a crystal was the way of selecting it
+                and this encouraged the player to continue moving, keeping gameplay dynamic. I leaned into this by implementing different ways of breaking the crystals: you need to hit 
+                one across the arena but there's an enemy? Use a bow. You can only reach the crystal that creates a projectile? Cast the spell and use it to hit more crystals. I still
+                spend too much of my development time just playing around with this new spellcasting system, so at least I know I'm on the right track.
+
+                <br/>
+                <br/>
+                <h2>Items</h2>
+                Since the beginning of the game I wanted items to be dynamic and interesting but optional so spellcasting is the focus. I wanted to encourage the player
+                to use different items and discourage the hoarding that can often occur in games. This design choice meant that puzzles and combat had to have 
+                a variety of "optimal" approaches and that items had to have unique synergies that made them useful in specific situations. There has been little more than
+                some foundational items added to the game as proof of concepts. I have enjoyed creating little interactions like a boomerang that can pick up items for you.
+                Most of the items will be infinitely usable and to address this I plan on adding a way to destroy the item for a quick benefit that could be something along
+                the lines of a full heal or mass knockback. I think this will add some strategy past "I really like this weapon and will only use this".
+
+                <br/>
+                <br/>
+                <h2>Inventory</h2>
+                Because I want to have items their becomes the question of storing said items. The inventory has gone through the most changes during development, starting
+                as a classic grid based in menus, similar to games like Minecraft, and slowly turning into a 2 slot inventory that doesn't need more than a simple UI in the corner.
+                This change makes inventory management feel less daunting while encouraging items to be used in a much more temporary manner.
+
+                <br/>
+                <br/>
+                <h2>AI</h2>
+                The AI is something that has been largely placeholder as of yet. I started out with simple stationary "punching bags", then had them follow the player
+                directly using simple vector math, eventually I played around with more complex methods like state machines, goal oriented action planning (GOAP), blood hound tracking,
+                context steering, and various combinations of each. It's been a blast learning about the various methods and figuring out what works best 
+                in different situations. One of my favorite pathfinding methods has been A* because it is incredibly satisfying seeing the planned path change as you move and
+                it is very customizable. This is a portion of the game that I'm excited to expand further, eventually implementing things like schedules for NPCs and
+                interactions between enemies.
+
+                <br/>
+                <br/>
+                <h2>Dialog</h2>
+                Dialog systems have a surprising amount of complexity. For some games it's possible to have static text files or strings that get displayed the same every time, but
+                as soon as you want to have branching paths or different dialog based on the state of the game there becomes a bit more intertwining of systems. My game has dialog that
+                needs to know the state of quests, have branching dialogs to make choices meaningful, and be able to trigger events. To have all this functionality I could have either
+                found an asset to plug and play or I would I have to build my own.
+                Finding a premade asset would have saved me quite a bit of time, but most likely would have cost me money (which I am desperately trying to avoid) or would've required
+                me to build other systems around it to get the functionality I desired. This led to me creating <a href="DialogLanguageForVideoGames.html">my own dialog system</a>. Now
+                that I have my own system built not only was it created with the functionality I needed in mind, but it was built around my systems which helps development go smoothly.
+                <br/>
+                <br/>
+
+                <h1>Conclusion</h1>
+                This project is something I wanted to work on for a long time and as of 9/21/2024 (~1 year in) I am loving it. I've learned a tremendous amount about game development, coding, art, music,
+                and myself. I hope to one day publish this game and share my work with the world.
+
             </p>
         </section>
     </main>
