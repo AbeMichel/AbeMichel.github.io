@@ -48,9 +48,12 @@
 }
 
 #nav-container a:hover {
-    /* border-color: #F7FFF7; */
     /* color: #F7E2B3 ; */
     background-color: #362f4e;
+}
+
+#nav-container a.selected{
+    border-color: #f7fff7d4;
 }
 
 #nav-menu-btn {

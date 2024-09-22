@@ -33,7 +33,7 @@ a:hover{
 
 /* Adding top padding to main content to avoid overlap with fixed navbar */
 main {
-    padding-top: 60px;
+    padding-top: 75px;
     max-width: 1000px;
     flex-grow: 1;
 }

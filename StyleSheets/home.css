@@ -1,5 +1,46 @@
-#intro-img{
-    width: 200px;
+#main-intro {
+    display: flex;
+    flex-direction: row;
     height: auto;
+    justify-content: center;
+    align-content: center;
+    margin-bottom: 30px;
+}
+
+#intro-img {
+    border-radius: 15px;
+    max-width: 400px;
+    width: 100%;
+    height: auto;
+}
+
+#intro-text {
+    font-size: 4em;
+    font-weight: bold;
+    padding-left: 15px;
+}
+
+.page-card {
+    opacity: 1;
+    transition: opacity 0.2s;
+}
+
+.page-card a {
+    color: #F7FFF7;
+    font-size: 1.4em;
+    padding: 5px;
     border-radius: 8px;
+    line-height: 2em;
+    border: none;
+    transition: background-color 0.1s ease-in-out;
+    cursor: pointer;
+}
+
+.page-card a:hover {
+    background-color: #3b3355;
+}
+
+.hidden{
+    opacity: 0;
+    transition: opacity 0s ease;
 }
