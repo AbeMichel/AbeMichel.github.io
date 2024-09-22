@@ -73,6 +73,22 @@ ol li{
     text-align: left;
 }
 
+#related-content{
+    background-color: red;
+}
+
+#related-content ul {
+    list-style-type: none;
+    padding: 0;
+    display: inline-flex;
+    gap: 20px;
+}
+
+#related-content li {
+    margin: 0;
+}
+
+
 @media screen and (max-width: 600px) {
     .img-group{
         flex-direction: column;
