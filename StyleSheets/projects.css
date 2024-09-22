@@ -4,9 +4,9 @@ body {
 
 .project-gallery {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
     padding: 20px;
+    row-gap: 10px;
+    column-gap: 10px;
 }
 
 /* Cards */
@@ -20,8 +20,6 @@ body {
     aspect-ratio: 16 / 9; /* Maintains a 16:9 ratio. Adjust as needed */
     position: relative;
     z-index: 0;
-    min-width: 300px;
-    max-width: 500px;
     transition: all 0.2s ease;
 }
 
@@ -80,7 +78,7 @@ body {
 .project-info .project-tags{
     justify-content: center;
     display: flex;
-    font-size: small;
+    font-size: 0.7em;
     gap: 5px;
 }
 
@@ -91,4 +89,79 @@ body {
 
 .project-info .project-tags p {
     padding: 1px 5px 1px 5px;
+}
+
+@media screen and (max-width: 320px) {
+    .project-gallery{
+        grid-template-columns: repeat(1, max-content);
+    }
+    .project-card{
+        width: 300px;
+    }
+}
+
+@media screen and (min-width: 321px) and (max-width: 480px) {
+    .project-gallery{
+        grid-template-columns: repeat(1, max-content);
+    }
+    .project-card{
+        width: 300px;
+    }
+}
+
+@media screen and (min-width: 481px) and (max-width: 768px) {
+    .project-gallery{
+        grid-template-columns: repeat(1, max-content);
+    }
+    .project-card{
+        width: 400px;
+    }
+    .project-info{
+        font-size: 1.2em;
+    }
+}
+
+@media screen and (min-width: 769px) and (max-width: 1024px) {
+    .project-gallery{
+        grid-template-columns: repeat(2, max-content);
+    }
+    .project-card{
+        width: 300px;
+    }
+    .project-info{
+        font-size: 0.75em;
+    }
+}
+
+@media screen and (min-width: 1025px) and (max-width: 1280px) {
+    .project-gallery{
+        grid-template-columns: repeat(3, max-content);
+    }
+    .project-card{
+        width: 300px;
+    }
+    .project-info{
+        font-size: 0.75em;
+    }
+}
+
+@media screen and (min-width: 1281px) and (max-width: 1440px) {
+    .project-gallery{
+        grid-template-columns: repeat(3, max-content);
+    }
+    .project-card{
+        width: 325px;
+    }
+    .project-info{
+        font-size: 0.9em;
+    }
+}
+
+@media screen and (min-width: 1441px) and (max-width: 1920px) {
+    .project-gallery{
+        grid-template-columns: repeat(3, max-content);
+    }
+    .project-card{
+        width: 350px;
+    }
 }

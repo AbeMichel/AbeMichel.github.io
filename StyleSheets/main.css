@@ -14,6 +14,7 @@ body {
     margin-right: 20px;
     display: flex;
     justify-content: center;
+    font-size: 12pt;  /* The only place I should have a pt value */
 }
 
 a {
@@ -34,7 +35,7 @@ section {
 }
 
 main h1{
-    font-size: 60pt;
+    font-size: 6em;
 }
 
 
@@ -54,4 +55,67 @@ main h1{
 }
 #email-btn:hover::after{
     content: 'Email me!';
+}
+
+@media screen and (max-width: 320px) {
+    body{
+        background-color: red;
+        font-size: 12pt;
+        margin-left: 20px;
+        margin-right: 20px;
+    }
+}
+
+@media screen and (min-width: 321px) and (max-width: 480px) {
+    body{
+        background-color: pink;
+        font-size: 12pt;
+        margin-left: 20px;
+        margin-right: 20px;
+    }
+}
+
+@media screen and (min-width: 481px) and (max-width: 768px) {
+    body{
+        background-color: orange;
+        font-size: 12pt;
+        margin-left: 20px;
+        margin-right: 20px;
+    }
+}
+
+@media screen and (min-width: 769px) and (max-width: 1024px) {
+    body{
+        background-color: rgb(129, 129, 5);
+        font-size: 14pt;
+        margin-left: 20px;
+        margin-right: 20px;
+    }
+}
+
+@media screen and (min-width: 1025px) and (max-width: 1280px) {
+    body{
+        background-color: green;
+        font-size: 14pt;
+        margin-left: 20px;
+        margin-right: 20px;
+    }
+}
+
+@media screen and (min-width: 1281px) and (max-width: 1440px) {
+    body{
+        background-color: purple;
+        font-size: 14pt;
+        margin-left: 20px;
+        margin-right: 20px;
+    }
+}
+
+@media screen and (min-width: 1441px) and (max-width: 1920px) {
+    body{
+        background-color: blue;
+        font-size: 14pt;
+        margin-left: 0px;
+        margin-right: 0px;
+    }
 }

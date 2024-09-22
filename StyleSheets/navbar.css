@@ -36,7 +36,7 @@
     color: #F7FFF7;
     text-decoration: none;
     font-weight: bold;
-    font-size: 14pt;
+    font-size: 1.3em;
 
     padding-left: 10px;
     padding-right: 10px;
@@ -59,7 +59,7 @@
     color: #F7FFF7;
     background: none;
     border: none;
-    font-size: 20pt;
+    font-size: 1.6em;
     cursor: pointer;
     
     border-color: transparent;
