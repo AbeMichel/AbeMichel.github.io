@@ -13,14 +13,17 @@ jobs:
         - name: Update build timestamp
           run: |
             node build.js
+
         - name: Commit and push the updated timestamp
+          env:
+            GITHUB_TOKEN: ${{ secrets.PUSH_TOKEN }}
           run: |
             git config --global user.name "GitHub Action"
             git config --global user.email "action@github.com"
             git add .
             if [ -n "$(git status --porcelain)" ]; then 
                 git commit -m "Update build timestamp"
-                git push
+                git push https://x-access-token:${GITHUB_TOKEN}@github.com/AbeMichel/AbeMichel.github.io.git HEAD:main
             else
                 echo "No changes to commit"
             fi
