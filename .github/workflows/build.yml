@@ -1,0 +1,23 @@
+name: Build Timestamp
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+        - uses: actions/checkout@v2
+        - name: Update build timestamp
+          run: |
+            npm install
+            node build.js
+        - name: Commit and push the updated timestamp
+          run: |
+            git config --global user.name "GitHub Action"
+            git config --global user.email "action@github.com"
+            git add .
+            git commit -m "Update build timestamp"
+            git push
