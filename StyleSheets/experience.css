@@ -14,13 +14,13 @@
     position: sticky;
     background-color: #5D5D81;
     /* top: 75px; */
-    top: 51px;
+    top: 48px;
     display: flex;
     flex-direction: row;
     align-items: center;
     gap: 10px;
     /* padding-top: 5px; */
-    padding-top: 10px;
+    padding-top: 25px;
     padding-left: 20px;
     padding-bottom: 10px;
     border-bottom: solid 2px #F7FFF7;
