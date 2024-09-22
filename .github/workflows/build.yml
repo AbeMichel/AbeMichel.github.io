@@ -12,7 +12,6 @@ jobs:
         - uses: actions/checkout@v2
         - name: Update build timestamp
           run: |
-            npm install
             node build.js
         - name: Commit and push the updated timestamp
           run: |
