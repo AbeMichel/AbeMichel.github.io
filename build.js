@@ -5,8 +5,8 @@ fs.readFile('index.html', 'utf8', (err, data) => {
     if (err) throw err;
     
     const updatedDate = data.replace(
-        '<span id="build-timestamp">.*</span>',
-        '<span id="build-timestamp">${buildTime}</span>'
+        /<span id="build-timestamp">.*<\/span>/,
+        `<span id="build-timestamp">${buildTime}</span>`
     );
 
     fs.writeFile('index.html', updatedDate, 'utf8', (err) => {
