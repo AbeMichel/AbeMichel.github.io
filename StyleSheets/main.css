@@ -60,7 +60,7 @@ main h1{
 @media screen and (max-width: 320px) {
     body{
         background-color: red;
-        font-size: 12pt;
+        font-size: 10pt;
         margin-left: 20px;
         margin-right: 20px;
     }
@@ -69,7 +69,7 @@ main h1{
 @media screen and (min-width: 321px) and (max-width: 480px) {
     body{
         background-color: pink;
-        font-size: 12pt;
+        font-size: 10pt;
         margin-left: 20px;
         margin-right: 20px;
     }
