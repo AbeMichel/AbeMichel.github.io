@@ -1,10 +1,64 @@
-.quick-links{
-    position: sticky;
-    top: 51px;
-    background-color: #5D5D81;
-    height: 25px;
+:target{
+    scroll-margin-top: 150px;
+}
+
+#quick-links{
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    align-items: center;
+    right: 10px;
+    top: 70px;
     z-index: 1;
 }
+
+#quick-links button{
+    border: solid 1px transparent;
+    background-color: #3b3355;
+    border-radius: 16px;
+    width: 100%;
+    padding: 5px;
+    font-size: 1em;
+    text-align: center;
+    color: #F7FFF7;
+    cursor: pointer;
+}
+
+#quick-links button:hover {
+    border: solid 1px #F7FFF7;
+}
+
+#quick-links.active button{
+    border-radius: 16px 16px 0px 0px;
+    border-bottom: solid 1px #F7FFF7;
+}
+
+#quick-links .links {
+    display: none;
+    flex-direction: column;
+    background-color: #3b3355;
+    padding: 5px;
+    border-radius: 0 0 16px 16px;
+}
+
+#quick-links.active .links {
+    display: flex;
+}
+
+#quick-links .links a{
+    text-align: center;
+    font-size: small;
+    border: none;
+    border-left: solid 2px transparent;
+    transition: background-color 0.1s ease;
+    padding: 0 5px;
+}
+
+#quick-links .links a:hover{
+    border: none;
+    border-left: solid 2px;
+}
+
 
 .job-entry{
     background-color: transparent;

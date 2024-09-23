@@ -60,9 +60,11 @@ main h1{
     font-size: 1em;
     text-decoration: none;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    border: none;
 }
 #email-btn:hover::after{
     content: 'Email me!';
+    border: none;
 }
 
 @media screen and (max-width: 320px) {
