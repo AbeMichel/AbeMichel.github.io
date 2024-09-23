@@ -29,7 +29,7 @@ ol li{
     scroll-margin-top: 120px;
 }
 
-.img-group {
+/* .img-group {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -58,7 +58,7 @@ ol li{
 .img-and-desc p{
     font-style: italic;
     font-size: 0.9em;
-}
+} */
 
 .code {
     background-color: #46465f;
@@ -86,11 +86,4 @@ ol li{
 
 #related-content li {
     margin: 0;
-}
-
-
-@media screen and (max-width: 600px) {
-    .img-group{
-        flex-direction: column;
-    }
 }

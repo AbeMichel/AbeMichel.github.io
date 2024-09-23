@@ -35,12 +35,16 @@ window.onload = async function() {
     workObject.classList.add('hidden');
     aboutObject.classList.add('hidden');
 
+    var i = 0;
     for (const target of typingTargets) {
         await typeText(target, 50); // Wait for each target to finish typing
     }
 
 
-    setTimeout(() => aboutObject.classList.remove('hidden'), 250);
-    setTimeout(() => projectsObject.classList.remove('hidden'), 1000);
-    setTimeout(() => workObject.classList.remove('hidden'), 1750);
+    const timeBeforeStarting = 100;
+    const timeBetweenOptions = 750;
+
+    setTimeout(() => aboutObject.classList.remove('hidden'), timeBeforeStarting);
+    setTimeout(() => projectsObject.classList.remove('hidden'), timeBeforeStarting + timeBetweenOptions);
+    setTimeout(() => workObject.classList.remove('hidden'), timeBeforeStarting + (timeBetweenOptions * 2));
 };

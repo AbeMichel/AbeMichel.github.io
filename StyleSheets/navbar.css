@@ -9,6 +9,18 @@
     justify-content: center;
 }
 
+#home-btn{
+    height: 100%;
+    width: auto;
+    max-height: 64px;
+}
+#home-btn img{
+    margin-top: 20%;
+    height: 3em;
+    width: auto;
+    filter: invert(100%) brightness(200%) contrast(150%);
+}
+
 #nav-container{
     width: 100%;
     background-color: #3b3355;
