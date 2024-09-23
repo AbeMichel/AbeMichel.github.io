@@ -47,7 +47,7 @@
 
 #quick-links .links a{
     text-align: center;
-    font-size: small;
+    font-size: 0.9em;
     border: none;
     border-left: solid 2px transparent;
     transition: background-color 0.1s ease;
