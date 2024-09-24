@@ -3,7 +3,7 @@ function typeText(element, delay) {
         if (element == null) return resolve();
 
         const text = element.textContent;
-        element.textContent = "";
+        element.textContent = "\u00A0";
         element.classList.remove('hidden');
 
         if (!text) return;
@@ -37,12 +37,12 @@ window.onload = async function() {
 
     var i = 0;
     for (const target of typingTargets) {
-        await typeText(target, 50); // Wait for each target to finish typing
+        await typeText(target, 75); // Wait for each target to finish typing
     }
 
 
     const timeBeforeStarting = 100;
-    const timeBetweenOptions = 750;
+    const timeBetweenOptions = 800;
 
     setTimeout(() => aboutObject.classList.remove('hidden'), timeBeforeStarting);
     setTimeout(() => projectsObject.classList.remove('hidden'), timeBeforeStarting + timeBetweenOptions);

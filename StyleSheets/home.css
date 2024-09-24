@@ -1,16 +1,17 @@
-#intro-content{
-    display: flex;
-    flex-direction: column;
-    padding-left: 20px;
-}
-
 #main-intro {
     display: flex;
     flex-direction: row;
     height: auto;
     justify-content: center;
-    align-content: center;
+    align-items: center;
     margin-bottom: 30px;
+}
+
+#intro-content{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-left: 20px;
 }
 
 #intro-img {
@@ -30,21 +31,27 @@
 .page-card {
     opacity: 1;
     transition: opacity 0.2s;
+    padding: 5px;
+    border: none;
+    border: solid 1px transparent;
+    border-radius: 8px;
+    transition: background-color 0.1s ease-in-out;
 }
 
-.page-card a {
+.page-card p::before{
+    content: '> ';
+}
+
+.page-card p {
     color: #F7FFF7;
     font-size: 1.4em;
-    padding: 5px;
-    border-radius: 8px;
     line-height: 2em;
-    border: none;
-    transition: background-color 0.1s ease-in-out;
     cursor: pointer;
 }
 
-.page-card a:hover {
+.page-card:hover {
     background-color: #3b3355b2;
+    border: solid 1px transparent;
 }
 
 .hidden{
