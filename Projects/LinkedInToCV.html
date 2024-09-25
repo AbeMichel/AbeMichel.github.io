@@ -63,9 +63,10 @@
                 </div>
                 
                 <br/>
-                There came an issue where LinkedIn started asking if I was a robot and obviously my robot didn't know how
-                to handle it, so I just pause the program until the URL is the LinkedIn feed and ask the user to lend some 
-                help in completing that nasty CAPTCHA. Another problem I ran into was the profile page not showing all of a
+                There came an issue where LinkedIn started asking if I was a robot and, believe it or not, my robot didn't know how
+                to handle it. To address this I added a check for the correct URL after logging in that makes the program pause until the user
+                solves the CAPTCHA and the URL matches the LinkedIn feed.
+                Another problem I ran into was the profile page not showing all of a
                 section if it was too long, so I changed the code slightly to navigate straight to the detailed pages for 
                 the three sections I was scraping.
                 <br/>
@@ -78,8 +79,18 @@
                 </ul>
                 <br/>
                 NOTE: After a brief google search while
-                writing this I see there are quite a few solutions, but I stand by my method because it keeps the format I like.
+                writing this I see there are quite a few solutions, but I'm glad I did this myself as it introduced me
+                to web scraping and helped me get more comfortable formatting Word documents through code.
             </p>
+        </section>
+        <section>
+            <h1 id="related-header">Related Projects</h1>
+            <ul id="related-content">
+                <li><a href="ThisWebsite.html">This Website</a></li>
+                <li><a href="TestPlanApp.html">Test Plan Application</a></li>
+                <li><a href="DialogueLanguageForVideoGames.html">Dialogue Language for Video Games</a></li>
+                <li><a href="ScriptGeneration.html">Protocol Buffer Script Generation</a></li>
+            </ul>
         </section>
     </main>
     <!-------------->

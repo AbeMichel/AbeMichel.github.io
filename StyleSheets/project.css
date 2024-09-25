@@ -73,17 +73,13 @@ ol li{
     text-align: left;
 }
 
+#related-header{
+    border: none;
+    border-bottom: solid 2px #F7FFF7;
+    margin-bottom: 20px;
+}
+
 #related-content{
-    background-color: red;
-}
-
-#related-content ul {
-    list-style-type: none;
-    padding: 0;
-    display: inline-flex;
-    gap: 20px;
-}
-
-#related-content li {
-    margin: 0;
+    width: 100%;
+    list-style-position: inside;
 }

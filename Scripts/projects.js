@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Perform our checks
     const tagFilterSelect = document.getElementById('tags');
     const affiliationFilterSelect = document.getElementById('affiliations');
     
