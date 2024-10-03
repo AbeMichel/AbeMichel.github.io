@@ -14,7 +14,7 @@
 
 #quick-links button{
     border: solid 1px transparent;
-    background-color: #3b3355;
+    background-color: #2A233E;
     border-radius: 16px;
     width: 100%;
     padding: 5px;
@@ -36,7 +36,7 @@
 #quick-links .links {
     display: none;
     flex-direction: column;
-    background-color: #3b3355;
+    background-color: #2A233E;
     padding: 5px;
     border-radius: 0 0 16px 16px;
 }
@@ -67,6 +67,7 @@
 .job-title {
     position: sticky;
     background-color: #5B5B9A;
+    /* background-image: linear-gradient(90deg, #55558f -30%, #5B5B9A 10%, #5B5B9A 90%, #55558f 130%); */
     mask-size: auto;
     /* top: 75px; */
     top: 48px;
