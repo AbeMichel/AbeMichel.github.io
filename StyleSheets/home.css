@@ -11,6 +11,7 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+    margin-bottom: 20px;
 }
 
 #intro-img {
@@ -18,6 +19,8 @@
     max-width: 400px;
     width: auto;
     height: auto;
+    /* mask-image: url("./Assets/Home/EraseUnveiling.gif");
+    mask-mode: auto; */
 }
 
 #intro-text {
@@ -39,12 +42,16 @@
     margin-top: 20px;
     border: none;
     border: solid 1px transparent;
-    border-radius: 8px;
+    border-radius: 100px;
     transition: background-color 0.1s ease-in-out;
+    background-color: #2A233E;
+    width: 50%;
+    text-align: center;
 }
 
-.page-card p::before{
-    content: '> ';
+.page-card:hover {
+    background-color: #3b3355b2;
+    border: solid 1px transparent;
 }
 
 .page-card p {
@@ -54,48 +61,26 @@
     cursor: pointer;
 }
 
-.page-card:hover {
-    background-color: #3b3355b2;
-    border: solid 1px transparent;
-}
-
 .hidden{
     opacity: 0;
     transition: opacity 0s ease;
 }
 
-@media screen and (max-width: 320px) {
+@media screen and (max-width: 1024px) {
     #main-intro{
         flex-direction: column-reverse;
+        align-content: center;
     }
-}
 
-@media screen and (min-width: 321px) and (max-width: 480px) {
-    #main-intro{
-        flex-direction: column-reverse;
+    #intro-content{
+        align-items: center;
     }
-}
 
-@media screen and (min-width: 481px) and (max-width: 768px) {
-    #main-intro{
-        flex-direction: column-reverse;
+    #intro-text{
+        padding-left: 0;
     }
-}
 
-@media screen and (min-width: 769px) and (max-width: 1024px) {
-    #main-intro{
-        flex-direction: column-reverse;
+    .page-card{
+        margin-left: 0;
     }
-}
-
-@media screen and (min-width: 1025px) and (max-width: 1280px) {
-    
-}
-
-@media screen and (min-width: 1281px) and (max-width: 1440px) {
-    
-}
-
-@media screen and (min-width: 1441px) and (max-width: 1920px) {
-    
 }
