@@ -70,6 +70,9 @@ main h1{
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     border: none;
 }
+#email-btn:hover{
+    background-color: #211c31;
+}
 #email-btn:hover::after{
     content: 'Email me!';
     border: none;
