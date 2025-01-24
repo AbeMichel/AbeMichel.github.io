@@ -66,7 +66,3 @@ function CheckMatches() {
         
     });
 }
-
-function NavigateToVM() {
-    window.location.href = "./InteractivePortfolio/index.html";
-}
