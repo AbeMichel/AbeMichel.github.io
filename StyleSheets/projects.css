@@ -92,6 +92,33 @@ body {
     padding: 1px 5px 1px 5px;
 }
 
+.button-container {
+    text-align: center;
+}
+
+.grand-opening-button {
+background: linear-gradient(to right, #FFD700, #FFA500);
+color: #3B3355;
+font-size: 1.5rem;
+font-weight: bold;
+padding: 15px 30px;
+border: none;
+border-radius: 50px;
+box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+cursor: pointer;
+transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.grand-opening-button:hover {
+transform: scale(1.1);
+box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.grand-opening-button:active {
+transform: scale(1);
+box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
 @media screen and (max-width: 320px) {
     .project-gallery{
         grid-template-columns: repeat(1, max-content);

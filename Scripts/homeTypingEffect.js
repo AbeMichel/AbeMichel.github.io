@@ -22,29 +22,19 @@ function typeText(element, delay) {
     });
 }
 
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 window.onload = async function() {
     const typingTargets = document.getElementsByClassName('typed');
-    const aboutObject = document.getElementById('about-object');
-    const projectsObject = document.getElementById('project-object');
-    const workObject = document.getElementById('work-object');
 
     for (const target of typingTargets) {
         target.classList.add('hidden');
     }
-    projectsObject.classList.add('hidden');
-    workObject.classList.add('hidden');
-    aboutObject.classList.add('hidden');
-
+    await delay(1700);
     var i = 0;
     for (const target of typingTargets) {
         await typeText(target, 75); // Wait for each target to finish typing
     }
-
-
-    const timeBeforeStarting = 100;
-    const timeBetweenOptions = 800;
-
-    setTimeout(() => aboutObject.classList.remove('hidden'), timeBeforeStarting);
-    setTimeout(() => projectsObject.classList.remove('hidden'), timeBeforeStarting + timeBetweenOptions);
-    setTimeout(() => workObject.classList.remove('hidden'), timeBeforeStarting + (timeBetweenOptions * 2));
 };
