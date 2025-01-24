@@ -3,13 +3,44 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Unity Web Player | InteractivePortfolioGame</title>
-    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <title>Abraham Michel - Virtual Portfolio Museum</title>
+    <link rel="shortcut icon" href="../Assets/PhotosOfAbe/Selfie.jpg">
+    <link rel="stylesheet" href="../StyleSheets/main.css"> 
+    <link rel="stylesheet" href="../StyleSheets/navbar.css"> 
     <link rel="stylesheet" href="TemplateData/style.css">
+
   </head>
   <body>
+
+    <nav class="navbar">
+      <div id="nav-container">
+          <div id="extra-nav-btns">
+              <a href="../index.html" id="home-btn"><img src="../Assets/MyLogo.png" alt=""/></a>
+              <button id="nav-menu-btn">&#9776;</button>
+          </div>
+          <div id="nav-links">
+              <ul>
+                  <li><a href="../experience.html">Work</a></li>
+                  <li><a href="../projects.html">Projects</a></li>
+                  <li><a href="../aboutme.html">About Me</a></li>
+                  <li><a href="../Downloadables/Abraham_Michel_CV.pdf" target="_blank">CV</a></li>
+                  <li id="icons">
+                      <a href="https://www.linkedin.com/in/abrahammichel" target="_blank" rel="noopener noreferrer"><img src="../Assets/LinkedInLogo.png"/></a>
+                      <a href="https://github.com/AbeMichel" target="_blank" rel="noopener noreferrer"><img src="../Assets/GitHubLogo.png"/></a>
+                  </li>
+              </ul>
+          </div>
+      </div>
+  </nav>
+  
+  <a href="mailto:abemicheljob@gmail.com" id="email-btn">✉️</a>
+
+  <main>
+    <!-- UNITY STUFF -->
     <div id="unity-container" class="unity-desktop">
-      <canvas id="unity-canvas" width=1200 height=800 tabindex="-1"></canvas>
+      <!-- <canvas id="unity-canvas" width=1200 height=800 tabindex="-1"></canvas> -->
+      <canvas id="unity-canvas" width=900 height=600 tabindex="-1"></canvas>
+      <!-- <canvas id="unity-canvas" tabindex="-1"></canvas> -->
       <div id="unity-loading-bar">
         <div id="unity-logo"></div>
         <div id="unity-progress-bar-empty">
@@ -20,9 +51,30 @@
       <div id="unity-footer">
         <div id="unity-logo-title-footer"></div>
         <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">InteractivePortfolioGame</div>
+        <div id="unity-build-title">Virtual Portfolio Museum</div>
       </div>
     </div>
+<!-- END UNITY STUFF -->
+    <div id="credits">
+      <h2>Credits</h2>
+      <p>
+        "<a href="https://skfb.ly/otQGw" target="_blank" rel="noopener noreferrer" class="external-link">Velvet Rope</a>" by dayoung.ko is licensed under <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" class="external-link">Creative Commons Attribution</a>.
+        <br>
+        "<a href="https://www.turbosquid.com/3d-models/3d-arcade-machine-1212120" target="_blank" rel="noopener noreferrer" class="external-link">Arcade Machine</a> by Astuff under <a href="https://blog.turbosquid.com/turbosquid-3d-model-license/" target="_blank" rel="noopener noreferrer" class="external-link">TurboSquid Standard License</a>.
+        <br>
+        "<a href="https://freesound.org/people/janrou/sounds/474729/" target="_blank" rel="noopener noreferrer" class="external-link">The Dream About Denmark</a>" by 4 students from Aarhus School of Music played a string quartet composed by W. A. Mozart in G major (KV 387). The students were Kim Ahn Pham on violin, Solvej Asmussen on violin, Selma Birkedal on viola and Elliot Murphy on cello. The sound is under the <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener noreferrer" class="external-link">Attribution-NonCommercial 4.0 International Deed</a>
+        <br>
+        "<a href="https://freesound.org/people/edmondsr/sounds/711208/" target="_blank" rel="noopener noreferrer" class="external-link">Nature_Ambient_Noon_Birds_Bugs_Creek_5 Min</a>" by edmondsr under <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener noreferrer" class="external-link">CC0 1.0 Universal Deed</a>
+        <br>
+        "<a href="https://www.publicdomainpictures.net/pictures/200000/velka/chicago-skyline-1476622735gTf.jpg" target="_blank" rel="noopener noreferrer" class="external-link">Chicago Skyline</a>"
+        <br>
+        "<a href="https://www.turbosquid.com/3d-models/free-caveman-3d-model/644901" target="_blank" rel="noopener noreferrer" class="external-link">Caveman</a>" by Beavy Store under the <a href="https://blog.turbosquid.com/turbosquid-3d-model-license/" target="_blank" rel="noopener noreferrer" class="external-link">TurboSquid 3D Model License</a>.
+        <br>
+        "<a href="https://skfb.ly/6WSCX" target="_blank" rel="noopener noreferrer" class="external-link">Fuego lowpoly - lowpoly bonfire</a>" by Harold.Llanos is licensed under <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" class="external-link">Creative Commons Attribution</a>.
+      </p>
+    </div>
+  </main>
+
     <script>
       var canvas = document.querySelector("#unity-canvas");
 
@@ -60,7 +112,7 @@
         codeUrl: buildUrl + "/InteractivePortfolio.wasm",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "Abe",
-        productName: "InteractivePortfolioGame",
+        productName: "VirtualPortfolioMuseum",
         productVersion: "0.1.0",
         showBanner: unityShowBanner,
       };
@@ -98,8 +150,8 @@
 
       } else {
         // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
-        canvas.style.width = "1200px";
-        canvas.style.height = "800px";
+        // canvas.style.width = "900px";
+        // canvas.style.height = "600px";
       }
 
       document.querySelector("#unity-loading-bar").style.display = "block";
