@@ -157,7 +157,9 @@ class Cell {
     }
 
     RemovePossibleValue(value){
+        if (!this.IsValuePossible(value)) return false;
         this.SetPossibleValue(value, false);
+        return true;
     }
 
     From(other) {
@@ -544,6 +546,16 @@ class BacktrackingStep extends SolvingStep {
     }
 }
 
+class LockedCandidateStep extends SolvingStep {
+    constructor(currentSudoku, cell, value){
+        super(currentSudoku, cell);
+        this.value = value;
+    }
+    GetType() {
+        return `Found Locked Candidate of value ${this.value}.`;
+    }
+}
+
 class Solver {
     constructor(sudoku) {
         this.sudoku = sudoku;
@@ -572,6 +584,8 @@ class Solver {
             for (let i = 2; i <= 4; i++){
                 hasSomethingChanged = hasSomethingChanged || this.FindNakedGroups(i);
             }
+
+            hasSomethingChanged = hasSomethingChanged || this.FindLockedCandidates();
             
             loopCount++;
             if (!hasSomethingChanged) {
@@ -713,6 +727,59 @@ class Solver {
             this.sudoku.SimplifyCandidates();
         }
         
+        return success;
+    }
+
+    FindLockedCandidates() {
+        let success = false;
+        // Check each group for any numbers which only appear in a single column or row
+        for (let i = 0; i < 9; i++) {
+            const groupCells = this.sudoku.GetCellsByGroup(i);
+            // Dict[value] = Set(cols/rows)
+            const rowCounts = {};
+            const colCounts = {};
+            for (let j = 1; j <= 9; j++) {
+                rowCounts[j] = new Set();
+                colCounts[j] = new Set();
+            }
+
+            groupCells.forEach(cell => {
+                const [row, col] = GetRowColumnFromID(cell.id);
+                if (cell.IsSolved()) return;
+
+                cell.GetPossibleValues().forEach(value => {
+                    rowCounts[value].add(row);
+                    colCounts[value].add(col);
+                });
+            });
+
+            for (let j = 1; j <= 9; j++) {
+                const rowCount = rowCounts[j].size;
+                const colCount = colCounts[j].size;
+                if (rowCount === 1){
+                    const row = rowCounts[j].values().next().value;
+                    const cells = this.sudoku.GetCellsInRow(row);
+                    cells.forEach(cell => {
+                        if (cell.IsSolved() || GetGroupNumberFromID(cell.id) === i) return;
+                        if (cell.RemovePossibleValue(j)){
+                            success = true;
+                            this.solvingSteps.push(new LockedCandidateStep(this.sudoku, cell, j));
+                        }
+                    });
+                }
+                if (colCount === 1){
+                    const col = colCounts[j].values().next().value;
+                    const cells = this.sudoku.GetCellsInColumn(col);
+                    cells.forEach(cell => {
+                        if (cell.IsSolved() || GetGroupNumberFromID(cell.id) === i) return;
+                        if (cell.RemovePossibleValue(j)){
+                            success = true;
+                            this.solvingSteps.push(new LockedCandidateStep(this.sudoku, cell, j));
+                        }
+                    });
+                }
+            }
+        }
         return success;
     }
 
