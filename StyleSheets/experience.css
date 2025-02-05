@@ -14,29 +14,29 @@
 
 #quick-links button{
     border: solid 1px transparent;
-    background-color: #2A233E;
+    background-color: var(--accent-background);
     border-radius: 16px;
     width: 100%;
     padding: 5px 10px;
     font-size: 1em;
     text-align: center;
-    color: #F7FFF7;
+    color: var(--text-color);
     cursor: pointer;
 }
 
 #quick-links button:hover {
-    border: solid 1px #F7FFF7;
+    border: solid 1px var(--text-color);
 }
 
 #quick-links.active button{
     border-radius: 16px 16px 0px 0px;
-    border-bottom: solid 1px #F7FFF7;
+    border-bottom: solid 1px var(--text-color);
 }
 
 #quick-links .links {
     display: none;
     flex-direction: column;
-    background-color: #2A233E;
+    background-color: var(--accent-background);
     padding: 5px;
     border-radius: 0 0 16px 16px;
 }
@@ -66,7 +66,7 @@
 
 .job-title {
     position: sticky;
-    background-color: #5B5B9A;
+    background-color: var(--main-background);
     /* background-image: linear-gradient(90deg, #55558f -30%, #5B5B9A 10%, #5B5B9A 90%, #55558f 130%); */
     mask-size: auto;
     /* top: 75px; */
@@ -79,7 +79,7 @@
     padding-top: 25px;
     padding-left: 20px;
     padding-bottom: 10px;
-    border-bottom: solid 2px #F7FFF7;
+    border-bottom: solid 2px var(--text-color);
 }
 
 .job-title .logo{

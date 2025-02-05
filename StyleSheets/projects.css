@@ -1,3 +1,7 @@
+:root {
+    --tag-color: #800080A6;
+}
+
 body {
     font-family: Arial, sans-serif;
 }
@@ -14,7 +18,7 @@ body {
 .project-card {
     border: 2px solid;
     /* border-color: #F7FFF7; */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 4px var(--shadow-color);
     border-radius: 8px;
     overflow: hidden;
     text-align: center;
@@ -26,7 +30,7 @@ body {
 
 .project-card:hover {
     transform: scale(1.02); /* Scales the card up */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 8px var(--shadow-color);
     z-index: 1;
 }
 
@@ -39,18 +43,18 @@ body {
 .filters select {
     background-color: transparent;
     border-radius: 4px;
-    border-color: #F7FFF7;
-    color: #F7FFF7;
+    border-color: var(--text-color);
+    color: var(--text-color);
     
 }
 
 .filters option, .filters optgroup {
-    background-color: #5B5B9A;
+    background-color: var(--main-background);
 }
 
 .project-affiliation{
     position: absolute;
-    color: #F7FFF7;
+    color: var(--text-color);
     padding: 0px 10px 0px 10px;
     border-radius: 0px 0px 4px 0px;
 }
@@ -62,7 +66,7 @@ body {
     right: 0;
     max-height: 60%;
     background: rgba(0, 0, 0, 0.7); /* Semi-transparent background */
-    color: #F7FFF7;
+    color: var(--text-color);
     padding: 10px;
     box-sizing: border-box; /* Ensures padding is included in the element's total width and height */
     line-height: 18px;
@@ -84,7 +88,7 @@ body {
 }
 
 .project-info .project-tags div {
-    background-color: rgba(128, 0, 128, 0.65);
+    background-color: var(--tag-color);
     border-radius: 4px;
 }
 
@@ -104,19 +108,19 @@ font-weight: bold;
 padding: 15px 30px;
 border: none;
 border-radius: 50px;
-box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+box-shadow: 0 4px 6px var(--shadow-color);
 cursor: pointer;
 transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .grand-opening-button:hover {
 transform: scale(1.1);
-box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+box-shadow: 0 6px 12px var(--shadow-color);
 }
 
 .grand-opening-button:active {
 transform: scale(1);
-box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+box-shadow: 0 4px 6px var(--shadow-color);
 }
 
 @media screen and (max-width: 320px) {

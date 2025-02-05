@@ -17,7 +17,7 @@ section h2{
 }
 
 .lesson.highlight, h4.highlight{
-    background-color: #FFA500;
+    background-color: var(--highlight-color);
 }
 
 ol li{
@@ -75,7 +75,7 @@ ol li{
 
 #related-header{
     border: none;
-    border-bottom: solid 2px #F7FFF7;
+    border-bottom: solid 2px var(--text-color);
     margin-bottom: 20px;
 }
 

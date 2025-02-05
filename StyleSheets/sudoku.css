@@ -73,7 +73,7 @@
     margin-top: 0;
     text-align: left;
     max-width: 500px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 4px var(--shadow-color);
 }
 
 table#solver {
@@ -82,12 +82,12 @@ table#solver {
 }
 
 #solver th, #solver td {
-    border: 1px solid #2A233E;
+    border: 1px solid var(--accent-background);
     padding: 8px;
 }
 
 #solver th {
-    background-color: #2A233E;
+    background-color: var(--accent-background);
     text-align: left;
 }
 
@@ -96,7 +96,7 @@ table#solver {
 }
 
 #solver tr:not(:first-child){
-    background-color: #2A233E;
+    background-color: var(--accent-background);
     transition: background-color 0.1s ease-in-out;
 }
 

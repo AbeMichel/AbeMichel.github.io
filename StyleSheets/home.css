@@ -44,18 +44,18 @@
     border: solid 1px transparent;
     border-radius: 100px;
     transition: background-color 0.1s ease-in-out;
-    background-color: #2A233E;
+    background-color: var(--accent-background);
     width: 50%;
     text-align: center;
 }
 
 .page-card:hover {
-    background-color: #211c31;
+    background-color: var(--accent-background);
     border: solid 1px transparent;
 }
 
 .page-card p {
-    color: #F7FFF7;
+    color: var(--text-color);
     font-size: 1.4em;
     line-height: 1.5em;
     cursor: pointer;
