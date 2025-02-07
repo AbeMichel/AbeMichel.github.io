@@ -6,26 +6,27 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Portfolio Website - Abraham Michel</title>
 
-    <link rel="stylesheet" href="../StyleSheets/main.css"> 
-    <link rel="stylesheet" href="../StyleSheets/project.css"> 
-    <link rel="stylesheet" href="../StyleSheets/navbar.css"> 
+    <base href="../">  <!-- Path to root directory -->
+    <link rel="stylesheet" href="StyleSheets/main.css"> 
+    <link rel="stylesheet" href="StyleSheets/project.css"> 
+    <link rel="stylesheet" href="StyleSheets/navbar.css"> 
 </head>
 <body>
     <nav class="navbar">
         <div id="nav-container">
             <div id="extra-nav-btns">
-                <a href="../index.html" id="home-btn"> <img src="../Assets/MyLogo.png" alt=""/></a>
+                <a href="index.html" id="home-btn"> <img src="Assets/MyLogo.png" alt=""/></a>
                 <button id="nav-menu-btn">&#9776;</button>
             </div>
             <div id="nav-links">
                 <ul>
-                    <li><a href="../experience.html">Work</a></li>
-                    <li><a href="../projects.html">Projects</a></li>
-                    <li><a href="../aboutme.html">About Me</a></li>
+                    <li><a href="experience.html">Work</a></li>
+                    <li><a href="projects.html">Projects</a></li>
+                    <li><a href="aboutme.html">About Me</a></li>
                     <li><a href="Downloadables/Abraham_Michel_CV.pdf" target="_blank">CV</a></li>
                     <li id="icons">
-                        <a href="https://www.linkedin.com/in/abrahammichel" target="_blank" rel="noopener noreferrer"><img src="../Assets/LinkedInLogo.png"/></a>
-                        <a href="https://github.com/AbeMichel" target="_blank" rel="noopener noreferrer"><img src="../Assets/GitHubLogo.png"/></a>
+                        <a href="https://www.linkedin.com/in/abrahammichel" target="_blank" rel="noopener noreferrer"><img src="Assets/LinkedInLogo.png"/></a>
+                        <a href="https://github.com/AbeMichel" target="_blank" rel="noopener noreferrer"><img src="Assets/GitHubLogo.png"/></a>
                     </li>
                 </ul>
             </div>
@@ -54,7 +55,7 @@
                 This was my first attempt at creating a website. I chose to use pure CSS, HTML, and JavaScript to 
                 build a foundational understanding of basic web development concepts. I opted to use GitHub Pages
                 because it bundles version control with free and reliable hosting. I discovered GitHub Pages while building 
-                an <a href="TestResultReporting.html">automated test result reporting system</a> at <a href="../experience.html#jd">John Deere</a>.
+                an <a href="Projects/TestResultReporting.html">automated test result reporting system</a> at <a href="experience.html#jd">John Deere</a>.
                 <br/>
                 <br/>
                 This project was made for a couple reasons: I wanted to learn more about front-end development and I thought a
@@ -71,7 +72,7 @@
                 I would like to revisit these concepts in the future.
                 <br/>
                 <br/>
-                Overall, I've really enjoyed making this site. I'm glad I have an accessible, less formal place (compared to a <a href="../Downloadables/Abraham_Michel_CV.pdf" target="_blank">CV</a>) to showcase what I've accomplished over the last
+                Overall, I've really enjoyed making this site. I'm glad I have an accessible, less formal place (compared to a <a href="Downloadables/Abraham_Michel_CV.pdf" target="_blank">CV</a>) to showcase what I've accomplished over the last
                 4 years. While I want to continue iterating and improving the code, I'm pretty excited to take a break
                 and dive into a book I recently picked up, <i>JavaScript: The Good Parts</i> by Douglas Crockford. I'm sure I'll look back at this and laugh as everything I've done here is slowly 
                 torn apart by what I learn from the book. 
@@ -80,17 +81,17 @@
         <section>
             <h1 id="related-header">Related Projects</h1>
             <ul id="related-content">
-                <li><a href="LinkedInToCV.html">LinkedIn to CV Web Scraper</a></li>
-                <li><a href="TestResultReporting.html">Automated Test Result Reporting</a></li>
-                <li><a href="RPG.html">2D Adventure RPG</a></li>
+                <li><a href="Projects/LinkedInToCV.html">LinkedIn to CV Web Scraper</a></li>
+                <li><a href="Projects/TestResultReporting.html">Automated Test Result Reporting</a></li>
+                <li><a href="Projects/RPG.html">2D Adventure RPG</a></li>
             </ul>
         </section>
     </main>
     <!-------------->
 
     <!-- Scripts -->
-    <script src="../Scripts/navbarMenuToggle.js"></script>
-    <script src="../Scripts/projecthighlight.js"></script>
+    <script src="Scripts/navbarMenuToggle.js"></script>
+    <script src="Scripts/projecthighlight.js"></script>
     <!-------------->
 </body>
 </html>
