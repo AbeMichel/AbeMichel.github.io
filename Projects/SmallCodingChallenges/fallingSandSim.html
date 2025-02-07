@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Falling Sand</title>
+        <base href="../../">
+        <link rel="stylesheet" href="StyleSheets/main.css"> 
+        <link rel="stylesheet" href="StyleSheets/project.css"> 
+        <link rel="stylesheet" href="StyleSheets/navbar.css"> 
+        <style>
+            body {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+
+            main {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 1rem;
+            }
+
+            canvas {
+                background-color: #000;
+                border: 2px solid var(--accent-background);
+                border-radius: 8px;
+                display: block;
+                cursor: grabbing;
+            }
+
+            canvas:active {
+                cursor: grab;
+            }
+
+            #controls {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 1rem;
+                padding: 1rem;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+                backdrop-filter: blur(5px);
+                width: 100%;
+                max-width: 420px;
+                text-align: center;
+            }
+
+            button {
+                background-color: #ff4b4b;
+                color: var(--text-color);
+                border: none;
+                padding: 0.6rem 1.2rem;
+                font-size: 1rem;
+                cursor: pointer;
+                border-radius: 5px;
+                transition: background 0.3s;
+            }
+
+            button:hover {
+                background-color: #d33;
+            }
+
+            label {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-size: 1rem;
+            }
+
+            input[type="color"] {
+                width: 40px;
+                height: 30px;
+                border: none;
+                cursor: pointer;
+                background-color: transparent;
+            }
+
+            input[type="checkbox"] {
+                transform: scale(1.2);
+                cursor: pointer;
+            }
+
+            input[type="range"] {
+                width: 120px;
+                cursor: pointer;
+                accent-color: var(--accent-background);
+            }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div id="nav-container">
+            <div id="extra-nav-btns">
+                <a href="index.html" id="home-btn"> <img src="Assets/MyLogo.png" alt=""/></a>
+                <button id="nav-menu-btn">&#9776;</button>
+            </div>
+            <div id="nav-links">
+                <ul>
+                    <li><a href="experience.html">Work</a></li>
+                    <li><a href="projects.html">Projects</a></li>
+                    <li><a href="aboutme.html">About Me</a></li>
+                    <li><a href="Downloadables/Abraham_Michel_CV.pdf" target="_blank">CV</a></li>
+                    <li id="icons">
+                        <a href="https://www.linkedin.com/in/abrahammichel" target="_blank" rel="noopener noreferrer"><img src="Assets/LinkedInLogo.png"/></a>
+                        <a href="https://github.com/AbeMichel" target="_blank" rel="noopener noreferrer"><img src="Assets/GitHubLogo.png"/></a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <a href="mailto:abemicheljob@gmail.com" id="email-btn">✉️</a>
+
+    <main>
+        <canvas id="canvas"></canvas>
+        <div id="controls">
+            <button type="reset" onclick="Reset()">Reset</button>
+            <label>
+                <input type="checkbox" id="rainbow-sand-toggle">
+                <span>Rainbow Sand</span>
+            </label>
+            <label>
+                <input type="color" id="sand-color">
+                <span>Sand Color</span>
+            </label>
+            <label>
+                <input type="range" min="1" max="100" value="50" id="brush-size">
+                <span>Brush Size (px)</span>
+            </label>
+        </div>
+    </main>
+
+    <script>
+        function CreateGrid(rows, columns) {
+            let grid = [];
+            for (let r = 0; r < rows; r++) {
+                grid[r] = [];
+                for (let c = 0; c < columns; c++) {
+                    grid[r][c] = 0;  // 0 is no particle
+                }
+            }
+            return grid;
+        }
+        
+        const canvas = document.getElementById('canvas');
+        const sandColorChooser = document.getElementById('sand-color');
+        const rainbowSandToggle = document.getElementById('rainbow-sand-toggle');
+        const brushSizeSlider = document.getElementById('brush-size');
+
+        let sandColor = '#FFD700';
+        let useRainbowColor = false;
+        const hueChangeSpeed = 1;
+        let brushSize = 20;
+        const updateInterval = 25;
+        const cols = 400;
+        const rows = 400;
+        const canvasWidth = 400;
+        const canvasHeight = 400;
+        const cellWidth = canvasWidth / cols;
+        const cellHeight = canvasHeight / rows;
+
+
+        sandColorChooser.value = sandColor;
+        rainbowSandToggle.checked = useRainbowColor;
+        brushSizeSlider.value = brushSize;
+
+        sandColorChooser.addEventListener('input', () => {
+            sandColor = sandColorChooser.value;
+        });
+
+        rainbowSandToggle.addEventListener('change', () => {
+            useRainbowColor = rainbowSandToggle.checked;
+        });
+
+        brushSizeSlider.addEventListener('input', () => {
+            brushSize = parseInt(brushSizeSlider.value);
+        });
+
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+
+        let currentGrid = CreateGrid(rows, cols);
+
+        let hueValue = 1;
+        function AddSand(x, y) {
+            if (x >= 0 && x < cols && y >= 0 && y < rows){
+                const brushSizeHalved = Math.ceil(brushSize * 0.5);
+                for (let r = y - brushSizeHalved; r < y + brushSizeHalved; r++) {
+                    for (let c = x - brushSizeHalved; c < x + brushSizeHalved; c++) {
+                        if (c < 0 || c >= cols || r < 0 || r >= rows) continue;
+                        if (currentGrid[r][c] > 0) continue;
+                        currentGrid[r][c] = hueValue;
+                    }
+                }
+
+                hueValue++;
+                if (hueValue >= 360) {
+                    hueValue = 1;
+                }
+            }
+        }
+
+        function Update() {
+            const newGrid = CreateGrid(rows, cols);
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const state = currentGrid[r][c];
+                    if (state === 0) continue;
+                    if (r === rows - 1){
+                        newGrid[r][c] = state;
+                        continue;
+                    } 
+
+                    const below = currentGrid[r + 1][c];
+                    if (below === 0) {
+                        newGrid[r + 1][c] = state;
+                    }else {
+
+                        const randomNum = Math.random() < 0.5 ? -1 : 1;
+
+                        const belowA = currentGrid[r + 1][c + randomNum];
+                        const belowB = currentGrid[r + 1][c - randomNum];
+                        if (belowA === 0){
+                            newGrid[r + 1][c + randomNum] = state;
+                        } else if (belowB === 0) {
+                            newGrid[r + 1][c - randomNum] = state;
+                        } else {
+                            newGrid[r][c] = state;
+                        }
+                    }
+                }
+            }
+
+            currentGrid = newGrid;
+        }
+
+        function Render() {
+            ctx.clearRect(0,0, canvasWidth, canvasHeight);
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (currentGrid[r][c] > 0) {
+                        // ctx.fillStyle = sandColor;
+                        ctx.fillStyle = useRainbowColor ? `hsl(${currentGrid[r][c]}, 100%, 50%)` : sandColor;
+                        ctx.fillRect(c * cellWidth, r * cellHeight, cellWidth, cellHeight);
+                    }
+                }
+            }
+        }
+
+        let isMouseDown = false;
+        let lastX = -1;
+        let lastY = -1
+        function InputChecks() {
+            if (isMouseDown){
+                AddSand(lastX, lastY);
+            }
+        }
+
+        function loop() {
+            InputChecks();
+            Update();
+            Render();
+        }
+
+
+        canvas.addEventListener('mousedown', (e) => {
+            isMouseDown = true;
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / cellWidth);
+            const y = Math.floor((e.clientY - rect.top) / cellHeight);
+            lastX = x;
+            lastY = y;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isMouseDown) {
+                const rect = canvas.getBoundingClientRect();
+                const x = Math.floor((e.clientX - rect.left) / cellWidth);
+                const y = Math.floor((e.clientY - rect.top) / cellHeight);
+                lastX = x;
+                lastY = y;
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isMouseDown = false;
+        });
+
+
+        setInterval(loop, updateInterval);
+
+
+        function Reset() {
+            currentGrid = CreateGrid(rows, cols);
+        }
+
+    </script>
+</body>
+</html>
