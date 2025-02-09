@@ -370,10 +370,10 @@ const resetCamera = () => {
 
 const DIM = 1;
 
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
-
 const canvas = document.querySelector('#rubiks-scene');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 75, 1, 0.1, 1000 );
+
 const renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true});
 renderer.setSize( 400, 400 );
 
