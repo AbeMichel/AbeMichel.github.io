@@ -268,15 +268,15 @@ class RCube {
         switch (moveEnum){
             case CUBE_MOVES.U: cube.turnY(1, 1, animate, onFinish); break;
             case CUBE_MOVES.D: cube.turnY(1, -1, animate, onFinish); break;
-            case CUBE_MOVES.R: cube.turnX(1, -1, animate, onFinish); break;
-            case CUBE_MOVES.L: cube.turnX(1, 1, animate, onFinish); break;
+            case CUBE_MOVES.R: cube.turnX(1, 1, animate, onFinish); break;
+            case CUBE_MOVES.L: cube.turnX(1, -1, animate, onFinish); break;
             case CUBE_MOVES.F: cube.turnZ(1, 1, animate, onFinish); break;
             case CUBE_MOVES.B: cube.turnZ(1, -1, animate, onFinish); break;
 
             case CUBE_MOVES.U_: cube.turnY(-1, 1, animate, onFinish); break;
             case CUBE_MOVES.D_: cube.turnY(-1, -1, animate, onFinish); break;
-            case CUBE_MOVES.R_: cube.turnX(-1, -1, animate, onFinish); break;
-            case CUBE_MOVES.L_: cube.turnX(-1, 1, animate, onFinish); break;
+            case CUBE_MOVES.R_: cube.turnX(-1, 1, animate, onFinish); break;
+            case CUBE_MOVES.L_: cube.turnX(-1, -1, animate, onFinish); break;
             case CUBE_MOVES.F_: cube.turnZ(-1, 1, animate, onFinish); break;
             case CUBE_MOVES.B_: cube.turnZ(-1, -1, animate, onFinish); break;
             default: console.error("Unknown move enum: ", moveEnum); break;
