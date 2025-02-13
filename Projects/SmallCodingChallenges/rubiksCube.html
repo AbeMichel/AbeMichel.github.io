@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="StyleSheets/project.css"> 
     <link rel="stylesheet" href="StyleSheets/navbar.css">
     <link rel="stylesheet" href="StyleSheets/rubiksCube.css">
+    <link rel="stylesheet" href="StyleSheets/General/collapsibleSection.css">
 </head>
 <body>
     <nav class="navbar">
@@ -78,6 +79,10 @@
                     <button type="button" class="cube-move" data-move="back">B</button>
                     <button type="button" class="cube-move" data-move="back-r">B'</button>
                 </div>
+                <div class="collapsible-section">
+                    <button type="button" class="collapsible-button">Matrix (Click to toggle)</button>
+                    <div class="matrix collapsible-content" id="rubiks-matrix-container"></div>
+                </div>
                 <div>
                     <h3>Shortcuts</h1>
                     <p>
@@ -103,7 +108,8 @@
                 <a href="https://threejs.org/" referrerpolicy="noopener noreferrer" target="_blank" class="external-link">threejs</a> to build a 3D space which got me to reaquaint myself with Quaternians.
                 <br>
                 <br>
-                I'm pretty happy with where this is at the moment, but I'd like to come back and create a solver eventually.
+                I'm pretty happy with where this is at the moment, but I'd like to come back and create a solver eventually. I'm currently working off of the cube representation shown in 
+                <a href="https://k-l-lambda.github.io/2020/12/14/rubik-cube-notation/" referrerpolicy="noopener noreferrer" target="_blank" class="external-link">this blog</a>.
             </p>
         </section>
         <section>
@@ -127,6 +133,7 @@
         }
     </script>
     <script type="module" src="Scripts/rubiksCube.js"></script>
+    <script src="Scripts/MyLibraries/collapsibleSection.js"></script>
     <!-------------->
 </body>
 </html>

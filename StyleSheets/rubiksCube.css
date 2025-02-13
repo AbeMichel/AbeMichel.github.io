@@ -16,6 +16,36 @@
 }
 
 .cube-button-parent button {
+    cursor: pointer;
     padding: 10px 10px;
     border-radius: 8px;
+}
+
+.matrix table {
+    border-collapse: collapse;
+    text-align: center;
+    font-family: Arial, sans-serif;
+    table-layout: fixed;
+}
+
+.matrix th, 
+.matrix td {
+    border: 1px solid #ccc;
+    padding: 1px;
+    cursor:crosshair;
+    width: 30px;
+}
+
+.matrix th {
+    font-weight: bold;
+}
+
+.matrix tr:nth-child(even) {
+    background-color: var(--shadow-color);
+}
+
+.matrix th:hover,
+.matrix td:hover {
+    background-color: var(--text-color);
+    color: black;
 }

@@ -1,7 +1,5 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { FontLoader } from 'three/addons/loaders/FontLoader.js';
-import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 
 const COLORS = {
     YELLOW: 0xffff00,
@@ -27,53 +25,6 @@ const CUBIE_MATERIALS = {
     BACK: new THREE.MeshBasicMaterial({ color: COLORS.BLUE }),
 };
 
-// For corner
-// -1, 1 -> 1, 1   ||  -9 -> 11
-// 1, 1 -> 1, -1   ||  11 -> 9
-// 1, -1 -> -1, -1 ||   9 -> -11
-// -1, -1 -> -1, 1 || -11 -> -9
-const INDEX_TO_COORD_CORNER = {
-    0: [-1 , 1],
-    1: [1  , 1],
-    2: [1  ,-1],
-    3: [-1 ,-1]
-};
-const COORD_TO_INDEX_CORNER = {
-    [-9 ]: 0,  
-    [11 ]: 1,
-    [9  ]: 2,
-    [-11]: 3
-};
-
-// For edge
-// -1, 0 -> 0, 1   ||  -10 -> 1
-// 0, 1 -> 1, 0    ||    1 -> 10
-// 1, 0 -> 0, -1   ||   10 -> -1
-// 0, -1 -> -1, 0  ||   -1 -> -10
-const INDEX_TO_COORD_EDGE = {
-    0: [-1 , 0],
-    1: [0  , 1],
-    2: [1 ,  0],
-    3: [0  ,-1]
-};
-const COORD_TO_INDEX_EDGE = {
-    [-10]: 0,  
-    [1  ]: 1,
-    [10 ]: 2,
-    [-1 ]: 3
-};
-
-function getIndexFromCoordinates(x, y, isCorner) {
-    const key = (x * 10) + y;
-    return isCorner ? COORD_TO_INDEX_CORNER[key] : COORD_TO_INDEX_EDGE[key];
-}
-
-function getNextCoordinates(x, y, direction, isCorner) {
-    let key = getIndexFromCoordinates(x, y, isCorner) + direction;
-    key = (key < 0) ? 3 : (key > 3) ? 0 : key;
-    return isCorner ? INDEX_TO_COORD_CORNER[key] : INDEX_TO_COORD_EDGE[key];
-}
-
 const AXIS_ENUM = {
     X: 'X',
     Y: 'Y',
@@ -86,11 +37,27 @@ const WORLD_AXIS = {
     Z: new THREE.Vector3(0, 0, 1),
 }
 
+const CUBE_MOVES = {
+    U: "U",
+    D: "D",
+    R: "R",
+    L: "L",
+    F: "F",
+    B: "B",
+    
+    U_: "U'",
+    D_: "D'",
+    R_: "R'",
+    L_: "L'",
+    F_: "F'",
+    B_: "B'",
+};
 
 class Cubie {
     constructor(scene, dim, x, y, z) {
         this.animating = false;
         this.dim = dim;
+        this.scene = scene;
         const geometry = new THREE.BoxGeometry( dim, dim, dim );
         // Right - 1
         // Left - 2
@@ -125,80 +92,69 @@ class Cubie {
     Y() { return Math.round(this.position().y); }
     Z() { return Math.round(this.position().z); }
 
-    rotate(rotationAxis, dir, coord1, coord2, axisToRotateAround, animate=true) {
+    rotate(rotationAxis, dir, animate=true, onFinish) {
+        if (this.animating) return;
         this.mesh.rotateOnWorldAxis(rotationAxis, Math.PI * 0.5 * -dir);
         const goalRot = this.mesh.quaternion.clone();  // Grab our desire rotation
-        const goalPos = new THREE.Vector3(this.X(), this.Y(), this.Z());
-
-        const positionSum = Math.abs(coord1) + Math.abs(coord2);
-        if (positionSum > 0) {
-            const isCorner = positionSum === 2;
-            const [newCoord1, newCoord2] = getNextCoordinates(coord1, coord2, dir, isCorner);
-            
-            const coords = [this.X(), this.Y(), this.Z()];
-            switch (axisToRotateAround) {
-                case AXIS_ENUM.X:
-                    coords[1] = newCoord2;
-                    coords[2] = -newCoord1;
-                    break;
-                case AXIS_ENUM.Y:
-                    coords[0] = newCoord1;
-                    coords[2] = -newCoord2;
-                    break;
-                case AXIS_ENUM.Z:
-                    coords[0] = newCoord1;
-                    coords[1] = newCoord2;
-                    break;
-                default: break;
-            }
-            // this.SetPosition(coords[0], coords[1], coords[2]);
-            goalPos.set(coords[0], coords[1], coords[2]);
-        }
-
+        // console.log(goalRot);
         if (animate){
             this.mesh.rotateOnWorldAxis(rotationAxis, Math.PI * 0.5 * dir);  // Reset the rotation
-            this.turnAnimation(goalPos, goalRot);
+            this.turnAnimation(goalRot, onFinish);
         } else {
-            this.mesh.position.copy(goalPos);
+            onFinish();
         }
     }
     
-    rotX(dir, animate=true) { this.rotate(WORLD_AXIS.X, dir, -this.Z(), this.Y(), AXIS_ENUM.X, animate); }
-    rotY(dir, animate=true) { this.rotate(WORLD_AXIS.Y, dir, this.X(), -this.Z(), AXIS_ENUM.Y, animate); }
-    rotZ(dir, animate=true) { this.rotate(WORLD_AXIS.Z, dir, this.X(), this.Y(), AXIS_ENUM.Z, animate); }
+    rotX(dir, animate=true, onFinish=()=>{}) { this.rotate(WORLD_AXIS.X, dir, animate, onFinish); }
+    rotY(dir, animate=true, onFinish=()=>{}) { this.rotate(WORLD_AXIS.Y, dir, animate, onFinish); }
+    rotZ(dir, animate=true, onFinish=()=>{}) { this.rotate(WORLD_AXIS.Z, dir, animate, onFinish); }
 
-    turnAnimation(goalPos, goalRot) {
+    turnAnimation(goalRot, onFinish) {
         this.animating = true;
-        const animationTime = 0.25;
+        const animationTime = 0.2;
         let elapsedTime = 0;
         let lastTime = performance.now();
         let currentTime = lastTime;
 
+        const startRotation = this.mesh.quaternion.clone();
         let currentRotation = this.mesh.quaternion;
-        let currentPosition = this.mesh.position;
         
         const animateTurn = (time) => {
             currentTime = performance.now();
             elapsedTime += (currentTime - lastTime) * 0.001;
             lastTime = currentTime;
-            // console.log(elapsedTime);
-            const delta = elapsedTime / animationTime;
-            if (delta < 0.9) {
-                currentPosition = currentPosition.lerp(goalPos, elapsedTime / animationTime);
-                currentRotation = currentRotation.slerp(goalRot, elapsedTime / animationTime);
-                this.mesh.position.copy(currentPosition);
+            const progress = elapsedTime / animationTime;
+            if (progress < 0.98) {
+                currentRotation.slerpQuaternions(startRotation, goalRot, progress);
                 this.mesh.quaternion.copy(currentRotation);
             } else {
                 // We're done animating
-                this.mesh.position.copy(goalPos);
                 this.mesh.quaternion.copy(goalRot);
                 this.animating = false;
+                onFinish();
                 return;
             }
             requestAnimationFrame(animateTurn);
         }
 
         requestAnimationFrame(animateTurn);
+    }
+
+    attach(other) {
+        this.mesh.attach(other.mesh);
+    }
+
+    unattach(other) {
+        const clone = other.mesh.clone(); // Clone the mesh
+        this.scene.add(clone);
+
+        other.mesh.getWorldPosition(clone.position);
+        other.mesh.getWorldQuaternion(clone.rotation);
+        clone.updateMatrix();
+
+        other.mesh.parent.remove(other.mesh);
+
+        other.mesh = clone;
     }
 }
 
@@ -208,67 +164,24 @@ class RCube {
         this.scene = scene;
         this.dim = dim;
         this.cubies = [];
-        this.labelLetters = [];
-
+        this.matrix = new RCube3x3Matrix(document.querySelector('#rubiks-matrix-container'));
+        this.matrix.UpdateElement();
         this.build();
+        this.axis = {
+            UP: new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5)),
+            DOWN: new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5)),
+            RIGHT: new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5)),
+            LEFT: new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5)),
+            FRONT: new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5)),
+            BACK: new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5)),
+        };
 
-        // this.createFloatingText();  // TODO: THIS
-    }
-
-    createFloatingText() {
-        const fontLoader = new FontLoader();
-    
-        // Material for text
-        const textMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    
-        // Positions for the text to float in front of the cube's sides
-        const offsetAmt = 2;
-        const positions = [
-            { x: 1, y: 0, z: 0 },   // Right face
-            { x: -1, y: 0, z: 0 },  // Left face
-            { x: 0, y: 1, z: 0 },   // Top face
-            { x: 0, y: -1, z: 0 },  // Bottom face
-            { x: 0, y: 0, z: 1 },   // Front face
-            { x: 0, y: 0, z: -1 }   // Back face
-        ];
-        
-        const rotations = [
-            { x: 0, y: 0, z: 0 },   // Right face
-            { x: 0, y: 0, z: 0 },   // Left face
-            { x: 0, y: 0, z: 0 },   // Top face
-            { x: 0, y: 0, z: 0 },   // Bottom face
-            { x: 0, y: 0, z: 0 },   // Front face
-            { x: 0, y: 0, z: 0 }    // Back face
-        ];
-        
-        const letters = ['R', 'L', 'T', 'B', 'F', 'Bk']; // Letters for each face
-        
-        // Load the font and create text geometries
-        fontLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', (font) => {
-            for (let i = 0; i < positions.length; i++) {
-                const textGeometry = new TextGeometry(letters[i], {
-                    font: font,
-                    size: 0.1,
-                    height: 0.01,
-                    curveSegments: 12,
-                });
-
-                // Create the text mesh
-                const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-                this.labelLetters.push(textMesh);
-                this.scene.add(textMesh);
-    
-                // Set position and rotation
-            //     const pos = positions[i];
-            //     const rot = rotations[i];
-            //     textMesh.position.set(pos.x * offsetAmt, pos.y * offsetAmt, pos.z * offsetAmt);
-            //     textMesh.rotateOnWorldAxis(WORLD_AXIS.X, rot.x);
-            //     textMesh.rotateOnWorldAxis(WORLD_AXIS.Y, rot.y);
-            //     textMesh.rotateOnWorldAxis(WORLD_AXIS.Z, rot.z);
-
-            //     textMesh.updateMatrix();
-            }
-        });
+        this.axis.UP.position.set(0, dim, 0);
+        this.axis.DOWN.position.set(0, -dim, 0);
+        this.axis.RIGHT.position.set(dim, 0, 0);
+        this.axis.LEFT.position.set(-dim, 0, 0);
+        this.axis.FRONT.position.set(0, 0, dim);
+        this.axis.BACK.position.set(0, 0, -dim);
     }
 
     build() {
@@ -277,6 +190,7 @@ class RCube {
         for (let x = -cubiesPerSide; x <= cubiesPerSide; x++) {
             for (let y = -cubiesPerSide; y <= cubiesPerSide; y++) {
                 for (let z = -cubiesPerSide; z <= cubiesPerSide; z++) {
+                    if (x === 0 && y === 0 && z === 0) continue;
                     this.cubies.push(new Cubie(this.scene, this.dim, x, y, z));
                 }
             }
@@ -284,30 +198,23 @@ class RCube {
     }
     
 
-    shuffle() {
+    shuffle(numTurns=-1, animate=false) {
+        const possibleMoves = Object.keys(CUBE_MOVES);
+        let moves = [];
         const minTurns = 30;
         const maxTurns = 100;
-
-        const dirs = [-1, 1];
-        const sides = [-1, 1];
-        const axises = [AXIS_ENUM.X, AXIS_ENUM.Y, AXIS_ENUM.Z]
         
-        const numberOfTurns = Math.round((Math.random() * (maxTurns - minTurns)) + minTurns);
-        let dir;
-        let side;
-        let axis;
+        const numberOfTurns = numTurns === -1 ? Math.round((Math.random() * (maxTurns - minTurns)) + minTurns) : numTurns;
+        
         for (let i = 0; i < numberOfTurns; i++) {
-            dir = dirs[Math.floor(Math.random() * dirs.length)];
-            side = sides[Math.floor(Math.random() * sides.length)];
-            axis = axises[Math.floor(Math.random() * axises.length)];
-
-
-            this.turn(axis, dir, side, false);
+            const randomIndex = Math.floor(Math.random() * possibleMoves.length);
+            moves.push(CUBE_MOVES[possibleMoves[randomIndex]]);
         }
-        // console.log(`Shuffled with ${numberOfTurns} turns.`);
+
+        this.moveSequence(moves, animate);
     }
 
-    turn(axis, dir, side, animate=true) {
+    turn(axis, dir, side, animate=true, onFinish=()=>{}) {
         let cubiesAnimating = false;
         this.cubies.forEach(qb => {
             if (qb.animating){
@@ -320,41 +227,327 @@ class RCube {
         }
         // console.log(axis);
         dir *= side;
+        // for (let i = 0; i < this.cubies.length; i++) {
+        //     const qb = this.cubies[i];
+        //     if (qb[axis]() === side) {
+        //         qb[`rot${axis.toUpperCase()}`](dir, animate);
+        //     }
+        // }
+
+        let cubiesEffected = [];
+        let centerCubie;
         for (let i = 0; i < this.cubies.length; i++) {
             const qb = this.cubies[i];
-            if (qb[axis]() === side) {
-                qb[`rot${axis.toUpperCase()}`](dir, animate);
+            const axisVal = qb[axis]();
+            if (axisVal === side) {
+                const axisSum = Math.abs(qb.X()) + Math.abs(qb.Y()) + Math.abs(qb.Z());
+                if (axisSum === 1) {
+                    centerCubie = qb;
+                } else {
+                    cubiesEffected.push(qb);
+                }
             }
         }
+        
+        if (!centerCubie) return;
+
+        cubiesEffected.forEach(cubie => centerCubie.attach(cubie));
+
+        centerCubie[`rot${axis.toUpperCase()}`](dir, animate, () => {
+            cubiesEffected.forEach(cubie => centerCubie.unattach(cubie));
+            onFinish();
+        });
     }
 
-    turnX(dir, side, animate=true) { this.turn(AXIS_ENUM.X, dir, side, animate); }
-    turnY(dir, side, animate=true) { this.turn(AXIS_ENUM.Y, dir, side, animate); }
-    turnZ(dir, side, animate=true) { this.turn(AXIS_ENUM.Z, dir, side, animate); }
+    turnX(dir, side, animate=true, onFinish=()=>{}) { this.turn(AXIS_ENUM.X, dir, side, animate, onFinish); }
+    turnY(dir, side, animate=true, onFinish=()=>{}) { this.turn(AXIS_ENUM.Y, dir, side, animate, onFinish); }
+    turnZ(dir, side, animate=true, onFinish=()=>{}) { this.turn(AXIS_ENUM.Z, dir, side, animate, onFinish); }
+
+    move(moveEnum, animate=true, onFinish=()=>{}) {
+        this.matrix.move(moveEnum);
+        switch (moveEnum){
+            case CUBE_MOVES.U: cube.turnY(1, 1, animate, onFinish); break;
+            case CUBE_MOVES.D: cube.turnY(1, -1, animate, onFinish); break;
+            case CUBE_MOVES.R: cube.turnX(1, -1, animate, onFinish); break;
+            case CUBE_MOVES.L: cube.turnX(1, 1, animate, onFinish); break;
+            case CUBE_MOVES.F: cube.turnZ(1, 1, animate, onFinish); break;
+            case CUBE_MOVES.B: cube.turnZ(1, -1, animate, onFinish); break;
+
+            case CUBE_MOVES.U_: cube.turnY(-1, 1, animate, onFinish); break;
+            case CUBE_MOVES.D_: cube.turnY(-1, -1, animate, onFinish); break;
+            case CUBE_MOVES.R_: cube.turnX(-1, -1, animate, onFinish); break;
+            case CUBE_MOVES.L_: cube.turnX(-1, 1, animate, onFinish); break;
+            case CUBE_MOVES.F_: cube.turnZ(-1, 1, animate, onFinish); break;
+            case CUBE_MOVES.B_: cube.turnZ(-1, -1, animate, onFinish); break;
+            default: console.error("Unknown move enum: ", moveEnum); break;
+        }
+        if (animate) this.matrix.UpdateElement();
+    }
+
+    moveSequence(sequence, animate=true) {
+        if (!sequence) return;
+        let i = 0;
+        const response = () => {
+            i++;
+            if (i < sequence.length) { 
+                this.move(sequence[i], animate, response); 
+                // console.log(i);
+            } else {
+                this.matrix.UpdateElement();
+            }
+        };
+
+        this.move(sequence[i], animate, response);
+    }
 
     reset() {
         // Remove all cubies from the scene and dispose of their resources
         this.cubies.forEach(cubie => {
-            // Assuming each cubie has a mesh or other Three.js object that needs removal
-            this.scene.remove(cubie.mesh); // Or whatever mesh/geometry property your Cubie uses
-            cubie.mesh.geometry.dispose();  // Dispose geometry if it's being used
+            this.scene.remove(cubie.mesh);
+            cubie.mesh.geometry.dispose();
         });
     
-        // Clear cubies and label letters arrays
         this.cubies = [];
-        this.labelLetters = [];
-    
-        // Optional: Remove floating text or any other UI components
-        this.labelLetters.forEach(text => {
-            this.scene.remove(text);  // Remove text mesh from scene
-            text.geometry.dispose();   // Dispose geometry
-        });
     
         this.build();
-    
-        // Optionally, recreate floating text or labels
-        // this.createFloatingText();
+        this.matrix.reset();
     }    
+}
+
+
+const GREEK_INT_MAP = {
+    [1]: "α",  [2]: "β",  [3]: "γ",  [4]: "δ",  [5]: "ε",  [6]: "ζ",  
+    [7]: "η",  [8]: "θ",  [9]: "ι", [10]: "κ", [11]: "λ", [12]: "μ",  
+   [13]: "ν", [14]: "ξ", [15]: "ο", [16]: "π", [17]: "ρ", [18]: "σ",  
+   [19]: "τ", [20]: "υ", [21]: "φ", [22]: "χ", [23]: "ψ", [24]: "ω"
+};
+
+const GREEK_INT_REVERSE_MAP = Object.fromEntries(
+    Object.entries(GREEK_INT_MAP).map(([key, value]) => [value, Number(key)])
+);
+
+const CUBE_MOVES_AS_VECTORS = {
+    [CUBE_MOVES.U] : "ααζζααζζααααζζζζααααααζααα",
+    [CUBE_MOVES.U_]: "ααιιααιιααααιιιιααααααιααα",
+
+    [CUBE_MOVES.D] : "ιιααιιααιιιιαααααααααααιαα",
+    [CUBE_MOVES.D_]: "ζζααζζααζζζζαααααααααααζαα",
+
+    [CUBE_MOVES.L] : "θαθαθαθαααθαααθαθααθααααθα",
+    [CUBE_MOVES.L_]: "εαεαεαεαααεαααεαεααεααααεα",
+    
+    [CUBE_MOVES.R] : "αεαεαεαεαααεαααεαεεααααααε",
+    [CUBE_MOVES.R_]: "αθαθαθαθαααθαααθαθθααααααθ",
+
+    [CUBE_MOVES.F] : "ηηηηααααηαααηαααηηααηααααα",
+    [CUBE_MOVES.F_]: "κκκκαααακααακααακκαακααααα",
+
+    [CUBE_MOVES.B] : "αααακκκκακααακαααακκακαααα",
+    [CUBE_MOVES.B_]: "ααααηηηηαηαααηααααηηαηαααα",
+};
+
+const MULT_TABLE_STRING = "×αβγδεζηθικλμνξοπρστυϕχψωααβγδεζηθικλμνξοπρστυϕχψωββαδγθϕψεχωοπρσλμνξυτζιηκγγδαβυιωτζψποξνμλσρθεχϕκηδδγβατχκυϕημλσρποξνεθιζωψεεθτυβλναμξϕχψωζιηκδγοπρσζζχιϕξγλραοωκευψητθσνβδμπηηωψκλρδπνατεϕζθυχιμοσξβγθθευταορβπσζιηκϕχψωγδλμνξιιϕζχναπσγμηψυεκωθτρξδβολκκψωημξαοσδετιχυθζϕλπνργβλλπμοωτϕηεζσξβγρνδακψθυχιμμολπψεικτχνργβξσαδηωυθζϕννσρξϕηυιψεδβολαγπμχζκωθτξξρσνχωεζκυβδμπγαλοϕιψητθοομπλκυζψθϕξσαδνργβωηετιχππλομηθχωυιρνδασξβγψκτεϕζρρξνσζψτχηθγαλοβδμπιϕωκευσσνξρικθϕωταγπμδβολζχηψυεττυεθγμσδλριζωψχϕκηαβποξνυυτθεδπξγονχϕκηιζωψβαμλσρϕϕιχζσδονβλκωθτηψυεξραγπμχχζϕιρβμξδπψητθωκευνσγαλοψψκηωονγμρβυθζϕετιχπλξσαδωωηκψπσβλξγθυχιτεϕζομρνδα";
+const MULT_TABLE_GREEK = createGreekMultTable(MULT_TABLE_STRING, 25);
+function createGreekMultTable(tableString, dims) {
+    let table = {};
+    let multiplier;
+    let multiplicand;
+    let product;
+    for (let i = 1; i < dims; i++) {
+        for (let j = 1; j < dims; j++) {
+            multiplier = tableString[j * dims];
+            multiplicand = tableString[i];
+            product = tableString[i + (j * dims)];
+            // console.log(`${j} * ${j*dims} = ${i + (j*dims)}`);
+            // console.log(`${multiplier} * ${multiplicand} = ${product}`);
+            table[`${multiplier},${multiplicand}`] = product;
+        }
+    }
+    return table;
+}
+
+const POSITION_VECTORS = {
+    ["A"]: [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    ["B"]: [0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    ["C"]: [0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    ["D"]: [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    ["E"]: [0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    ["F"]: [0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    ["G"]: [0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    ["H"]: [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    ["I"]: [0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    ["J"]: [0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    ["K"]: [0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    ["L"]: [0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    ["M"]: [0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    ["N"]: [0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
+    ["O"]: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0],
+    ["P"]: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0],
+    ["Q"]: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0],
+    ["R"]: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+    ["S"]: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
+    ["T"]: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0],
+    ["U"]: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0],
+    ["V"]: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0],
+    ["W"]: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0],
+    ["X"]: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0],
+    ["Y"]: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0],
+    ["Z"]: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+};
+
+const MULT_TABLE_POS_STRING = "+αεζηθικAACECEBBBBDAAFFDCCGGDADADDHCBBHCEEAFGGAFFFBBEHEHGGEHHCCEHHFDFDGGIIIKQILRJJJLTJKSKKQJKTIKLLRILSJLMMMORMPQNNNPSNOTOOTNOQMOPPSMPRNPQQOQMKQIRRPRILRMSSLSJPSNTTKTNOTJUUUUUUUUVVVVVVVVWWWWWWWWXXXXXXXXYYYYYYYYZZZZZZZZ";
+const MULT_TABLE_POS_GREEK = createPosGreekTable(MULT_TABLE_POS_STRING, 8);
+function createPosGreekTable(tableString, cols) {
+    // First column, first row are lookup values
+    let table = {};
+    const numRows = tableString.length / cols;
+
+    for (let i = 1; i < numRows; i++) {
+        const posLookup = tableString[i * cols];
+        for (let j = 1; j < cols; j++) {
+            const greekLookup = tableString[j];
+            const value = tableString[j + (i*cols)];
+            // console.log(`${greekLookup},${posLookup} = ${value}`);
+            table[`${greekLookup},${posLookup}`] = value;
+        }
+    }
+    return table;
+}
+
+const COORDS_TO_POS_VECTOR = {  // X, Y, Z
+    // Corners
+    "-1,-1,1": POSITION_VECTORS.A,
+    "1,-1,1": POSITION_VECTORS.B,
+    "-1,1,1": POSITION_VECTORS.C,
+    "1,1,1": POSITION_VECTORS.D,
+    "-1,-1,-1": POSITION_VECTORS.E,
+    "1,-1,-1": POSITION_VECTORS.F,
+    "-1,1,-1": POSITION_VECTORS.G,
+    "1,1,-1": POSITION_VECTORS.H,
+    // Edges
+    "0,-1,1": POSITION_VECTORS.I,
+    "0,-1,-1": POSITION_VECTORS.J,
+    "-1,-1,0": POSITION_VECTORS.K,
+    "1,-1,0": POSITION_VECTORS.L,
+    
+    "0,1,1": POSITION_VECTORS.M,
+    "0,1,-1": POSITION_VECTORS.N,
+    "-1,1,0": POSITION_VECTORS.O,
+    "1,1,0": POSITION_VECTORS.P,
+    
+    "-1,0,1": POSITION_VECTORS.Q,
+    "1,0,1": POSITION_VECTORS.R,
+    "1,0,-1": POSITION_VECTORS.S,
+    "-1,0,-1": POSITION_VECTORS.T,
+    // Axis
+    "0,0,1": POSITION_VECTORS.U,
+    "0,0,-1": POSITION_VECTORS.V,
+    "0,1,0": POSITION_VECTORS.W,
+
+    "0,-1,0": POSITION_VECTORS.X,
+    "-1,0,0": POSITION_VECTORS.Y,
+    "1,0,0": POSITION_VECTORS.Z,
+};
+class RCube3x3Matrix {
+    constructor(parentElement) {
+        this.defaultRotation = GREEK_INT_MAP[1];
+
+        this.tableElement = document.createElement('table');
+        if (parentElement) {
+            parentElement.appendChild(this.tableElement);
+        } else {
+            document.querySelector('body').appendChild(this.tableElement);
+        }
+
+        this.reset();
+    }
+
+    reset() {
+        this.rows = [
+            ["A", this.defaultRotation],// A-H (Corners)
+            ["B", this.defaultRotation],
+            ["C", this.defaultRotation],
+            ["D", this.defaultRotation],
+            ["E", this.defaultRotation],
+            ["F", this.defaultRotation],
+            ["G", this.defaultRotation],
+            ["H", this.defaultRotation],
+            ["I", this.defaultRotation],// I-T (Edges)
+            ["J", this.defaultRotation],
+            ["K", this.defaultRotation],
+            ["L", this.defaultRotation],
+            ["M", this.defaultRotation],
+            ["N", this.defaultRotation],
+            ["O", this.defaultRotation],
+            ["P", this.defaultRotation],
+            ["Q", this.defaultRotation],
+            ["R", this.defaultRotation],
+            ["S", this.defaultRotation],
+            ["T", this.defaultRotation],
+            ["U", this.defaultRotation],// U-Z (Axis)
+            ["V", this.defaultRotation],
+            ["W", this.defaultRotation],
+            ["X", this.defaultRotation],
+            ["Y", this.defaultRotation],
+            ["Z", this.defaultRotation],
+        ];
+
+        this.UpdateElement();
+    }
+
+    move(moveEnum) {
+        const moveVec = CUBE_MOVES_AS_VECTORS[moveEnum];
+        for (let i = 0; i < this.rows.length; i++) {
+            const currentPosKey = this.rows[i][0];
+            const currentPos = POSITION_VECTORS[currentPosKey];
+            const currentRot = this.rows[i][1];
+            let rot;
+            for (let j = 0; j < currentPos.length; j++) {
+                if (currentPos[j] === 1) {
+                    rot = moveVec[j];
+                    break;
+                }
+            }
+            const newRot = MULT_TABLE_GREEK[`${currentRot},${rot}`];
+            const newPosKey = MULT_TABLE_POS_GREEK[`${rot},${currentPosKey}`];  // TODO: Implement the position and rotation lookup
+            // console.log(`${rot},${currentPosKey}`, newPosKey);
+            // console.log(`${currentRot} * ${rot} = ${newRot}`);
+            this.rows[i][0] = newPosKey;
+            this.rows[i][1] = newRot;
+        }
+    }
+
+    UpdateElement() {
+        this.tableElement.innerHTML = "";
+
+        const hheader = document.createElement('tr');
+        this.tableElement.appendChild(hheader);
+        const firstCorner = document.createElement('th');
+        hheader.appendChild(firstCorner);
+        for (let j = 0; j < this.rows.length; j++) {
+            const newHeader = document.createElement('th');
+            newHeader.textContent = String.fromCharCode(65+j);
+            hheader.appendChild(newHeader);
+        }
+
+        for (let i = 0; i < this.rows.length; i++) {
+            const newRow = document.createElement('tr');
+            this.tableElement.appendChild(newRow);
+            const newHeader = document.createElement('th');
+            newHeader.textContent = String.fromCharCode(65+i);
+            newRow.appendChild(newHeader);
+
+            const rowDataKey = this.rows[i][0];
+            const rowData = POSITION_VECTORS[rowDataKey];
+            const rowRot = this.rows[i][1];
+
+            for (let j = 0; j < this.rows.length; j++) {
+                const newCell = document.createElement('td');
+                newCell.textContent = rowData[j] === 1 ? rowRot : "";
+                newRow.appendChild(newCell);
+            }
+        }
+    }
 }
 
 const frontViewPosition = { x: 0, y: 4, z: 10 };  // Position of the camera
@@ -368,7 +561,7 @@ const resetCamera = () => {
     camera.rotation.set(frontViewRotation.x, frontViewRotation.y, frontViewRotation.z);
 };
 
-const DIM = 1;
+const CUBIE_DIM = 1;
 
 const canvas = document.querySelector('#rubiks-scene');
 const scene = new THREE.Scene();
@@ -389,7 +582,7 @@ controls.minDistance = 4;  // Minimum zoom distance
 controls.maxDistance = 10; // Maximum zoom distance
 controls.maxPolarAngle = Math.PI; // Limit vertical rotation (optional)
 
-const cube = new RCube(scene, DIM);
+const cube = new RCube(scene, CUBIE_DIM);
 const animateCubeTurns = true;
 
 let isShiftHeld = false;
@@ -404,19 +597,21 @@ const keyHandler = (e) => {
 
     if (e.type === 'keydown' && !stillOnSamePress[key]) {
         stillOnSamePress[key] = true;
-        const direction = isShiftHeld ? -1 : 1;
-        const side = isControlHeld ? -1 : 1;
+        const direction = isShiftHeld ? 1 : 0;
+        const side = isControlHeld ? 1 : 0;
         switch(key) {
-            case 'x': cube.turnX(direction, side, animateCubeTurns); break;
-            case 'y': cube.turnY(direction, side, animateCubeTurns); break;
-            case 'z': cube.turnZ(direction, side, animateCubeTurns); break;
+            case 'x': cube.move([[CUBE_MOVES.R, CUBE_MOVES.R_],[CUBE_MOVES.L, CUBE_MOVES.L_]][side][direction], animateCubeTurns); break;
+            case 'y': cube.move([[CUBE_MOVES.U, CUBE_MOVES.U_],[CUBE_MOVES.D, CUBE_MOVES.D_]][side][direction], animateCubeTurns); break;
+            case 'z': cube.move([[CUBE_MOVES.F, CUBE_MOVES.F_],[CUBE_MOVES.B, CUBE_MOVES.B_]][side][direction], animateCubeTurns); break;
 
-            case 'u': cube.turnY(direction, 1, animateCubeTurns); break;
-            case 'd': cube.turnY(direction, -1, animateCubeTurns); break;
-            case 'l': cube.turnX(direction, -1, animateCubeTurns); break;
-            case 'r': cube.turnX(direction, 1, animateCubeTurns); break;
-            case 'f': cube.turnZ(direction, 1, animateCubeTurns); break;
-            case 'b': cube.turnZ(direction, -1, animateCubeTurns); break;
+            case 'u': cube.move([CUBE_MOVES.U, CUBE_MOVES.U_][direction], animateCubeTurns); break;
+            case 'd': cube.move([CUBE_MOVES.D, CUBE_MOVES.D_][direction], animateCubeTurns); break;
+            case 'l': cube.move([CUBE_MOVES.L, CUBE_MOVES.L_][direction], animateCubeTurns); break;
+            case 'r': cube.move([CUBE_MOVES.R, CUBE_MOVES.R_][direction], animateCubeTurns); break;
+            case 'f': cube.move([CUBE_MOVES.F, CUBE_MOVES.F_][direction], animateCubeTurns); break;
+            case 'b': cube.move([CUBE_MOVES.B, CUBE_MOVES.B_][direction], animateCubeTurns); break;
+
+            case 'p': cube.shuffle(10, true); break;
 
             case 'q': if (isShiftHeld) cube.reset(); else resetCamera(); break;
             case 's': cube.shuffle(); break;
@@ -437,76 +632,50 @@ document.addEventListener('keydown', keyHandler);
 document.addEventListener('keyup', keyHandler);
 
 function handleMovement(moveType) {
-    let axis;
-    let direction;
-    let side;
+    let move;
     let animateCubeTurns = true;
     switch (moveType) {
         case 'up':
-            axis = AXIS_ENUM.Y;
-            direction = 1;
-            side = 1;
+            move = CUBE_MOVES.U;
             break;
         case 'up-r':
-            axis = AXIS_ENUM.Y;
-            direction = -1;
-            side = 1;
+            move = CUBE_MOVES.U_;
             break;
         case 'down':
-            axis = AXIS_ENUM.Y;
-            direction = 1;
-            side = -1;
+            move = CUBE_MOVES.D;
             break;
         case 'down-r':
-            axis = AXIS_ENUM.Y;
-            direction = -1;
-            side = -1;
+            move = CUBE_MOVES.D_;
             break;
         case 'right':
-            axis = AXIS_ENUM.X;
-            direction = 1;
-            side = 1;
+            move = CUBE_MOVES.R;
             break;
         case 'right-r':
-            axis = AXIS_ENUM.X;
-            direction = -1;
-            side = 1;
+            move = CUBE_MOVES.R_;
             break;
         case 'left':
-            axis = AXIS_ENUM.X;
-            direction = 1;
-            side = -1;
+            move = CUBE_MOVES.L;
             break;
         case 'left-r':
-            axis = AXIS_ENUM.X;
-            direction = -1;
-            side = -1;
+            move = CUBE_MOVES.L_;
             break;
         case 'front':
-            axis = AXIS_ENUM.Z;
-            direction = 1;
-            side = 1;
+            move = CUBE_MOVES.F;
             break;
         case 'front-r':
-            axis = AXIS_ENUM.Z;
-            direction = -1;
-            side = 1;
+            move = CUBE_MOVES.F_;
             break;
         case 'back':
-            axis = AXIS_ENUM.Z;
-            direction = 1;
-            side = -1;
+            move = CUBE_MOVES.B;
             break;
         case 'back-r':
-            axis = AXIS_ENUM.Z;
-            direction = -1;
-            side = -1;
+            move = CUBE_MOVES.B_;
             break;
         default:
             console.error(`Unknown movement type: ${moveType}.`);
             return;
     }
-    cube.turn(axis, direction, side, animateCubeTurns);
+    cube.move(move, animateCubeTurns);
 }
 document.querySelectorAll('.cube-move').forEach(button => {
     button.addEventListener('click', () => {
@@ -537,8 +706,6 @@ document.querySelectorAll('.cube-control').forEach(button => {
         handleControl(controlType);
     });
 });
-
-
 
 function animate() {
     controls.update();
