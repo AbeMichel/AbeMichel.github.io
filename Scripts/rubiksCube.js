@@ -215,16 +215,6 @@ class RCube {
     }
 
     turn(axis, dir, side, animate=true, onFinish=()=>{}) {
-        let cubiesAnimating = false;
-        this.cubies.forEach(qb => {
-            if (qb.animating){
-                cubiesAnimating = true;
-            }
-        });
-        if (cubiesAnimating) {
-            console.error("Cannot turn while animating.");
-            return;
-        }
         // console.log(axis);
         dir *= side;
         // for (let i = 0; i < this.cubies.length; i++) {
@@ -264,6 +254,16 @@ class RCube {
     turnZ(dir, side, animate=true, onFinish=()=>{}) { this.turn(AXIS_ENUM.Z, dir, side, animate, onFinish); }
 
     move(moveEnum, animate=true, onFinish=()=>{}) {
+        let cubiesAnimating = false;
+        this.cubies.forEach(qb => {
+            if (qb.animating){
+                cubiesAnimating = true;
+            }
+        });
+        if (cubiesAnimating) {
+            console.error("Cannot turn while animating.");
+            return;
+        }
         this.matrix.move(moveEnum);
         switch (moveEnum){
             case CUBE_MOVES.U: cube.turnY(1, 1, animate, onFinish); break;
