@@ -215,14 +215,7 @@ class RCube {
     }
 
     turn(axis, dir, side, animate=true, onFinish=()=>{}) {
-        // console.log(axis);
         dir *= side;
-        // for (let i = 0; i < this.cubies.length; i++) {
-        //     const qb = this.cubies[i];
-        //     if (qb[axis]() === side) {
-        //         qb[`rot${axis.toUpperCase()}`](dir, animate);
-        //     }
-        // }
 
         let cubiesEffected = [];
         let centerCubie;
@@ -291,7 +284,6 @@ class RCube {
             i++;
             if (i < sequence.length) { 
                 this.move(sequence[i], animate, response); 
-                // console.log(i);
             } else {
                 this.matrix.UpdateElement();
             }
@@ -358,8 +350,6 @@ function createGreekMultTable(tableString, dims) {
             multiplier = tableString[j * dims];
             multiplicand = tableString[i];
             product = tableString[i + (j * dims)];
-            // console.log(`${j} * ${j*dims} = ${i + (j*dims)}`);
-            // console.log(`${multiplier} * ${multiplicand} = ${product}`);
             table[`${multiplier},${multiplicand}`] = product;
         }
     }
@@ -509,9 +499,7 @@ class RCube3x3Matrix {
                 }
             }
             const newRot = MULT_TABLE_GREEK[`${currentRot},${rot}`];
-            const newPosKey = MULT_TABLE_POS_GREEK[`${rot},${currentPosKey}`];  // TODO: Implement the position and rotation lookup
-            // console.log(`${rot},${currentPosKey}`, newPosKey);
-            // console.log(`${currentRot} * ${rot} = ${newRot}`);
+            const newPosKey = MULT_TABLE_POS_GREEK[`${rot},${currentPosKey}`];
             this.rows[i][0] = newPosKey;
             this.rows[i][1] = newRot;
         }
