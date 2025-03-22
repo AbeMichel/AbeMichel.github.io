@@ -248,6 +248,12 @@ class RAM {
             // Frame # | Page # | ProcessID
             this.frames[i] = [i, -1, -1];
         }
+
+        this.k = 0.6;  // Used in calculating CPU Utilization
+        this.totalTicks = 0;
+        this.total_frames_occupied_while_simulating = 0;
+        this.cpuUtilTotal = 0;
+        this.cpuUtils = [];
     }
 
     LoadProcess(process) {
@@ -300,6 +306,22 @@ class RAM {
         return [occupiedFrameCount, occupiedFrameCount * this.frameSize];
     }
 
+    Tick() {
+        this.totalTicks++;
+        this.total_frames_occupied_while_simulating += this.numFrames - this.GetFreeFrameCount();
+        this.cpuUtils.push(this.GetCPUUtilization());
+    }
+
+    GetEMAT() {
+        if (this.totalTicks === 0) return 0;
+        return this.total_frames_occupied_while_simulating / this.totalTicks;  // I'm unsure about this
+    }
+
+    GetCPUUtilization() {
+        const numProgramsInMemory = this.GetLoadedProcessIDs().length;
+        return 1 - (this.k ** numProgramsInMemory);
+    }
+
     Print() {
         // <div id="frames">
         const framesEl = document.getElementById("frames");
@@ -307,6 +329,14 @@ class RAM {
         //     <div>
         const infoEl = document.createElement("div");
         framesEl.appendChild(infoEl);
+        //         <div >EMAT:</div>
+        const ematEl = document.createElement("div");
+        infoEl.appendChild(ematEl);
+        ematEl.innerText = `EMAT (Avg Frames Used Per Cycle): ${this.GetEMAT().toFixed(3)}`
+        //         <div">Cache Utilization:</div>
+        const cacheEl = document.createElement("div");
+        infoEl.appendChild(cacheEl);
+        cacheEl.innerText = `Cache Utilization (AVG): ${(this.cpuUtils.length > 0 ? this.cpuUtils.reduceRight((acc, cur) => acc + cur, 0) / this.cpuUtils.length : 0).toFixed(3)}`
         //         <div id="frames-ratio">Frame/Page Size:</div>
         const frameSizeEl = document.createElement("div");
         frameSizeEl.id = "frames-size";
@@ -434,6 +464,8 @@ class OS {
             this.ram.LoadProcess(p);
         });
         
+        this.ram.Tick();
+
         this.Print();
     }
 
@@ -607,4 +639,46 @@ function pauseSim() {
         clearInterval(intervalID);
         intervalID = null;
     }
+}
+
+
+function ShowPlot() {
+    if (!os || !os.ram) return;
+
+    pauseSim();
+
+    const cpuUtil = os.ram.cpuUtils;
+    const x = cpuUtil;
+
+    const y = new Array(cpuUtil.length);
+    for (let i = 0; i < cpuUtil.length; i++) {
+        y[i] = i;
+    }
+    
+    const chartPopup = document.getElementById("popup-chart");
+    chartPopup.style.display = "block";
+    document.getElementById("popupOverlay").style.display = "block";
+
+    new Chart("myChart", {
+        type: "line",
+        data: {
+            labels: y,
+            datasets: [{
+            backgroundColor:"rgba(0,0,255,1.0)",
+            borderColor: "rgba(0,0,255,0.1)",
+            data: x
+            }]
+        },
+        options:{
+            title: {
+                display: true,
+                text: "CPU Utilization"
+            }
+        }
+    });
+}
+
+function ClosePlot() {
+    document.getElementById("popup-chart").style.display = "none";
+    document.getElementById("popupOverlay").style.display = "none";
 }

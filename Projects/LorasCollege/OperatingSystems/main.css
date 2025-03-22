@@ -253,3 +253,6 @@ td {
     opacity: 1;
 }
 
+#popup-chart {
+    width: 600px;
+}

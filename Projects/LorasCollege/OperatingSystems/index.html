@@ -30,6 +30,8 @@
                 <button onclick="openSetupPopup()">Setup Memory</button>
                 <button onclick="openProcessPopup()">Create Process Request</button>
                 <button onclick="toggleAllFrames()">Toggle Showing Full RAM</button>
+                <div style="width: 30px;"></div>
+                <button onclick="ShowPlot()">Show CPU Utilization Plot</button>
             </div>
             <div id="state">
                 <p>Cycle: </p>
@@ -100,7 +102,12 @@
             <button onclick="submitSetup()">Submit</button>
             <button onclick="closeSetup()">Cancel</button>
         </div>
+        <div class="popup" id="popup-chart">
+            <canvas id="myChart" style="width:100%;max-width:700px"></canvas>
+            <button onclick="ClosePlot()">Close</button>
+        </div>
 
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
         <script src="main.js"></script>
     </body>
 </html>
