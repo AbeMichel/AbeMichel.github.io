@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>WrestlingBingo</title>
+    <base href="../../">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 10px;
+            margin: 0;
+        }
+        #bingo-card {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px;
+            width: 100%;
+            max-width: 100vw;
+            margin: 0 auto;
+        }
+        .cell {
+            padding: 15px 5px;
+            border: 1px solid #000;
+            text-align: center;
+            background-color: #f9f9f9;
+            cursor: pointer;
+            user-select: none;
+            font-size: 3.5vw;
+            box-sizing: border-box;
+        }
+        .cell.selected {
+            background-color: #4CAF50;
+            color: white;
+        }
+        h1 {
+            text-align: center;
+            font-size: 6vw;
+        }
+        @media (min-width: 600px) {
+            .cell {
+                font-size: 16px;
+            }
+            h1 {
+                font-size: 32px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <section id="project-header">
+            <div>
+                <h1>Wrestling Bingo</h1>
+            </div>
+        </section>
+        <section id="content">
+            <br/>
+            <div></div>
+            <div id="bingo-card"></div>
+        </section>
+    </main>
+
+    <script>
+        const phrases = [
+            "Sweep Single",
+            "Sweep Single (Right side)",
+            "Sweep Single (Left side)",
+            "High crotch",
+            "High crotch (Right side)",
+            "High crotch (Left side)",
+            "Double Leg",
+            "Single Leg",
+            "Feet to back",
+            "Inside trip",
+            "Arm spin",
+            "Fireman's",
+            "Dresser Dump",
+            "Duck under",
+            "Score from crackdown",
+            "Score w/ funk roll",
+            "Sprawl go behind",
+            "Score w/ reshot",
+            "Opp. touches wall",
+            "Double unders",
+            "Arm drag",
+            "Arm drag (Right side)",
+            "Arm drag (Left side)",
+            "Single leg finish on feet",
+            "Score from underhook",
+            "Score from underhook (Right hand)",
+            "Score from underhook (Left hand)",
+            "Score from FHL",
+            "Score from russian tie",
+            "Score from double unders",
+            "Score from space",
+            "Score after fake",
+            "Score from tie",
+            "Ankle pick",
+            "Ankle pick (Right side)",
+            "Ankle pick (Left side)",
+            "Knee pick",
+            "Knee pick (Right side)",
+            "Knee pick (Left side)",
+            "Low single",
+            "Low single (Right side)",
+            "Low single (Left side)",
+            "Gater roll",
+            "Score when opp. has FHL",
+            "Defend a shot",
+            "Defend a shot with a granby",
+            "Score on edge of mat",
+            "10 takedowns in a row",
+            "5 takedowns in a row",
+            "3 takedowns in a row",
+            "Cradle",
+            "Olympic",
+            "Olympic (Righty)",
+            "Olympic (Lefty)",
+            "Sprawl"
+        ];
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function generateBingoCard() {
+            const cardContainer = document.getElementById("bingo-card");
+            cardContainer.innerHTML = "";
+            const shuffled = shuffle([...phrases]);
+
+            for (let i = 0; i < 25; i++) {
+                const cell = document.createElement("div");
+                cell.className = "cell";
+                if (i === 12) {
+                    cell.textContent = "FREE";
+                    cell.classList.add("selected");
+                } else {
+                    cell.textContent = shuffled.pop();
+                }
+                cell.addEventListener("click", () => {
+                    cell.classList.toggle("selected");
+                });
+                cardContainer.appendChild(cell);
+            }
+        }
+
+        generateBingoCard();
+    </script>
+</body>
+</html>
