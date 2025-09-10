@@ -1,0 +1,56 @@
+/* --- Style 1: The Classic Blockquote --- */
+/* A subtle, indented style perfect for standard quotations. */
+.quote {
+  margin: 1.5rem 0;
+  padding: 1rem 1.5rem;
+  
+  /* A decorative left border using your primary color */
+  border-left: 4px solid var(--primary-color);
+  
+  background-color: rgba(0, 0, 0, 0.03); /* A very faint background */
+  border-radius: 4px;
+  
+  /* Use your body font but italicized */
+  font-style: italic;
+  font-size: 1.1rem;
+}
+
+/* --- Style 2: The Large Pull Quote --- */
+/* A dramatic, centered style designed to be a major visual element. */
+.quote-large {
+  position: relative; /* Needed for the decorative quotation mark */
+  text-align: center;
+  margin: 4rem auto; /* More vertical spacing */
+  padding: 2rem;
+  max-width: 70%;
+  
+  font-size: 2.5rem;
+  line-height: 1.4;
+}
+
+/* This creates the giant quotation mark in the background */
+.quote-large::before {
+  content: '“'; /* The opening quote character */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%); /* Perfectly centers the quote mark */
+  font-size: 12rem; /* Make it huge */
+  opacity: .1; /* Make it very faint so text is readable */
+  /* z-index: -1; Place it behind the text */
+}
+
+/* --- Optional: Styling the Author/Source --- */
+/* This styles the <cite> tag inside either quote type. */
+.quote cite, .quote-large cite {
+  display: block;
+  margin-top: 1rem;
+  text-align: right;
+  font-style: normal; /* Contrast with the italic quote */
+  font-size: 1rem;
+  color: #666;
+}
+
+.quote cite::before, .quote-large cite::before {
+  content: '— '; /* Adds the em dash before the author's name */
+}

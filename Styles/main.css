@@ -1,0 +1,421 @@
+/*
+    Olive: #9bab6a
+    Cool Gray: #999daa
+    Uranian Blue: #a7d3f8
+    Light Cyan: #d6f7fe
+    White: #fbffff
+*/
+
+:root
+{
+    --primary-color: #9BAB6A;
+    --primary-color-dark: #8c9b60;
+    --primary-color-darker: #7c8954;
+    --background-color: #FBFFFF;
+    --background-image: linear-gradient(
+        to bottom right,
+        #fbffff,
+        #fbffff,
+        #d6f7fe,
+        #d6f7fe,
+        #a7d3f8
+    );
+
+    --text-color: #fbffff;
+    --font-stack-headings: 'Playfair Display', serif;
+    --font-stack-body: 'Lato', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+    --banner-font-size: 4.5rem;
+    --body-font-size: 1rem;
+    --nav-font-size: 2.5rem;
+
+    font-size: 18px;
+
+    /* Firefox scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary-color-darker) var(--primary-color);
+}
+
+/* --- WebKit (Chrome, Safari, Edge) Scrollbar Styling --- */
+:root::-webkit-scrollbar { width: 12px; }
+:root::-webkit-scrollbar-track { 
+    background: var(--primary-color-dark);
+    border-radius: 10px;
+}
+:root::-webkit-scrollbar-thumb {
+    background: var(--primary-color-dark);
+    border-radius: 10px;
+    border: 3px solid var(--primary-color-darker);
+}
+:root::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-color);
+}
+
+body,html 
+{
+    min-width: 100%;
+    max-width: 100%;
+    
+    margin: 0;
+    padding: 0;
+
+    color: var(--text-color);
+    font-family: var(--font-stack-body);
+    line-height: 1.6;
+    font-size: var(--body-font-size);
+}
+
+h1, h2, h3
+{
+    font-family: var(--font-stack-headings);
+}
+
+
+.banner
+{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding-left: 50px;
+    padding-right: 50px;
+    position: absolute;
+    gap: 1vw;
+    top: 6vh;
+    left: 0;
+    min-width: 40vw;
+    max-width: 100%;
+    height: 25vh;
+    background-color: var(--primary-color);
+    z-index: 10;
+    font-size: var(--banner-font-size);
+}
+
+.banner img 
+{
+    height: 130%;
+    width: auto;
+    flex-shrink: 0;
+}
+
+.banner .hidden-logo
+{
+    justify-self: center;
+}
+
+.hidden-logo 
+{
+    position: relative;
+    display: grid;
+    flex-grow: 1;
+    grid-template-columns: 1;
+    place-items: center;
+    place-content: center;
+    height: 100%;
+    cursor: pointer;
+}
+
+.hidden-logo .text, .hidden-logo .logo
+{
+    justify-self: center;
+    grid-column-start: 1;
+    grid-row-start: 1;
+    transition: transform 0.4s ease-in-out, opacity 0.4s ease-in-out;
+}
+
+.hidden-logo .logo
+{
+    height: 12.5vh;
+    width: auto;
+    transform: scale(0);
+    opacity: 0;
+    animation: bounce 3s ease-in-out infinite;
+}
+
+.banner.show-icon .hidden-logo .text
+{
+    transform: scale(0);
+    opacity: 0;
+}
+.banner.show-icon .hidden-logo .logo
+{
+    transform: scale(1);
+    opacity: 1;
+}
+
+.shadow
+{
+    box-shadow: 5px 5px 4px -2px var(--primary-color-darker);
+}
+
+.text-shadow
+{
+    text-shadow: 2px 2px var(--primary-color-dark);
+}
+
+.btn
+{
+    background-color: var(--primary-color);
+    transition: background-color .1s ease-in-out;
+
+}
+
+.btn:hover
+{
+    background-color: var(--primary-color-dark);
+}
+
+.main-menu-nav-btns
+{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: absolute;
+    left: 10vw;
+    top: 35vh;
+    width: 30vw;
+    min-height: 30vh;
+    gap: 20px;
+}
+
+.nav-btn
+{
+    font-size: var(--nav-font-size);
+    background-color: var(--primary-color);
+    width: 10vw;
+    text-align: center;
+    cursor: pointer;
+}
+
+.nav-btn span
+{
+    transition: margin-left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.4);
+    pointer-events: none;
+}
+
+.nav-btn:hover span
+{
+    margin-left: 10px;
+}
+
+.nav-btn:hover span.text-shadow
+{
+    text-shadow: 2px 2px var(--primary-color-darker);
+}
+
+.main-content
+{
+    position: absolute;
+    width: 45vw;
+    min-height: 88vh;
+    max-height: 88vh;
+    background-color: var(--primary-color);
+    right: 5vw;
+    top: 6vh;
+}
+
+.main-content .content
+{
+    max-height: 80.8vh;
+    min-height: 80.8vh;
+    margin: 6.5vh 1vw 1vh 1vw;
+    overflow-y: auto;
+}
+
+.content-header
+{
+    position:absolute;
+    display: flex;
+    flex-direction: row;
+    top: 0;
+    margin: 0;
+    width: 100%;
+    height: 6vh;
+    font-size: 2rem;
+    background-color: var(--primary-color-dark);
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 2px 4px var(--primary-color-darker);
+    transition: height 1s ease-in-out, color 1s ease-in-out;
+    z-index: 10;
+}
+
+.content-header.cover
+{
+    height: 100%;
+    color: var(--primary-color-dark);
+}
+
+.cta-links
+{
+    position: absolute;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    left: 15vw;
+    bottom: 15vh;
+    gap: 20px;
+    width: 20vw;
+    padding: 30px;
+    background-color:var(--primary-color);
+}
+/* 
+.cta-links .cta-btn:nth-child(1) .cta-icon { animation-delay: 0; }
+.cta-links .cta-btn:nth-child(2) .cta-icon { animation-delay: 0.2; }
+.cta-links .cta-btn:nth-child(3) .cta-icon { animation-delay: 2; }
+.cta-links .cta-btn:nth-child(4) .cta-icon { animation-delay: 0.6; } */
+
+.cta-btn
+{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    width: 8vh;
+    height: 8vh;
+    font-size: 3rem;
+    cursor: pointer;
+}
+
+
+.cta-btn img {
+    height: 75%;
+}
+
+a {
+    text-decoration: none;
+}
+
+.cta-btn .cta-icon {
+    transform: scale(1);
+    transition: transform 0.3s ease-in-out;
+    pointer-events: none;
+    color: var(--text-color);
+    animation: bounce 3s ease-in-out infinite;
+}
+
+.cta-btn:hover .cta-icon{
+    transform: scale(1.1);
+}
+
+
+/* Fancy tag effects */
+.bouncy-text span {
+    position: relative;
+    display: inline-block;
+    animation: bounce 3s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes bounce 
+{
+    0%,100% {transform: translateY(0);}
+    25% {transform: translateY(-2px);}
+    75% {transform: translateY(2px);}
+}
+
+/* Button effects */
+.btn-flip {
+    opacity: 1;
+    outline: 0;
+    color: #fff;
+    line-height: 40px;
+    position: relative;
+    text-align: center;
+    letter-spacing: 1px;
+    display: inline-block;
+    text-decoration: none;
+    font-family: "Open Sans";
+    text-transform: uppercase;
+}
+.btn-flip:hover:after {
+    opacity: 1;
+    transform: translateY(0) rotateX(0);
+}
+.btn-flip:hover:before {
+    opacity: 0;
+    transform: translateY(50%) rotateX(90deg);
+}
+.btn-flip:after {
+    top: 0;
+    left: 0;
+    opacity: 0;
+    width: 100%;
+    color: #323237;
+    display: block;
+    transition: 0.5s;
+    position: absolute;
+    background: #adadaf;
+    content: attr(data-back);
+    transform: translateY(-50%) rotateX(90deg);
+}
+.btn-flip:before {
+    top: 0;
+    left: 0;
+    opacity: 1;
+    color: #adadaf;
+    display: block;
+    padding: 0 30px;
+    line-height: 40px;
+    transition: 0.5s;
+    position: relative;
+    background: #323237;
+    content: attr(data-front);
+    transform: translateY(0) rotateX(0);
+}
+
+/* ===== BEGIN ===== */
+/* Required for particles.js */
+#particles-js canvas
+{
+    display: block;
+    background-image: var(--background-image);
+    /* background-color: var(--background-color); */
+    -webkit-transform: scale(1);
+    -ms-transform: scale(1);
+    transform: scale(1);
+    opacity: 1;
+    -webkit-transition: opacity .8s ease, -webkit-transform 1.4s ease;
+    transition: opacity .8s ease, transform 1.4s ease;
+}
+#particles-js 
+{
+    max-width: 100%;
+    max-height: 100%;
+    position: fixed;
+    z-index: -10;
+}
+canvas
+{
+    display:block;
+    position: fixed;
+    z-index: -1;
+}
+/* ====== END ====== */
+
+@media (min-width: 0px) and (max-width:1449px) {
+    :root
+    {
+        --banner-font-size: 2rem;
+        --body-font-size: 1rem;
+        --nav-font-size: 1.5rem;
+    }
+}
+
+@media (min-width: 1450px) and (max-width:1689px) {
+    :root
+    {
+        --banner-font-size: 2rem;
+        --body-font-size: 1rem;
+        --nav-font-size: 1.5rem;
+    }
+}
+
+@media (min-width: 1690px) and (max-width:2200px) {
+    :root
+    {
+        --banner-font-size: 3rem;
+        --nav-font-size: 2rem;
+    }
+}

@@ -1,77 +1,78 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Home - Abraham Michel</title>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <link rel="icon" href="Assets/PhotosOfAbe/Selfie.jpg">
-    <link rel="stylesheet" href="StyleSheets/main.css"> 
-    <link rel="stylesheet" href="StyleSheets/home.css"> 
-    <link rel="stylesheet" href="StyleSheets/navbar.css"> 
-</head>
-<body>
-    <nav class="navbar">
-        <div id="nav-container">
-            <div id="extra-nav-btns">
-                <a href="index.html" id="home-btn"><img src="Assets/MyLogo.png" alt=""/></a>
-                <button id="nav-menu-btn">&#9776;</button>
-            </div>
-            <div id="nav-links">
-                <ul>
-                    <li><a href="experience.html">Work</a></li>
-                    <li><a href="projects.html">Projects</a></li>
-                    <li><a href="aboutme.html">About Me</a></li>
-                    <li><a href="Downloadables/Abraham_Michel_CV.pdf" target="_blank">CV</a></li>
-                    <li id="icons">
-                        <a href="https://www.linkedin.com/in/abrahammichel" target="_blank" rel="noopener noreferrer"><img src="Assets/LinkedInLogo.png"/></a>
-                        <a href="https://github.com/AbeMichel" target="_blank" rel="noopener noreferrer"><img src="Assets/GitHubLogo.png"/></a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-    
-    <a href="mailto:abemicheljob@gmail.com" id="email-btn">✉️</a>
-    
-    <!-- Main Content -->
+        <title>Abraham Michel</title>
+        <link rel="icon" type="image/x-icon" href="/Assets/MyLogo.png">
 
-    
-    <main>
-        <!-- <div id="virtual-museum-link">Click</div> -->
-        <section>
-            <div id="main-intro">
-                <img id="intro-img" src="Assets/PhotosOfAbe/Selfie.jpg"/>
-                <div id="intro-content">
-                    <img id="intro-text"src="Assets/Home/Animation.gif" alt="Writing Effect" />
-                    <a id="about-object" class="page-card" href="aboutme.html">
-                        <p>About Me</p>
-                    </a>
-                    <a id="project-object" class="page-card" href="projects.html">
-                        <p>Projects</p>
-                    </a>
-                    <a id="work-object" class="page-card" href="experience.html">
-                        <p>Work Experience</p>
-                    </a>
+        <!-- Font Imports -->
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+
+        <!-- Styles -->
+        <link rel="stylesheet" href="Styles/main.css"> 
+        <link rel="stylesheet" href="Styles/content.css"> 
+    </head>
+    <body>
+        <div id="particles-js"></div>
+        <!-- CONTENT -->
+        <div id="wrapper">
+            <div class="banner shadow">
+                <img src="Assets/MeteoraPic.jpg" alt="Picture of me">
+                <div class="hidden-logo btn-sounds" onclick="coverAndChange('Content/home.html', 'Abraham Michel')">
+                    <h1 class="text bouncy-text text-shadow">Welcome!</h1>
+                    <img class="logo" src="Assets/MyLogo.png" alt="My Logo">
                 </div>
             </div>
-        </section>
-    </main>
-    <!-------------->
-    
-    <!-- Scripts -->
-    <script src="Scripts/navbarMenuToggle.js"></script>
-    <!-- <script>
-        var museum_button = document.querySelector("#virtual-museum-link");
-        if (museum_button){
-            document.addEventListener('DOMContentLoaded', () => {
-                museum_button.onclick = () => {
-                    window.location.href = "./InteractivePortfolio/index.html"
-                };
-            });
-        }
-    </script> -->
-    <!-------------->
-</body>
+            <div class="main-menu-nav-btns">
+                <div class="btn nav-btn split-text btn-sounds shadow text-shadow" onclick="coverAndChange('Content/about.html', 'About'); updateBanner('Home', true)">About</div>
+                <div class="btn nav-btn split-text btn-sounds shadow text-shadow" onclick="coverAndChange('Content/work.html', 'Work'); updateBanner('Home', true)">Work</div>
+                <div class="btn nav-btn split-text btn-sounds shadow text-shadow" onclick="coverAndChange('Content/awards.html', 'Awards'); updateBanner('Home', true)">Awards</div>
+                <div class="btn nav-btn split-text btn-sounds shadow text-shadow" onclick="coverAndChange('Content/projects.html', 'Projects'); updateBanner('Home', true)">Projects</div>
+            </div>
+            <div class="cta-links shadow">
+                <!-- Mail -->
+                <a class="btn cta-btn btn-sounds" href="mailto:abemicheljob@gmail.com">
+                    <img src="Assets/mail.svg" class="cta-icon"></a> 
+                <!-- GitHub  -->
+                <a class="btn cta-btn btn-sounds" href="https://github.com/AbeMichel" target="_blank" rel="noopener noreferrer">
+                    <img src="Assets/GitHubLogo.png" class="cta-icon"></a> 
+                <!-- LinkedIn -->
+                <a class="btn cta-btn btn-sounds" href="https://www.linkedin.com/in/abrahammichel" target="_blank" rel="noopener noreferrer">
+                    <img src="Assets/LinkedInLogo.png" class="cta-icon"></a> 
+                <!-- CV -->
+                <a class="btn cta-btn btn-sounds" href="Assets/Downloadables/Abraham_Michel_CV.pdf" target="_blank">
+                    <div class="cta-icon text-shadow">
+                        CV</div></a>
+            </div>
+            <div class="main-content shadow">
+                <h2 id="content-header" class="content-header bouncy-text text-shadow cover">Abraham Michel</h2>
+                <div id="content-target" class="content">
+                    Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.
+                    
+                    Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.
+                    
+                    Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.
+                    
+                    Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.
+                    
+                    Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.
+                </div>
+            </div>
+        </div>
+        <!-- AUDIO -->
+        <audio id="hover-sound" src="Assets/swipe.wav" preload="auto"></audio>
+        <audio id="click-sound" src="Assets/click.wav" preload="auto"></audio>
+        
+        <!-- SCRIPTS -->
+        <script src="./Scripts/textEffects.js"></script>
+        <script src="./Scripts/buttonSounds.js"></script>
+
+        <script src="./Packages/particles.js/particles.js"></script>
+        <script src="./Packages/particles.js/app.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    </body>
 </html>
