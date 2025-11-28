@@ -1,0 +1,157 @@
+/* Loras College Colors: Purple (#4B2E83) and Gold (#F2A900) */
+/* NC State Colors: Red (#CC0000) and White */
+
+:root {
+    --loras-purple: #5a3d99;  /* Slightly lighter for better visibility */
+    --loras-gold: #d4a444;    /* Muted gold to fit your palette */
+    --ncsu-red: #c93030;      /* Softer red to match your aesthetic */
+    --ncsu-gray: #7a7a7a;     /* Gray accent instead of harsh white */
+}
+
+.education-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    padding: 20px 0;
+}
+
+.education-item {
+    padding: 20px;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    border-left: 5px solid var(--primary-color-darker);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+/* NC State styling (PhD - current) */
+.education-item.ncsu {
+    border-left-color: var(--ncsu-red);
+    background: linear-gradient(
+        to right,
+        rgba(201, 48, 48, 0.15),
+        rgba(255, 255, 255, 0.05)
+    );
+}
+
+.education-item.ncsu::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 60px;
+    height: 100%;
+    background: linear-gradient(
+        to left,
+        rgba(201, 48, 48, 0.2),
+        transparent
+    );
+    pointer-events: none;
+}
+
+.education-item.ncsu .education-status.current {
+    background-color: var(--ncsu-red);
+    color: var(--text-color);
+}
+
+/* Loras College styling (Undergrad - completed) */
+.education-item.loras {
+    border-left-color: var(--loras-purple);
+    background: linear-gradient(
+        to right,
+        rgba(90, 61, 153, 0.12),
+        transparent
+    );
+}
+
+.education-item.loras::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 60px;
+    height: 100%;
+    background: linear-gradient(
+        to left,
+        rgba(212, 164, 68, 0.15),
+        transparent
+    );
+    pointer-events: none;
+}
+
+.education-item.loras .education-status.completed {
+    background-color: var(--loras-purple);
+    color: var(--text-color);
+}
+
+.education-item.loras .education-institution {
+    color: var(--loras-gold);
+}
+
+.education-item.ncsu .education-institution {
+    color: var(--ncsu-red);
+    font-weight: 600;
+}
+
+.education-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+    gap: 20px;
+}
+
+.education-degree h3 {
+    margin: 0 0 5px 0;
+    color: var(--text-color);
+    font-size: 1.3rem;
+}
+
+.education-status {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 5px;
+}
+
+.education-year {
+    font-size: 1rem;
+    color: var(--text-color);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.education-institution {
+    font-size: 1.1rem;
+    margin: 5px 0;
+    font-weight: 600;
+}
+
+.education-details {
+    color: var(--text-color);
+    margin: 10px 0 0 0;
+    line-height: 1.6;
+}
+
+/* Mobile responsive */
+@media screen and (max-width: 600px) {
+    .education-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .education-year {
+        font-size: 0.9rem;
+    }
+    
+    .education-item {
+        padding: 15px;
+    }
+    
+    .education-item::before {
+        width: 40px;
+    }
+}
