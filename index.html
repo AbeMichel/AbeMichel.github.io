@@ -25,20 +25,19 @@
     </head>
     <body>
         <!-- <div id="particles-js"></div> -->
-        <div class="background"></div>
+        <div class="background day"></div>
+        <div class="background night"></div>
         <div class="background-overlay"></div>
         
         <div class="centered-container">
             <nav class="menu-container">
                 <button data-section="about">About</button>
                 <div class="sep"></div>
-                <button data-section="education">Education</button>
-                <div class="sep"></div>
                 <button data-section="research">Research</button>
                 <div class="sep"></div>
                 <button data-section="teaching">Teaching</button>
                 <div class="sep"></div>
-                <button data-section="cv">CV</button>
+                <button data-section="cv">CV</button>                
             </nav>
             <div class="logo-container">
                 <img src="./Assets/Icons/MyLogo.png" class="logo" alt="Abraham Michel Logo">
@@ -48,10 +47,26 @@
             <div class="content"></div>
             <div class="content-overlay"></div>
         </div>
+        <div class="vcenter-container">
+            <div class="sidebar">
+                <div class="day-time-mode-switcher icon">
+                    <div class="day-mode-icon sun" alt="Sun icon representing day mode theme."></div>
+                    <div class="day-mode-icon moon" alt="Moon icon representing night mode theme."></div>
+                </div>
+
+                <a class="associated-link-icon icon github" href="https://github.com/AbeMichel" aria-label="Github Profile"></a>
+                
+                <a class="associated-link-icon icon linkedin" href="https://www.linkedin.com/in/abrahammichel/" aria-label="LinkedIn Profile"></a>
+                
+                <a class="associated-link-icon icon mail" href="mailto:abemicheljob@gmail.com?subject=Let's%20Connect!" aria-label="Email me"></a> <!-- TODO: Make better subject? -->
+
+            </div>
+        </div>
 
         <script src="./Packages/particles.js/particles.js"></script>
         <script src="./Packages/particles.js/app.js"></script>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
         <script src="Scripts/showContent.js"></script>
+        <script src="Scripts/dayNightSwitcher.js"></script>
     </body>
 </html>

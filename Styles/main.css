@@ -3,15 +3,6 @@
     --primary-color: #9BAB6A;
     --primary-color-dark: #8c9b60;
     --primary-color-darker: #7c8954;
-    --background-color: #FBFFFF;
-    --background-image: linear-gradient(
-        to bottom right,
-        #fbffff,
-        #fbffff,
-        #d6f7fe,
-        #d6f7fe,
-        #a7d3f8
-    );
 
     --text-color: #fbffff;
     --selected-text-color: #c6c7c7;
@@ -28,6 +19,13 @@
     /* Firefox scrollbar styling */
     scrollbar-width: thin;
     scrollbar-color: var(--primary-color-darker) var(--primary-color);
+}
+
+body.night-mode {
+    --primary-color: #272c49;
+    --primary-color-dark: #8b4252;
+    --primary-color-darker: #56334B;
+    --selected-text-color: #e26858;
 }
 
 /* --- WebKit (Chrome, Safari, Edge) Scrollbar Styling --- */
@@ -65,17 +63,141 @@ h1, h2, h3
     font-family: var(--font-stack-headings);
 }
 
+.vcenter-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 60px;
+    height: 100vh;
+    pointer-events: none;
+}
+
+.sidebar {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: auto;
+    width: 100%;
+    gap: 15px;
+    margin-right: 10px;
+    border-radius: 4px;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.sidebar .icon {
+    width: 40px;
+    height: 40px;
+    pointer-events: auto;
+}
+
+.associated-link-icon {
+    display: inline-block;
+    background-color: var(--text-color);
+    transition: background-color 0.2s ease;
+
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+}
+
+.associated-link-icon:hover {
+    background-color: var(--selected-text-color);
+    cursor: pointer;
+}
+
+.github {
+    -webkit-mask-image: url("../Assets/Icons/GitHubLogo.png");
+    mask-image: url("../Assets/Icons/GitHubLogo.png");
+}
+
+.linkedin {
+    -webkit-mask-image: url("../Assets/Icons/LinkedInLogo.png");
+    mask-image: url("../Assets/Icons/LinkedInLogo.png");
+}
+
+.mail {
+    -webkit-mask-image: url("../Assets/Icons/mail.svg");
+    mask-image: url("../Assets/Icons/mail.svg");
+}
+
+.day-time-mode-switcher {
+    position: relative;
+    z-index: 9999;
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 0.3s ease;
+    transform: rotate(0deg);
+}
+body.night-mode .day-time-mode-switcher { transform: rotate(-360deg); }
+
+.day-mode-icon {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-color: var(--text-color);
+    transition: opacity 0.001s linear;
+
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    transition: background-color 0.2s ease;
+}
+
+.day-mode-icon:hover {
+    background-color: var(--selected-text-color);
+}
+
+.sun {
+    -webkit-mask-image: url("../Assets/Icons/sun-warm-icon.svg");
+    mask-image: url("../Assets/Icons/sun-warm-icon.svg");
+    opacity: 1; 
+    pointer-events: auto;
+}
+.moon {
+    -webkit-mask-image: url("../Assets/Icons/moon-icon.svg");
+    mask-image: url("../Assets/Icons/moon-icon.svg");
+    opacity: 0; 
+    pointer-events: none;
+}
+
+body.night-mode .sun { opacity: 0; pointer-events: none; }
+body.night-mode .moon { opacity: 1; pointer-events: auto; }
+
+
 .background {
     position: fixed;
     top: 0;
     left: 0;
     width: 110vw;
     height: 110vh;
-    background-image: url("../Assets/scenic_background.jpg");
     background-size: cover;
     background-position: center;
     z-index: -1;
+    transition: opacity 0.3s ease-in-out;
 }
+
+.background.day {
+    background-image: url("../Assets/Backgrounds/scenic_background.jpg");
+    opacity: 1;
+}
+.background.night {
+    background-image: url("../Assets/Backgrounds/scenic_background_combined.png");
+    opacity: 0;
+}
+
+body.night-mode .background.day { opacity: 0; }
+body.night-mode .background.night { opacity: 1; }
+
 
 .background-overlay {
     position: fixed;
@@ -185,11 +307,15 @@ h1, h2, h3
     width: 0;
     height: 3px;
     background-color: var(--text-color);
-    transition: width 0.3s ease-in-out;
+    transition: width 0.3s ease-in-out, background-color 0.3s ease-in-out;
 }
 
 .menu-container button.selected::after {
     width: 80%;
+}
+
+.menu-container button.selected:hover::after {
+    background-color: var(--selected-text-color);
 }
 
 .menu-container button:hover {
