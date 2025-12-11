@@ -7,7 +7,7 @@ const buttons = document.querySelectorAll('.menu-container button');
 let lastButton = null;
 let isContentOpen = false;
 let isTransitioning = false;
-const contentPath = '../Content/';
+const contentPath = 'Content/';
 
 // Detect if user is on mobile
 const isMobile = window.matchMedia("(max-width: 768px)").matches;
@@ -30,13 +30,8 @@ function blurFadeTransition(button) {
 async function loadContent(section) {
     content.scrollTop = 0;
     
-    const filePath = contentPath + section + '.html';
-    
-    if (!filePath) {
-        content.innerHTML = '<p>Content not found.</p>';
-        return;
-    }
-    
+    const filePath = `${contentPath}${section}.html?cacheBust=${Date.now()}`;  // TODO: Remove this for production
+    // const filePath = `${contentPath}${section}.html`;
     try {
         // Show loading state
         content.innerHTML = '<p>Loading...</p>';

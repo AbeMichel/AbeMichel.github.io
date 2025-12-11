@@ -1,0 +1,61 @@
+.education-entry {
+    margin-bottom: 1rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid var(--selected-text-color);
+}
+
+.edu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.edu-header h3 {
+    margin: 0;
+    font-weight: 700;
+}
+
+.edu-header .location {
+    font-style: italic;
+}
+
+.edu-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.minors {
+    line-height: 1.4;
+}
+
+.minors .label {
+    letter-spacing: 0.5px;
+    margin-right: 5px;
+}
+
+.award-entry {
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--selected-text-color);
+}
+
+.award-entry:last-child {
+    margin-bottom: 0;
+}
+
+.award-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    margin: 0;
+}
+
+.award-header .title {
+    font-style: italic;
+    margin: 0;
+}
+
+.award-header .year {
+    white-space: nowrap;
+}

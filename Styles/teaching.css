@@ -1,0 +1,44 @@
+.experience-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.experience-entry {
+    margin-bottom: 1rem;
+}
+
+.entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.25rem;
+}
+
+.course-info {
+    font-weight: 600;
+}
+
+.institution {
+    text-align: right;
+    white-space: nowrap;
+    opacity: 0.8;
+}
+
+.entry-meta {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    opacity: 0.7;
+}
+
+.separator {
+    opacity: 0.5;
+}
+
+.description {
+    margin-top: 0;
+    line-height: 1.5;
+    opacity: 0.9;
+}

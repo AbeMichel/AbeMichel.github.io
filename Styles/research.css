@@ -1,0 +1,22 @@
+.conference-entry {
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--selected-text-color);
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+}
+
+.conference-name {
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.conference-year {
+    white-space: nowrap;
+}
+
+.conference-location {
+    font-style: italic;
+    margin-left: auto;
+}
