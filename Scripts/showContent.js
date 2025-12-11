@@ -30,8 +30,8 @@ function blurFadeTransition(button) {
 async function loadContent(section) {
     content.scrollTop = 0;
     
-    const filePath = `${contentPath}${section}.html?cacheBust=${Date.now()}`;  // TODO: Remove this for production
-    // const filePath = `${contentPath}${section}.html`;
+    // const filePath = `${contentPath}${section}.html?cacheBust=${Date.now()}`;  // TODO: Remove this for production
+    const filePath = `${contentPath}${section}.html`;
     try {
         // Show loading state
         content.innerHTML = '<p>Loading...</p>';
