@@ -176,11 +176,11 @@ body.night-mode .moon { opacity: 1; pointer-events: auto; }
 }
 
 .background.day {
-    background-image: url("../Assets/Backgrounds/scenic_background_day_small.webp");
+    background-image: url("../Assets/Backgrounds/scenic_background_day_mid.webp");
     opacity: 1;
 }
 .background.night {
-    background-image: url("../Assets/Backgrounds/scenic_background_night_small.webp");
+    background-image: url("../Assets/Backgrounds/scenic_background_night_mid.webp");
     opacity: 0;
 }
 
