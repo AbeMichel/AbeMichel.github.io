@@ -5,7 +5,7 @@
     --primary-color-darker: #758151;
     --content-background-color: #7c8954;
     --text-color: #fbffff;
-    --selected-text-color: #c6c7c7;
+    --faded-text-color: #c6c7c7;
     --font-stack-headings: "Lora", Georgia, "Times New Roman", serif;
     --font-stack-body: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-stack-nav: "Averia Libre", system-ui;
@@ -26,7 +26,7 @@ body.night-mode {
     --content-background-color: #272c49;
     --primary-color-dark: #8b4252;
     --primary-color-darker: #56334B;
-    --selected-text-color: #e26858;
+    --faded-text-color: #e26858;
 }
 
 
@@ -97,7 +97,7 @@ h1, h2, h3
 }
 
 .associated-link-icon:hover {
-    background-color: var(--selected-text-color);
+    background-color: var(--faded-text-color);
     cursor: pointer;
 }
 
@@ -143,7 +143,7 @@ body.night-mode .day-time-mode-switcher { transform: rotate(-360deg); }
 }
 
 .day-mode-icon:hover {
-    background-color: var(--selected-text-color);
+    background-color: var(--faded-text-color);
 }
 
 .sun {
@@ -305,11 +305,7 @@ body.night-mode .background.night { opacity: 1; }
 }
 
 .menu-container button.selected:hover::after {
-    background-color: var(--selected-text-color);
-}
-
-.menu-container button:hover {
-    color: var(--selected-text-color);
+    background-color: var(--text-color);
 }
 
 .sep {
@@ -318,6 +314,14 @@ body.night-mode .background.night { opacity: 1; }
     width: 2px;
     border: 0 solid transparent;
     border-radius: 4px;
+}
+
+.nav-btn.highlighted {
+    color: var(--text-color);
+}
+
+.nav-btn.not-highlighted {
+    color: var(--faded-text-color);
 }
 
 .content-container {
@@ -403,7 +407,7 @@ a {
 }
 
 a:hover {
-    color: var(--selected-text-color);
+    color: var(--faded-text-color);
 }
 
 .download-btn {

@@ -1,7 +1,7 @@
 .conference-entry {
     margin-bottom: 1rem;
     padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--selected-text-color);
+    border-bottom: 1px solid var(--faded-text-color);
     display: flex;
     align-items: baseline;
     gap: 1rem;
