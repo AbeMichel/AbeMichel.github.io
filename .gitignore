@@ -1,2 +1,3 @@
 *.docx
 *.doc
+!**/Abraham_Michel_CV*.docx
