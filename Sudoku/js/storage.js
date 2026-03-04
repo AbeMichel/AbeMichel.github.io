@@ -13,6 +13,7 @@ const TODAY = new Date().toISOString().slice(0, 10);
 export function storageKey(meta) {
     if (meta.type === "daily")     return `sudoku:daily:${TODAY}:${meta.key}`;
     if (meta.type === "challenge") return `sudoku:challenge:${meta.key}`;
+    if (meta.type === "random")    return `sudoku:random:${meta.difficulty}:${meta.seed}`;
     return null;
 }
 
@@ -127,6 +128,12 @@ export function loadState(meta) {
     } catch { return null; }
 }
 
+export function clearState(meta) {
+    const key = storageKey(meta);
+    if (!key) return;
+    localStorage.removeItem(key);
+}
+
 export function pruneStaleDaily() {
     try {
         const toRemove = [];
@@ -136,5 +143,19 @@ export function pruneStaleDaily() {
                 toRemove.push(k);
         }
         toRemove.forEach(k => localStorage.removeItem(k));
+    } catch { /* ignore */ }
+}
+// ── Random puzzle seed persistence ────────────────────────────────────────────
+export function getPersistedRandomSeed(difficultyKey) {
+    try {
+        const raw = localStorage.getItem(`sudoku:random-seed:${difficultyKey}`);
+        if (raw) return parseInt(raw, 10);
+    } catch { /* ignore */ }
+    return null;
+}
+
+export function setPersistedRandomSeed(difficultyKey, seed) {
+    try {
+        localStorage.setItem(`sudoku:random-seed:${difficultyKey}`, String(seed));
     } catch { /* ignore */ }
 }

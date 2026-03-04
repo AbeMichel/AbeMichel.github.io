@@ -33,7 +33,8 @@ body {
     display: grid;
     grid-template-columns: 2fr 1fr;
     flex: 1;
-    /* min-height: 100vh; */
+    min-height: calc(100vh - 3.5rem); /* subtract header height */
+    align-items: start;
 }
 
 .board-area {
@@ -47,6 +48,10 @@ body {
     padding: 2rem;
     background: white;
     border-left: 1px solid #ddd;
+    position: sticky;
+    top: 0;
+    max-height: 100vh;
+    overflow-y: auto;
 }
 
 .board {
@@ -240,7 +245,7 @@ body {
 /* ── Sidebar panels ────────────────────────────────────────────────────────── */
 .sidebar {
     position: relative;
-    overflow: hidden;
+    overflow-y: auto;
 }
 
 .sidebar-panel {
@@ -334,6 +339,12 @@ body {
     font-weight: 500;
     color: #374151;
     transition: background 0.1s, border-color 0.1s;
+    min-height: 4rem;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-sizing: border-box;
 }
 .puzzle-btn:hover {
     background: #eff6ff;
@@ -341,11 +352,58 @@ body {
     color: #1e3a8a;
 }
 
+.cyclic-selector-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.cyclic-nav-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 0.5rem;
+    position: relative; /* For absolute positioning of labels */
+}
+
+.nav-arrow {
+    background: none;
+    border: none;
+    font-size: 1.8rem;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 0 0.5rem;
+    transition: color 0.15s;
+}
+.nav-arrow:hover {
+    color: #1e3a8a;
+}
+
+.nav-label {
+    position: absolute;
+    font-size: 0.75rem;
+    color: #9ca3af;
+    white-space: nowrap;
+    pointer-events: none; /* Allow clicks to pass through to arrows */
+}
+
+.nav-label--prev {
+    left: 45px; /* Adjust based on arrow size */
+}
+
+.nav-label--next {
+    right: 45px; /* Adjust based on arrow size */
+}
+
 .puzzle-btn--challenge {
     display: flex;
     flex-direction: column;
     gap: 0.15rem;
     padding: 0.5rem 0.75rem;
+    min-height: 5.5rem;
 }
 .pb-label {
     font-weight: 600;
@@ -391,6 +449,77 @@ body {
     gap: 1rem;
     text-align: center;
 }
+
+.action-overlay-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    max-width: 400px;
+    width: 90%;
+}
+
+.overlay-title {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #111827;
+    line-height: 1.2;
+    margin-bottom: 0.5rem;
+}
+
+.overlay-text {
+    font-size: 0.95rem;
+    color: #4b5563;
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+}
+
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.action-btn {
+    width: 100%;
+    padding: 0.8rem 1.5rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid #d1d5db;
+    background: white;
+    color: #374151;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.action-btn:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+}
+.action-btn:active { transform: scale(0.98); }
+
+.action-btn--primary {
+    background: #1e3a8a;
+    color: white;
+    border-color: #1e3a8a;
+}
+.action-btn--primary:hover {
+    background: #1e40af;
+    border-color: #1e40af;
+}
+
+.dismiss-btn {
+    background: none;
+    border: none;
+    padding: 1rem 0.5rem 0;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: #6b7280;
+    text-decoration: underline;
+    transition: color 0.15s;
+}
+.dismiss-btn:hover { color: #1e3a8a; }
 
 .overlay-select-icon {
     font-size: 2.5rem;
@@ -629,3 +758,87 @@ body {
     border-color: #bfdbfe;
 }
 .win-btn--secondary:hover { background: #eff6ff; }
+/* ── Puzzle complete — fade controls ────────────────────────────────────────── */
+.puzzle-complete .board-controls {
+    opacity: 0.2;
+    pointer-events: none;
+    transition: opacity 1.2s ease 0.6s;
+}
+.puzzle-complete .utility-bar .utility-actions {
+    opacity: 0.2;
+    pointer-events: none;
+    transition: opacity 1.2s ease 0.6s;
+}
+
+/* ── Techniques dropdown ─────────────────────────────────────────────────────── */
+.techniques-wrapper {
+    margin-top: 1.25rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.techniques-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0.85rem;
+    background: #f9fafb;
+    border: none;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #374151;
+    text-align: left;
+    transition: background 0.1s;
+}
+.techniques-toggle:hover { background: #eff6ff; color: #1e3a8a; }
+
+.techniques-toggle-label { flex: 1; }
+
+.techniques-chevron {
+    font-size: 1rem;
+    color: #9ca3af;
+    transition: transform 0.2s ease;
+    display: inline-block;
+}
+.techniques-open .techniques-chevron {
+    transform: rotate(90deg);
+}
+
+.techniques-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    background: white;
+}
+.techniques-open .techniques-body {
+    max-height: 600px;
+}
+
+.techniques-list {
+    list-style: none;
+    margin: 0;
+    padding: 0.4rem 0;
+}
+
+.technique-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.5rem 0.85rem;
+    border-bottom: 1px solid #f3f4f6;
+}
+.technique-item:last-child { border-bottom: none; }
+
+.technique-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #1e3a8a;
+}
+.technique-desc {
+    font-size: 0.72rem;
+    color: #6b7280;
+    line-height: 1.4;
+}

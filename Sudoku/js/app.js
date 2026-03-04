@@ -5,7 +5,8 @@ import { generate } from "./generator.js";
 import { showPuzzleSelect, showPuzzleInfo, showWinPanel } from "./sidebar.js";
 import {
     saveState, loadState, markCompleted, isCompleted,
-    getCompletionTime, pruneStaleDaily, pruneStaleCompletions
+    getCompletionTime, pruneStaleDaily, pruneStaleCompletions, clearState,
+    getPersistedRandomSeed, setPersistedRandomSeed
 } from "./storage.js";
 
 // ─── Startup cleanup ──────────────────────────────────────────────────────────
@@ -29,12 +30,17 @@ function setState(newState) {
     if (activeMeta && state?.startTime) {
         saveState(activeMeta, state);
         if (isSolved(state) && !isCompleted(activeMeta)) {
-            const elapsedMs = Date.now() - state.startTime + (state.elapsed ?? 0);
-            // elapsed in state tracks prior sessions; startTime tracks current session
-            const totalMs = Date.now() - state.startTime;
-            markCompleted(activeMeta, totalMs + (state._priorElapsed ?? 0));
+            const totalMs = Date.now() - state.startTime + (state._priorElapsed ?? 0);
+            markCompleted(activeMeta, totalMs);
+            clearState(activeMeta);
+            // For random puzzles, immediately roll a new seed so next visit shows a fresh puzzle
+            if (activeMeta.type === "random") {
+                const nextSeed = Math.floor(Math.random() * 1000000);
+                setPersistedRandomSeed(activeMeta.key, nextSeed);
+            }
             stopTimer();
-            handleWin(activeMeta, totalMs + (state._priorElapsed ?? 0));
+            boardArea.classList.add("puzzle-complete");
+            handleWin(activeMeta, totalMs);
         }
     }
 }
@@ -75,13 +81,50 @@ function getTodaysSeed(difficultyKey) {
 }
 
 // ─── Puzzle loading ───────────────────────────────────────────────────────────
-export function loadPuzzle(meta) {
+export function loadPuzzle(meta, options = {}) {
     stopTimer();
+    boardArea.classList.remove("puzzle-complete");
+
+    // Resolve the canonical seed for random puzzles so storage keys are stable
+    if (meta.type === "random") {
+        if (options.forceNew) {
+            const newSeed = Math.floor(Math.random() * 1000000);
+            setPersistedRandomSeed(meta.key, newSeed);
+            meta = { ...meta, seed: newSeed };
+        } else {
+            const persisted = getPersistedRandomSeed(meta.key);
+            if (persisted != null) {
+                meta = { ...meta, seed: persisted };
+            } else {
+                const newSeed = Math.floor(Math.random() * 1000000);
+                setPersistedRandomSeed(meta.key, newSeed);
+                meta = { ...meta, seed: newSeed };
+            }
+        }
+    }
+
     activeMeta = meta;
 
-    const saved = loadState(meta);
+    if (options.forceRestart) {
+        clearState(meta);
+    }
 
-    if (saved) {
+    const saved = options.forceNew ? null : loadState(meta);
+
+    if (options.viewCompleted) {
+        // Regenerate the solved board for viewing — no countdown, no timer
+        showBoardOverlay("loading");
+        const completionMs = getCompletionTime(meta) ?? 0;
+        setTimeout(() => {
+            const seed = meta.type === "daily" ? getTodaysSeed(meta.key) : meta.seed;
+            const puzzle = generate(meta.difficulty, seed);
+            state = { ...createInitialState(puzzle), startTime: null, _priorElapsed: 0 };
+            render(state, boardArea);
+            showBoardOverlay("none");
+            boardArea.classList.add("puzzle-complete");
+            showWinPanel(sidebarEl, meta, completionMs, onPuzzleChosen, onPuzzleSelectRequested);
+        }, 400);
+    } else if (saved) {
         state = saved;
         // Render board behind overlay before countdown starts
         render(state, boardArea);
@@ -94,7 +137,16 @@ export function loadPuzzle(meta) {
     } else {
         showBoardOverlay("loading");
         setTimeout(() => {
-            const seed   = meta.type === "daily" ? getTodaysSeed(meta.key) : meta.seed;
+            let seed;
+            if (meta.type === "daily") {
+                seed = getTodaysSeed(meta.key);
+            } else if (meta.type === "random") {
+                // For random, use the seed from meta, or generate a new one if forceNew
+                seed = options.forceNew ? Math.floor(Math.random() * 1000000) : meta.seed;
+            } else { // challenge
+                seed = meta.seed;
+            }
+
             const puzzle = generate(meta.difficulty, seed);
             state = { ...createInitialState(puzzle), startTime: null, _priorElapsed: 0 };
             render(state, boardArea);
@@ -107,7 +159,9 @@ export function loadPuzzle(meta) {
         }, 700);
     }
 
-    showPuzzleInfo(sidebarEl, meta, onPuzzleSelectRequested);
+    if (!options.viewCompleted) {
+        showPuzzleInfo(sidebarEl, meta, onPuzzleSelectRequested);
+    }
 }
 
 // ─── Win handler ──────────────────────────────────────────────────────────────
@@ -245,6 +299,57 @@ function showBoardOverlay(mode, onDone) {
     }
 }
 
+function showPuzzleActionOverlay(meta, completed, onView, onContinue, onNewGame, onRestart, onDismiss) {
+    const overlay = document.createElement("div");
+    overlay.id = "puzzle-action-overlay";
+    overlay.className = "board-overlay visible";
+    overlay.innerHTML = `
+        <div class="overlay-content action-overlay-content">
+            <div class="overlay-title">${completed ? "Puzzle complete!" : "Puzzle in progress"}</div>
+            <div class="overlay-text">
+                ${completed
+                    ? `You've already solved ${meta.type === "daily" ? "Daily " + meta.label : meta.label}. Want to play it again?`
+                    : `You have an ongoing game for ${meta.type === "daily" ? "Daily " + meta.label : meta.label}. What would you like to do?`}
+            </div>
+            <div class="action-buttons">
+                ${completed
+                    ? `<button id="view-game-btn" class="action-btn action-btn--primary">View Solution</button>
+                       <button id="new-game-btn" class="action-btn">Play Again</button>`
+                    : `<button id="continue-game-btn" class="action-btn action-btn--primary">Continue</button>
+                       <button id="new-game-btn" class="action-btn">New Game</button>
+                       <button id="restart-game-btn" class="action-btn">Restart</button>`}
+            </div>
+            <button id="dismiss-action-overlay" class="dismiss-btn">Dismiss</button>
+        </div>
+    `;
+    boardArea.appendChild(overlay);
+
+    if (completed) {
+        document.getElementById("view-game-btn").addEventListener("click", () => {
+            overlay.remove();
+            onView();
+        });
+    } else {
+        document.getElementById("continue-game-btn").addEventListener("click", () => {
+            overlay.remove();
+            onContinue();
+        });
+        document.getElementById("restart-game-btn")?.addEventListener("click", () => {
+            overlay.remove();
+            onRestart();
+        });
+    }
+    document.getElementById("new-game-btn").addEventListener("click", () => {
+        overlay.remove();
+        onNewGame();
+    });
+    document.getElementById("dismiss-action-overlay").addEventListener("click", () => {
+        overlay.remove();
+        onDismiss();
+    });
+}
+
+
 // ─── Sidebar callbacks ────────────────────────────────────────────────────────
 function onPuzzleSelectRequested() {
     stopTimer();
@@ -256,7 +361,43 @@ function onPuzzleSelectRequested() {
 }
 
 function onPuzzleChosen(meta) {
-    loadPuzzle(meta);
+    stopTimer();
+
+    // Resolve stable seed for random puzzles so isCompleted/loadState work correctly
+    if (meta.type === "random") {
+        const persisted = getPersistedRandomSeed(meta.key);
+        if (persisted != null) meta = { ...meta, seed: persisted };
+    }
+
+    const completed = isCompleted(meta);
+    const savedState = !completed ? loadState(meta) : null;
+    const inProgress = !!savedState;
+
+    const playNewGame = (currentMeta) => {
+        const newMeta = { ...currentMeta };
+        if (newMeta.type === "random") {
+            newMeta.seed = Math.floor(Math.random() * 1000000);
+        }
+        loadPuzzle(newMeta, { forceNew: true });
+    };
+
+    const restartGame = (currentMeta) => {
+        loadPuzzle(currentMeta, { forceRestart: true });
+    };
+
+    if (completed || inProgress) {
+        showPuzzleActionOverlay(
+            meta,
+            completed,
+            () => loadPuzzle(meta, { viewCompleted: true }), // View completed
+            () => loadPuzzle(meta),                          // Continue in-progress
+            () => playNewGame(meta),                         // New Game / Play Again
+            () => restartGame(meta),                         // Restart (in-progress only)
+            onPuzzleSelectRequested                          // Dismiss
+        );
+    } else {
+        loadPuzzle(meta);
+    }
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
