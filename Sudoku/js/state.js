@@ -1,12 +1,15 @@
 const SIZE = 9;
 
-export function createInitialState(puzzle = null) {
+export function createInitialState(puzzle = null, startTime = Date.now()) {
     return {
         board: puzzle ? createBoardFromPuzzle(puzzle) : createEmptyBoard(),
         original: puzzle ? puzzle.map(row => [...row]) : null,
         selected: { row: 0, col: 0 },
         mode: "value",
-        autoCandidates: false
+        autoCandidates: false,
+        history: [],
+        future: [],
+        startTime
     };
 }
 
@@ -124,7 +127,9 @@ export function placeNumber(state, number) {
         }
     }
 
-    return { ...state, board: newBoard };
+    // Push current board onto history, clear future
+    const newHistory = [...state.history, state.board];
+    return { ...state, board: newBoard, history: newHistory, future: [] };
 }
 
 export function moveSelection(state, direction) {
@@ -140,6 +145,22 @@ export function moveSelection(state, direction) {
 
 export function clearBoard(state) {
     return createInitialState();
+}
+
+export function undo(state) {
+    if (state.history.length === 0) return state;
+    const prev = state.history[state.history.length - 1];
+    const newHistory = state.history.slice(0, -1);
+    const newFuture = [state.board, ...state.future];
+    return { ...state, board: prev, history: newHistory, future: newFuture };
+}
+
+export function redo(state) {
+    if (state.future.length === 0) return state;
+    const next = state.future[0];
+    const newFuture = state.future.slice(1);
+    const newHistory = [...state.history, state.board];
+    return { ...state, board: next, history: newHistory, future: newFuture };
 }
 
 export function toggleAutoCandidates(state) {
@@ -199,4 +220,12 @@ export function getConflicts(board) {
     }
 
     return conflicts;
+}
+export function isSolved(state) {
+    if (!state?.board) return false;
+    // Every cell must have a non-zero value and no conflicts
+    for (let r = 0; r < 9; r++)
+        for (let c = 0; c < 9; c++)
+            if (state.board[r][c].value === 0) return false;
+    return getConflicts(state.board).size === 0;
 }
