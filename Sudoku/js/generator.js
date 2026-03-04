@@ -875,3 +875,29 @@ export function generate(difficulty, seed) {
 
   return puzzle;
 }
+/**
+ * Solve a puzzle board using backtracking.
+ * Returns a solved 9×9 array, or null if unsolvable.
+ * @param {number[][]} puzzle - 9×9 array where 0 = empty
+ * @returns {number[][]|null}
+ */
+export function solve(puzzle) {
+  const board = puzzle.map(r => r.slice());
+  const empty = [];
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (board[r][c] === 0) empty.push([r, c]);
+
+  function bt(idx) {
+    if (idx === empty.length) return true;
+    const [r, c] = empty[idx];
+    for (let v = 1; v <= 9; v++) {
+      if (!isValid(board, r, c, v)) continue;
+      board[r][c] = v;
+      if (bt(idx + 1)) return true;
+      board[r][c] = 0;
+    }
+    return false;
+  }
+  return bt(0) ? board : null;
+}

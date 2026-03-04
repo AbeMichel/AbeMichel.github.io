@@ -1,12 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // PUZZLE CONFIGURATION
 // ─────────────────────────────────────────────────────────────────────────────
-//
-// DAILY PUZZLES
-//   Each entry maps a difficulty key to a display label.
-//   The puzzle is generated from today's date + difficulty key as the seed,
-//   so it changes every day automatically.
-//
+
 export const DAILY_DIFFICULTIES = [
     { key: "easy",      label: "Easy" },
     { key: "medium",    label: "Medium" },
@@ -17,16 +12,13 @@ export const DAILY_DIFFICULTIES = [
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CHALLENGES
-//   Add a new object to this array to create a challenge puzzle.
 //
-//   Fields:
-//     id          – unique string key (used as the generator seed)
-//     label       – short display name shown in the list
-//     description – one-line description shown under the name
-//     difficulty  – generator difficulty: "easy" | "medium" | "hard" |
-//                   "veryhard" | "extreme"
-//     seed        – any integer; change this to get a different puzzle
-//                   while keeping the same label/description
+//   Optional field:
+//     modifiers – object of modifier overrides applied when this challenge
+//                 loads.  Same shape as the activeMods store, e.g.:
+//                 { "no-candidates": true, "time-out": { value: 120 } }
+//                 When present, the modifier panel shows these as read-only
+//                 labels and the player cannot change them.
 // ─────────────────────────────────────────────────────────────────────────────
 export const CHALLENGES = [
     {
@@ -56,6 +48,7 @@ export const CHALLENGES = [
         description: "Only for the determined. Good luck.",
         difficulty:  "veryhard",
         seed:        4444,
+        modifiers:   { "no-candidates": true },
     },
     {
         id:          "void",
@@ -63,5 +56,6 @@ export const CHALLENGES = [
         description: "Stare long enough and it stares back.",
         difficulty:  "extreme",
         seed:        9999,
+        modifiers:   { "blackout": { value: "box" } },
     },
 ];

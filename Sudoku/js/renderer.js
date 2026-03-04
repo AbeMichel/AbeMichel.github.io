@@ -1,7 +1,8 @@
 import { getConflicts } from "./state.js";
 import { formatElapsed } from "./app.js";
+import { isModifierActive, getModifierValue } from "./modifiers.js";
 
-export function render(state, root) {
+export function render(state, root, mods = {}) {
     // Preserve the overlay if present — don't nuke it with innerHTML=""
     const overlay = document.getElementById("board-overlay");
 
@@ -11,8 +12,8 @@ export function render(state, root) {
     if (overlay) root.appendChild(overlay);
 
     root.appendChild(renderUtilityBar(state));
-    root.appendChild(renderBoard(state));
-    root.appendChild(renderControls(state));
+    root.appendChild(renderBoard(state, mods));
+    root.appendChild(renderControls(state, mods));
 }
 
 function renderUtilityBar(state) {
@@ -23,7 +24,6 @@ function renderUtilityBar(state) {
     timer.className = "timer";
     timer.id = "puzzle-timer";
 
-    // Show current elapsed time correctly
     let displayMs = 0;
     if (state.startTime) {
         displayMs = (Date.now() - state.startTime) + (state._priorElapsed ?? 0);
@@ -64,11 +64,34 @@ function renderUtilityBar(state) {
     return bar;
 }
 
-function renderBoard(state) {
+function renderBoard(state, mods) {
     const conflicts = getConflicts(state.board);
     const board = document.createElement("section");
     board.className = "board";
     board.id = "board";
+
+    const noCandidate   = isModifierActive(mods, "no-candidates");
+    const blackout      = isModifierActive(mods, "blackout");
+    const candidateOnly = isModifierActive(mods, "candidate-only");
+    const blackoutMode  = blackout ? (getModifierValue(mods, "blackout") ?? "cell") : null;
+    const selRow = state.selected.row;
+    const selCol = state.selected.col;
+
+    // Pre-compute which cells are revealed by the blackout mode
+    function isRevealed(row, col) {
+        if (!blackout) return true;
+        switch (blackoutMode) {
+            case "cell": return row === selRow && col === selCol;
+            case "row":  return row === selRow;
+            case "col":  return col === selCol;
+            case "box": {
+                const br = Math.floor(selRow / 3) * 3;
+                const bc = Math.floor(selCol / 3) * 3;
+                return row >= br && row < br + 3 && col >= bc && col < bc + 3;
+            }
+            default: return row === selRow && col === selCol;
+        }
+    }
 
     for (let row = 0; row < 9; row++) {
         for (let col = 0; col < 9; col++) {
@@ -78,29 +101,48 @@ function renderBoard(state) {
             cell.dataset.row = row;
             cell.dataset.col = col;
 
-            if (row === state.selected.row && col === state.selected.col)
-                cell.classList.add("selected");
+            const isSelected = row === state.selected.row && col === state.selected.col;
+            if (isSelected) cell.classList.add("selected");
 
             if (cellData.fixed) {
                 cell.classList.add("fixed");
+                if (blackout && !isRevealed(row, col)) cell.classList.add("blackout-cell");
             } else if (conflicts.has(`${row},${col}`)) {
                 cell.classList.add("conflict");
             }
 
-            const notes = state.autoCandidates ? cellData.autoNotes : cellData.manualNotes;
-
-            if (cellData.value !== 0) {
-                cell.textContent = cellData.value;
-            } else if (notes.size > 0) {
-                const notesGrid = document.createElement("div");
-                notesGrid.className = "notes-grid";
-                for (let i = 1; i <= 9; i++) {
-                    const note = document.createElement("div");
-                    note.className = "note";
-                    if (notes.has(i)) note.textContent = i;
-                    notesGrid.appendChild(note);
+            if (candidateOnly) {
+                // Only show candidates — suppress digit display
+                const notes = cellData.autoNotes.size > 0 ? cellData.autoNotes : cellData.manualNotes;
+                if (notes.size > 0) {
+                    const notesGrid = document.createElement("div");
+                    notesGrid.className = "notes-grid";
+                    for (let i = 1; i <= 9; i++) {
+                        const note = document.createElement("div");
+                        note.className = "note";
+                        if (notes.has(i)) note.textContent = i;
+                        notesGrid.appendChild(note);
+                    }
+                    cell.appendChild(notesGrid);
+                } else if (cellData.value !== 0) {
+                    // Fixed givens get a distinct solid fill; user-entered cells get a lighter fill
+                    cell.classList.add(cellData.fixed ? "candidate-only-fixed" : "candidate-only-filled");
                 }
-                cell.appendChild(notesGrid);
+            } else {
+                const notes = state.autoCandidates ? cellData.autoNotes : cellData.manualNotes;
+                if (cellData.value !== 0) {
+                    cell.textContent = cellData.value;
+                } else if (!noCandidate && notes.size > 0) {
+                    const notesGrid = document.createElement("div");
+                    notesGrid.className = "notes-grid";
+                    for (let i = 1; i <= 9; i++) {
+                        const note = document.createElement("div");
+                        note.className = "note";
+                        if (notes.has(i)) note.textContent = i;
+                        notesGrid.appendChild(note);
+                    }
+                    cell.appendChild(notesGrid);
+                }
             }
 
             board.appendChild(cell);
@@ -110,10 +152,14 @@ function renderBoard(state) {
     return board;
 }
 
-function renderControls(state) {
+function renderControls(state, mods) {
     const container = document.createElement("section");
     container.className = "board-controls";
 
+    const noCandidate   = isModifierActive(mods, "no-candidates");
+    const candidateOnly = isModifierActive(mods, "candidate-only");
+
+    // Mode toggle — always shown, but buttons disabled when a modifier locks the mode
     const toggle = document.createElement("div");
     toggle.className = "mode-toggle";
 
@@ -129,14 +175,32 @@ function renderControls(state) {
         btn.dataset.mode = mode;
         btn.classList.add("mode-btn");
         if (state.mode === mode) btn.classList.add("active");
+
+        // Only disable notes mode under no-candidates
+        if (noCandidate && mode === "notes") {
+            btn.disabled = true;
+            btn.title = "Disabled by No Candidates modifier";
+        }
+
         toggle.appendChild(btn);
     });
 
+    // Auto Candidates — always shown; locked on (and non-interactive) in candidate-only mode
     const autoBtn = document.createElement("button");
     autoBtn.textContent = "Auto Candidates";
     autoBtn.dataset.action = "auto-candidates";
     autoBtn.classList.add("mode-btn");
-    if (state.autoCandidates) autoBtn.classList.add("active");
+    if (state.autoCandidates || candidateOnly) autoBtn.classList.add("active");
+    if (noCandidate) {
+        autoBtn.disabled = true;
+        autoBtn.title = "Disabled by No Candidates modifier";
+    } else if (candidateOnly) {
+        autoBtn.disabled = true;
+        autoBtn.title = "Always on in Candidate Only mode";
+    }
+
+    container.appendChild(toggle);
+    container.appendChild(autoBtn);
 
     const pad = document.createElement("div");
     pad.className = "number-pad";
@@ -157,8 +221,6 @@ function renderControls(state) {
         pad.appendChild(btn);
     }
 
-    container.appendChild(toggle);
-    container.appendChild(autoBtn);
     container.appendChild(pad);
 
     return container;

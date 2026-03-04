@@ -1,13 +1,17 @@
-import { createInitialState, isSolved } from "./state.js";
+import { createInitialState, isSolved, toggleAutoCandidates, resetBoard } from "./state.js";
 import { render } from "./renderer.js";
 import { attachController } from "./controller.js";
-import { generate } from "./generator.js";
+import { generate, solve } from "./generator.js";
 import { showPuzzleSelect, showPuzzleInfo, showWinPanel } from "./sidebar.js";
 import {
     saveState, loadState, markCompleted, isCompleted,
     getCompletionTime, pruneStaleDaily, pruneStaleCompletions, clearState,
     getPersistedRandomSeed, setPersistedRandomSeed
 } from "./storage.js";
+import {
+    loadModifiers, saveModifiers, isModifierActive, getModifierValue,
+    toggleModifier, setModifierValue
+} from "./modifiers.js";
 
 // ─── Startup cleanup ──────────────────────────────────────────────────────────
 pruneStaleDaily();
@@ -20,8 +24,34 @@ const sidebarEl = document.querySelector(".sidebar");
 // ─── Active puzzle meta ───────────────────────────────────────────────────────
 let activeMeta = null;
 
+// ─── Active modifiers ─────────────────────────────────────────────────────────
+let activeMods = loadModifiers();
+
+export function getMods() { return activeMods; }
+
+export function updateMods(newMods) {
+    activeMods = newMods;
+    saveModifiers(newMods);
+    if (state) {
+        let s = state;
+        // No Candidates: force out of notes mode so typing still places values
+        if (isModifierActive(newMods, "no-candidates") && s.mode === "notes") {
+            s = { ...s, mode: "value" };
+        }
+        // Candidate Only: enable auto-candidates so the grid populates, but don't lock mode
+        if (isModifierActive(newMods, "candidate-only") && !s.autoCandidates) {
+            s = toggleAutoCandidates(s);
+        }
+        state = s;
+        rerender();
+    }
+}
+
+export function getModsRef() { return activeMods; }
+
 // ─── Game state ───────────────────────────────────────────────────────────────
 let state = null;
+let _wonThisLoad = false; // prevents double-firing win within a single load
 
 function getState() { return state; }
 
@@ -29,14 +59,17 @@ function setState(newState) {
     state = newState;
     if (activeMeta && state?.startTime) {
         saveState(activeMeta, state);
-        if (isSolved(state) && !isCompleted(activeMeta)) {
+        if (isSolved(state) && !_wonThisLoad) {
+            _wonThisLoad = true;
             const totalMs = Date.now() - state.startTime + (state._priorElapsed ?? 0);
-            markCompleted(activeMeta, totalMs);
-            clearState(activeMeta);
-            // For random puzzles, immediately roll a new seed so next visit shows a fresh puzzle
-            if (activeMeta.type === "random") {
-                const nextSeed = Math.floor(Math.random() * 1000000);
-                setPersistedRandomSeed(activeMeta.key, nextSeed);
+            if (!isCompleted(activeMeta)) {
+                markCompleted(activeMeta, totalMs);
+                clearState(activeMeta);
+                // For random puzzles, immediately roll a new seed so next visit shows a fresh puzzle
+                if (activeMeta.type === "random") {
+                    const nextSeed = Math.floor(Math.random() * 1000000);
+                    setPersistedRandomSeed(activeMeta.key, nextSeed);
+                }
             }
             stopTimer();
             boardArea.classList.add("puzzle-complete");
@@ -45,22 +78,77 @@ function setState(newState) {
     }
 }
 
-function rerender() { if (state) render(state, boardArea); }
+function rerender() { if (state) render(state, boardArea, activeMods); }
 
 // ─── Timer — managed here, not in renderer ────────────────────────────────────
 let _timerInterval = null;
+let _timeoutInterval = null;
 
 export function startTimer(startTime) {
     stopTimer();
     if (!startTime) return;
     _timerInterval = setInterval(() => {
+        // Always compute elapsed from current state to avoid stale-closure drift
+        const s = state;
+        if (!s?.startTime) return;
+        const elapsed = Date.now() - s.startTime + (s._priorElapsed ?? 0);
+
         const el = document.getElementById("puzzle-timer");
-        if (el) el.textContent = formatElapsed(Date.now() - startTime);
-    }, 500); // 500ms for snappier updates
+        if (el) el.textContent = formatElapsed(elapsed);
+
+        // Time Out modifier: reset board when limit is reached
+        if (isModifierActive(activeMods, "time-out")) {
+            const limitSecs = getModifierValue(activeMods, "time-out") ?? 300;
+            if (elapsed / 1000 >= limitSecs) {
+                stopTimer();
+                flashTimeoutOverlay();
+                setTimeout(() => {
+                    if (state) {
+                        state = softResetBoard(state);
+                        rerender();
+                        startTimer(state.startTime);
+                    }
+                }, 1800);
+            }
+        }
+    }, 500);
 }
 
 export function stopTimer() {
     if (_timerInterval) { clearInterval(_timerInterval); _timerInterval = null; }
+}
+
+function flashTimeoutOverlay() {
+    const flash = document.createElement("div");
+    flash.id = "timeout-flash";
+    flash.className = "timeout-flash";
+    boardArea.appendChild(flash);
+    requestAnimationFrame(() => flash.classList.add("timeout-flash--visible"));
+    setTimeout(() => {
+        flash.classList.add("timeout-flash--out");
+        setTimeout(() => flash.remove(), 600);
+    }, 1200);
+}
+
+// Soft reset: clear user values and manual notes but preserve auto-candidates state and clock
+function softResetBoard(s) {
+    const board = s.board.map(row => row.map(cell => {
+        if (cell.fixed) return cell; // leave givens untouched
+        return {
+            ...cell,
+            value: 0,
+            manualNotes: new Set(),
+            manuallyRemoved: new Set(),
+            autoNotes: new Set(),
+        };
+    }));
+    // Fresh attempt: reset clock to 0 so timeout check won't immediately re-trigger
+    let nextState = { ...s, board, history: [], future: [], startTime: Date.now(), _priorElapsed: 0 };
+    if (s.autoCandidates) {
+        nextState = { ...toggleAutoCandidates(nextState), autoCandidates: false };
+        nextState = toggleAutoCandidates(nextState);
+    }
+    return nextState;
 }
 
 export function formatElapsed(ms) {
@@ -84,6 +172,7 @@ function getTodaysSeed(difficultyKey) {
 export function loadPuzzle(meta, options = {}) {
     stopTimer();
     boardArea.classList.remove("puzzle-complete");
+    _wonThisLoad = false;
 
     // Resolve the canonical seed for random puzzles so storage keys are stable
     if (meta.type === "random") {
@@ -105,33 +194,55 @@ export function loadPuzzle(meta, options = {}) {
 
     activeMeta = meta;
 
+    // Apply the right modifiers for each puzzle type:
+    //   challenge/custom with modifiers → locked to those
+    //   random                          → restore user's saved prefs
+    //   everything else                 → no modifiers
+    if ((meta.type === "challenge" || meta.type === "custom") && meta.modifiers) {
+        activeMods = meta.modifiers;
+    } else if (meta.type === "random") {
+        activeMods = loadModifiers();
+    } else {
+        activeMods = {};
+    }
+
     if (options.forceRestart) {
         clearState(meta);
     }
 
     const saved = options.forceNew ? null : loadState(meta);
 
+    // Helper: apply modifier side-effects to a freshly created state
+    const applyModsToState = (s) => {
+        if (isModifierActive(activeMods, "candidate-only") && !s.autoCandidates) {
+            return toggleAutoCandidates(s);
+        }
+        return s;
+    };
+
     if (options.viewCompleted) {
-        // Regenerate the solved board for viewing — no countdown, no timer
         showBoardOverlay("loading");
         const completionMs = getCompletionTime(meta) ?? 0;
         setTimeout(() => {
             const seed = meta.type === "daily" ? getTodaysSeed(meta.key) : meta.seed;
             const puzzle = generate(meta.difficulty, seed);
-            state = { ...createInitialState(puzzle), startTime: null, _priorElapsed: 0 };
-            render(state, boardArea);
+            const solution = solve(puzzle) ?? puzzle;
+            // Build a fully-filled board from the solution so all values are visible
+            const solvedPuzzle = solution.map((row, r) =>
+                row.map((val, c) => (puzzle[r][c] !== 0 ? puzzle[r][c] : val))
+            );
+            state = { ...createInitialState(solvedPuzzle), startTime: null, _priorElapsed: 0 };
+            render(state, boardArea, {}); // no mods — show everything
             showBoardOverlay("none");
             boardArea.classList.add("puzzle-complete");
             showWinPanel(sidebarEl, meta, completionMs, onPuzzleChosen, onPuzzleSelectRequested);
         }, 400);
     } else if (saved) {
-        state = saved;
-        // Render board behind overlay before countdown starts
-        render(state, boardArea);
+        state = applyModsToState(saved);
+        render(state, boardArea, activeMods);
         showBoardOverlay("countdown", () => {
-            // Resume: track prior elapsed separately so we can accumulate correctly
             state = { ...state, startTime: Date.now(), _priorElapsed: saved.elapsed ?? 0 };
-            render(state, boardArea);
+            render(state, boardArea, activeMods);
             startTimer(state.startTime);
         });
     } else {
@@ -141,18 +252,17 @@ export function loadPuzzle(meta, options = {}) {
             if (meta.type === "daily") {
                 seed = getTodaysSeed(meta.key);
             } else if (meta.type === "random") {
-                // For random, use the seed from meta, or generate a new one if forceNew
                 seed = options.forceNew ? Math.floor(Math.random() * 1000000) : meta.seed;
-            } else { // challenge
+            } else {
                 seed = meta.seed;
             }
 
             const puzzle = generate(meta.difficulty, seed);
-            state = { ...createInitialState(puzzle), startTime: null, _priorElapsed: 0 };
-            render(state, boardArea);
+            state = applyModsToState({ ...createInitialState(puzzle), startTime: null, _priorElapsed: 0 });
+            render(state, boardArea, activeMods);
             showBoardOverlay("countdown", () => {
                 state = { ...state, startTime: Date.now() };
-                render(state, boardArea);
+                render(state, boardArea, activeMods);
                 startTimer(state.startTime);
                 saveState(activeMeta, state);
             });
@@ -160,12 +270,15 @@ export function loadPuzzle(meta, options = {}) {
     }
 
     if (!options.viewCompleted) {
-        showPuzzleInfo(sidebarEl, meta, onPuzzleSelectRequested);
+        const modsLocked = (meta.type === "challenge" || meta.type === "custom") && !!meta.modifiers;
+        showPuzzleInfo(sidebarEl, meta, onPuzzleSelectRequested, getMods, updateMods, modsLocked);
     }
 }
 
 // ─── Win handler ──────────────────────────────────────────────────────────────
 function handleWin(meta, totalMs) {
+    // Re-render without active modifiers so the completed board is fully visible
+    if (state) render(state, boardArea, {});
     launchConfetti();
     setTimeout(() => {
         showWinPanel(sidebarEl, meta, totalMs, onPuzzleChosen, onPuzzleSelectRequested);
@@ -403,4 +516,4 @@ function onPuzzleChosen(meta) {
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 showBoardOverlay("select");
 showPuzzleSelect(sidebarEl, onPuzzleChosen);
-attachController(boardArea, getState, setState, rerender);
+attachController(boardArea, getState, setState, rerender, getMods);

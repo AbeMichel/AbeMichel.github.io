@@ -1,6 +1,8 @@
 import { DAILY_DIFFICULTIES, CHALLENGES } from "./puzzles.js";
 import { isCompleted, loadState, getCompletionTime, getPersistedRandomSeed } from "./storage.js";
 import { formatElapsed } from "./app.js";
+import { MODIFIERS, MODIFIER_MAP, isModifierActive, getModifierValue, toggleModifier, setModifierValue } from "./modifiers.js";
+import { encodeCustomGame, decodeCustomGame, validateCode } from "./customgame.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TECHNIQUE DEFINITIONS
@@ -37,11 +39,11 @@ const TECHNIQUES_BY_DIFFICULTY = {
 // ─────────────────────────────────────────────────────────────────────────────
 // PUZZLE INFO PANEL
 // ─────────────────────────────────────────────────────────────────────────────
-export function showPuzzleInfo(sidebar, meta, onSelectRequested) {
-    transitionPanel(sidebar, buildPuzzleInfo(meta, onSelectRequested));
+export function showPuzzleInfo(sidebar, meta, onSelectRequested, getMods, updateMods, modsLocked = false) {
+    transitionPanel(sidebar, buildPuzzleInfo(meta, onSelectRequested, getMods, updateMods, modsLocked));
 }
 
-function buildPuzzleInfo(meta, onSelectRequested) {
+function buildPuzzleInfo(meta, onSelectRequested, getMods, updateMods, modsLocked = false) {
     const el = document.createElement("div");
     el.className = "sidebar-panel";
 
@@ -66,6 +68,13 @@ function buildPuzzleInfo(meta, onSelectRequested) {
     el.appendChild(backBtn);
     el.appendChild(titleBlock);
 
+    // Modifier section — only shown for random (interactive) and challenge/custom with locked modifiers
+    if (meta.type === "random" && getMods && updateMods) {
+        el.appendChild(buildModifiersSection(getMods, updateMods));
+    } else if ((meta.type === "challenge" || meta.type === "custom") && meta.modifiers && Object.keys(meta.modifiers).length > 0) {
+        el.appendChild(buildLockedModifiersSection(meta.modifiers));
+    }
+
     // Techniques dropdown
     const techniques = TECHNIQUES_BY_DIFFICULTY[meta.difficulty] ?? [];
     if (techniques.length > 0) {
@@ -75,6 +84,185 @@ function buildPuzzleInfo(meta, onSelectRequested) {
     return el;
 }
 
+function buildLockedModifiersSection(modifiers) {
+    const section = document.createElement("div");
+    section.className = "modifiers-section";
+
+    const heading = document.createElement("div");
+    heading.className = "modifiers-heading";
+    heading.textContent = "Challenge Modifiers";
+    section.appendChild(heading);
+
+    const activeKeys = Object.keys(modifiers);
+    if (activeKeys.length === 0) return section;
+
+    const pills = document.createElement("div");
+    pills.className = "locked-modifiers-pills";
+
+    for (const key of activeKeys) {
+        const mod = MODIFIER_MAP[key];
+        if (!mod) continue;
+        const pill = document.createElement("div");
+        pill.className = `locked-modifier-pill locked-modifier-pill--${mod.color}`;
+        pill.innerHTML = `<span>${mod.icon}</span><span>${mod.label}</span>`;
+        // Show config value if applicable (e.g. blackout mode, timeout seconds)
+        const val = typeof modifiers[key] === "object" ? modifiers[key].value : null;
+        if (val !== null && mod.selectOptions) {
+            const opt = mod.selectOptions.find(o => o.value === val);
+            if (opt) pill.innerHTML += `<span class="locked-pill-detail">${opt.label}</span>`;
+        } else if (val !== null) {
+            pill.innerHTML += `<span class="locked-pill-detail">${val}s</span>`;
+        }
+        pills.appendChild(pill);
+    }
+
+    section.appendChild(pills);
+    return section;
+}
+
+function buildModifiersSection(getMods, updateMods) {
+    const section = document.createElement("div");
+    section.className = "modifiers-section";
+
+    const heading = document.createElement("div");
+    heading.className = "modifiers-heading";
+    heading.textContent = "Modifiers";
+    section.appendChild(heading);
+
+    const grid = document.createElement("div");
+    grid.className = "modifiers-grid";
+
+    for (const mod of MODIFIERS) {
+        grid.appendChild(buildModifierTile(mod, getMods, updateMods, grid, section));
+    }
+
+    section.appendChild(grid);
+    return section;
+}
+
+function buildModifierTile(mod, getMods, updateMods, grid, section) {
+    const mods = getMods();
+    const active = isModifierActive(mods, mod.key);
+
+    const tile = document.createElement("div");
+    tile.className = `modifier-tile modifier-tile--${mod.color}${active ? " modifier-tile--active" : ""}`;
+    tile.dataset.modKey = mod.key;
+
+    const header = document.createElement("div");
+    header.className = "modifier-tile-header";
+
+    const iconSpan = document.createElement("span");
+    iconSpan.className = "modifier-icon";
+    iconSpan.textContent = mod.icon;
+
+    const labelSpan = document.createElement("span");
+    labelSpan.className = "modifier-label";
+    labelSpan.textContent = mod.label;
+
+    const toggle = document.createElement("button");
+    toggle.className = `modifier-toggle-btn${active ? " modifier-toggle-btn--on" : ""}`;
+    toggle.setAttribute("aria-pressed", active);
+    toggle.textContent = active ? "On" : "Off";
+
+    header.appendChild(iconSpan);
+    header.appendChild(labelSpan);
+    header.appendChild(toggle);
+    tile.appendChild(header);
+
+    const desc = document.createElement("div");
+    desc.className = "modifier-desc";
+    desc.textContent = mod.description;
+    tile.appendChild(desc);
+
+    // Configurable value input (e.g. Time Out seconds)
+    if (mod.configurable && active) {
+        tile.appendChild(buildModifierConfig(mod, getMods, updateMods, grid, section));
+    }
+
+    const doToggle = () => {
+        const next = toggleModifier(getMods(), mod.key);
+        updateMods(next);
+        // Re-render all tiles
+        grid.innerHTML = "";
+        for (const m of MODIFIERS) {
+            grid.appendChild(buildModifierTile(m, getMods, updateMods, grid, section));
+        }
+    };
+
+    toggle.addEventListener("click", (e) => { e.stopPropagation(); doToggle(); });
+    tile.addEventListener("click", doToggle);
+
+    return tile;
+}
+
+function buildModifierConfig(mod, getMods, updateMods, grid, section) {
+    const mods = getMods();
+    const currentVal = getModifierValue(mods, mod.key) ?? mod.defaultValue;
+
+    const row = document.createElement("div");
+    row.className = "modifier-config-row";
+
+    if (mod.selectOptions) {
+        const label = document.createElement("label");
+        label.className = "modifier-config-label";
+        label.textContent = "Reveal";
+
+        const select = document.createElement("select");
+        select.className = "modifier-config-select";
+
+        for (const opt of mod.selectOptions) {
+            const option = document.createElement("option");
+            option.value = opt.value;
+            option.textContent = opt.label;
+            if (opt.value === currentVal) option.selected = true;
+            select.appendChild(option);
+        }
+
+        select.addEventListener("click", e => e.stopPropagation());
+        select.addEventListener("change", (e) => {
+            e.stopPropagation();
+            const next = setModifierValue(getMods(), mod.key, select.value);
+            updateMods(next);
+        });
+
+        row.appendChild(label);
+        row.appendChild(select);
+    } else {
+        const label = document.createElement("label");
+        label.className = "modifier-config-label";
+        label.textContent = "Reset after";
+
+        const input = document.createElement("input");
+        input.type = "number";
+        input.className = "modifier-config-input";
+        input.min = mod.minValue;
+        input.max = mod.maxValue;
+        input.value = currentVal;
+
+        const unit = document.createElement("span");
+        unit.className = "modifier-config-unit";
+        unit.textContent = mod.valueLabel;
+
+        input.addEventListener("click", e => e.stopPropagation());
+        input.addEventListener("change", (e) => {
+            e.stopPropagation();
+            const val = Math.max(mod.minValue, Math.min(mod.maxValue, Number(input.value) || mod.defaultValue));
+            input.value = val;
+            const next = setModifierValue(getMods(), mod.key, val);
+            updateMods(next);
+        });
+
+        row.appendChild(label);
+        row.appendChild(input);
+        row.appendChild(unit);
+    }
+
+    return row;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TECHNIQUES DROPDOWN
+// ─────────────────────────────────────────────────────────────────────────────
 function buildTechniquesDropdown(techniques) {
     const wrapper = document.createElement("div");
     wrapper.className = "techniques-wrapper";
@@ -190,6 +378,7 @@ function getNextPuzzleMeta(currentMeta) {
             difficulty: ch.difficulty,
             difficulty_label: difficultyLabel(ch.difficulty),
             seed: ch.seed,
+            modifiers: ch.modifiers ?? null,
         };
     } else {
         const idx = CHALLENGES.findIndex(c => c.id === currentMeta.key);
@@ -199,6 +388,7 @@ function getNextPuzzleMeta(currentMeta) {
             difficulty: next.difficulty,
             difficulty_label: difficultyLabel(next.difficulty),
             seed: next.seed,
+            modifiers: next.modifiers ?? null,
         };
     }
     return null;
@@ -234,6 +424,7 @@ function buildPuzzleSelect(onChosen) {
         difficulty_label: difficultyLabel(ch.difficulty),
         seed: ch.seed,
         description: ch.description,
+        modifiers: ch.modifiers ?? null,
     }));
     el.appendChild(buildCyclicPuzzleSelector(challengePuzzles, "challenge", onChosen));
 
@@ -241,9 +432,13 @@ function buildPuzzleSelect(onChosen) {
     const randomPuzzles = DAILY_DIFFICULTIES.map(diff => ({
         type: "random", key: diff.key, label: diff.label,
         difficulty: diff.key, difficulty_label: diff.label,
-        seed: 0, // placeholder — real seed resolved from storage at load time
+        seed: 0,
     }));
     el.appendChild(buildCyclicPuzzleSelector(randomPuzzles, "random", onChosen));
+
+    // Custom game sections
+    el.appendChild(buildCustomGameCreator(onChosen));
+    el.appendChild(buildCustomGameInput(onChosen));
 
     return el;
 }
@@ -389,6 +584,317 @@ function buildCyclicPuzzleSelector(puzzles, type, onChosen) {
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// CUSTOM GAME CREATOR
+// ─────────────────────────────────────────────────────────────────────────────
+function buildCustomGameCreator(onChosen) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "custom-game-section";
+
+    const btn = document.createElement("button");
+    btn.className = "custom-game-create-btn";
+    btn.innerHTML = `<span>✦</span> Create Custom Game`;
+    btn.addEventListener("click", () => showCustomGamePopup(onChosen));
+    wrapper.appendChild(btn);
+    return wrapper;
+}
+
+function showCustomGamePopup(onChosen) {
+    // Remove any existing popup
+    document.getElementById("custom-game-popup")?.remove();
+    document.getElementById("custom-game-backdrop")?.remove();
+
+    const DIFFICULTY_KEYS = ["easy", "medium", "hard", "veryhard", "extreme"];
+    const DIFFICULTY_LABELS = { easy: "Easy", medium: "Medium", hard: "Hard", veryhard: "Very Hard", extreme: "Extreme" };
+
+    // State for the popup
+    let popupDifficulty = "medium";
+    let popupSeed = Math.floor(Math.random() * 999999) + 1;
+    let popupMods = {};
+    let generatedCode = null;
+
+    const backdrop = document.createElement("div");
+    backdrop.id = "custom-game-backdrop";
+    backdrop.className = "popup-backdrop";
+
+    const popup = document.createElement("div");
+    popup.id = "custom-game-popup";
+    popup.className = "custom-game-popup";
+
+    const closePopup = () => {
+        popup.remove();
+        backdrop.remove();
+    };
+    backdrop.addEventListener("click", closePopup);
+
+    const renderPopup = () => {
+        popup.innerHTML = "";
+
+        const header = document.createElement("div");
+        header.className = "popup-header";
+        header.innerHTML = `<span class="popup-title">Create Custom Game</span>`;
+        const closeBtn = document.createElement("button");
+        closeBtn.className = "popup-close-btn";
+        closeBtn.textContent = "✕";
+        closeBtn.addEventListener("click", closePopup);
+        header.appendChild(closeBtn);
+        popup.appendChild(header);
+
+        const body = document.createElement("div");
+        body.className = "popup-body";
+
+        // Difficulty picker
+        const diffRow = document.createElement("div");
+        diffRow.className = "popup-field";
+        const diffLabel = document.createElement("div");
+        diffLabel.className = "popup-field-label";
+        diffLabel.textContent = "Difficulty";
+        const diffBtns = document.createElement("div");
+        diffBtns.className = "popup-diff-btns";
+        for (const dk of DIFFICULTY_KEYS) {
+            const b = document.createElement("button");
+            b.className = `popup-diff-btn${popupDifficulty === dk ? " active" : ""}`;
+            b.textContent = DIFFICULTY_LABELS[dk];
+            b.addEventListener("click", () => { popupDifficulty = dk; generatedCode = null; renderPopup(); });
+            diffBtns.appendChild(b);
+        }
+        diffRow.appendChild(diffLabel);
+        diffRow.appendChild(diffBtns);
+        body.appendChild(diffRow);
+
+        // Seed input
+        const seedRow = document.createElement("div");
+        seedRow.className = "popup-field";
+        const seedLabel = document.createElement("div");
+        seedLabel.className = "popup-field-label";
+        seedLabel.innerHTML = `Seed <span class="popup-field-hint">(any number — same seed = same puzzle)</span>`;
+        const seedInputRow = document.createElement("div");
+        seedInputRow.className = "popup-seed-row";
+        const seedInput = document.createElement("input");
+        seedInput.type = "number";
+        seedInput.className = "popup-seed-input";
+        seedInput.value = popupSeed;
+        seedInput.min = 1;
+        seedInput.max = 999999999;
+        seedInput.addEventListener("input", () => { popupSeed = Math.max(1, Number(seedInput.value) || 1); generatedCode = null; });
+        const randBtn = document.createElement("button");
+        randBtn.className = "popup-rand-btn";
+        randBtn.title = "Random seed";
+        randBtn.textContent = "🎲";
+        randBtn.addEventListener("click", () => { popupSeed = Math.floor(Math.random() * 999999) + 1; generatedCode = null; renderPopup(); });
+        seedInputRow.appendChild(seedInput);
+        seedInputRow.appendChild(randBtn);
+        seedRow.appendChild(seedLabel);
+        seedRow.appendChild(seedInputRow);
+        body.appendChild(seedRow);
+
+        // Modifiers
+        const modRow = document.createElement("div");
+        modRow.className = "popup-field";
+        const modLabel = document.createElement("div");
+        modLabel.className = "popup-field-label";
+        modLabel.textContent = "Modifiers";
+        modRow.appendChild(modLabel);
+        for (const mod of MODIFIERS) {
+            const active = !!popupMods[mod.key];
+            const tile = document.createElement("div");
+            tile.className = `popup-mod-tile${active ? " active" : ""}`;
+            const tileHeader = document.createElement("div");
+            tileHeader.className = "popup-mod-tile-header";
+            tileHeader.innerHTML = `<span>${mod.icon} ${mod.label}</span>`;
+            const toggleBtn = document.createElement("button");
+            toggleBtn.className = `modifier-toggle-btn${active ? " modifier-toggle-btn--on" : ""}`;
+            toggleBtn.textContent = active ? "On" : "Off";
+            tileHeader.appendChild(toggleBtn);
+            tile.appendChild(tileHeader);
+
+            // Config (select or number) when active
+            if (active && mod.configurable) {
+                const cfgRow = document.createElement("div");
+                cfgRow.className = "modifier-config-row";
+                const cfgLabel = document.createElement("label");
+                cfgLabel.className = "modifier-config-label";
+                if (mod.selectOptions) {
+                    cfgLabel.textContent = "Reveal";
+                    const sel = document.createElement("select");
+                    sel.className = "modifier-config-select";
+                    const curVal = typeof popupMods[mod.key] === "object" ? popupMods[mod.key].value : mod.defaultValue;
+                    for (const opt of mod.selectOptions) {
+                        const o = document.createElement("option");
+                        o.value = opt.value; o.textContent = opt.label;
+                        if (opt.value === curVal) o.selected = true;
+                        sel.appendChild(o);
+                    }
+                    sel.addEventListener("click", e => e.stopPropagation());
+                    sel.addEventListener("change", e => { e.stopPropagation(); popupMods[mod.key] = { value: sel.value }; generatedCode = null; renderPopup(); });
+                    cfgRow.appendChild(cfgLabel);
+                    cfgRow.appendChild(sel);
+                } else {
+                    cfgLabel.textContent = "Reset after";
+                    const inp = document.createElement("input");
+                    inp.type = "number"; inp.className = "modifier-config-input";
+                    inp.min = mod.minValue; inp.max = mod.maxValue;
+                    const curVal = typeof popupMods[mod.key] === "object" ? popupMods[mod.key].value : mod.defaultValue;
+                    inp.value = curVal;
+                    const unit = document.createElement("span");
+                    unit.className = "modifier-config-unit"; unit.textContent = mod.valueLabel;
+                    inp.addEventListener("click", e => e.stopPropagation());
+                    inp.addEventListener("change", e => { e.stopPropagation(); const v = Math.max(mod.minValue, Math.min(mod.maxValue, Number(inp.value)||mod.defaultValue)); inp.value = v; popupMods[mod.key] = { value: v }; generatedCode = null; });
+                    cfgRow.appendChild(cfgLabel); cfgRow.appendChild(inp); cfgRow.appendChild(unit);
+                }
+                tile.appendChild(cfgRow);
+            }
+
+            const doToggle = () => {
+                if (active) {
+                    delete popupMods[mod.key];
+                } else {
+                    for (const k of (mod.incompatible ?? [])) delete popupMods[k];
+                    popupMods[mod.key] = mod.configurable ? { value: mod.defaultValue } : true;
+                }
+                generatedCode = null;
+                renderPopup();
+            };
+            toggleBtn.addEventListener("click", e => { e.stopPropagation(); doToggle(); });
+            tile.addEventListener("click", doToggle);
+            modRow.appendChild(tile);
+        }
+        body.appendChild(modRow);
+
+        popup.appendChild(body);
+
+        // Footer
+        const footer = document.createElement("div");
+        footer.className = "popup-footer";
+
+        if (!generatedCode) {
+            const genBtn = document.createElement("button");
+            genBtn.className = "popup-generate-btn";
+            genBtn.textContent = "Generate Code";
+            genBtn.addEventListener("click", () => {
+                popupSeed = Math.max(1, Number(seedInput?.value) || popupSeed);
+                generatedCode = encodeCustomGame({ difficulty: popupDifficulty, seed: popupSeed, modifiers: popupMods });
+                renderPopup();
+            });
+            footer.appendChild(genBtn);
+        } else {
+            const codeBlock = document.createElement("div");
+            codeBlock.className = "popup-code-block";
+            const codeEl = document.createElement("span");
+            codeEl.className = "popup-code-text";
+            codeEl.textContent = generatedCode;
+            const copyBtn = document.createElement("button");
+            copyBtn.className = "popup-copy-btn";
+            copyBtn.textContent = "Copy";
+            copyBtn.addEventListener("click", () => {
+                navigator.clipboard.writeText(generatedCode).then(() => {
+                    copyBtn.textContent = "Copied!";
+                    setTimeout(() => { copyBtn.textContent = "Copy"; }, 1500);
+                }).catch(() => {
+                    // Fallback
+                    const ta = document.createElement("textarea");
+                    ta.value = generatedCode;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand("copy");
+                    ta.remove();
+                    copyBtn.textContent = "Copied!";
+                    setTimeout(() => { copyBtn.textContent = "Copy"; }, 1500);
+                });
+            });
+            codeBlock.appendChild(codeEl);
+            codeBlock.appendChild(copyBtn);
+
+            const playBtn = document.createElement("button");
+            playBtn.className = "popup-play-btn";
+            playBtn.textContent = "▶ Play Now";
+            playBtn.addEventListener("click", () => {
+                closePopup();
+                onChosen({
+                    type: "custom",
+                    key: `custom:${generatedCode}`,
+                    label: `Custom · ${DIFFICULTY_LABELS[popupDifficulty]}`,
+                    difficulty: popupDifficulty,
+                    difficulty_label: DIFFICULTY_LABELS[popupDifficulty],
+                    seed: popupSeed,
+                    modifiers: { ...popupMods },
+                    code: generatedCode,
+                });
+            });
+
+            footer.appendChild(codeBlock);
+            footer.appendChild(playBtn);
+        }
+
+        popup.appendChild(footer);
+    };
+
+    renderPopup();
+    document.body.appendChild(backdrop);
+    document.body.appendChild(popup);
+}
+
+function buildCustomGameInput(onChosen) {
+    const DIFFICULTY_LABELS = { easy: "Easy", medium: "Medium", hard: "Hard", veryhard: "Very Hard", extreme: "Extreme" };
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "custom-game-section";
+
+    const label = document.createElement("div");
+    label.className = "custom-game-input-label";
+    label.textContent = "Play Custom Game";
+
+    const row = document.createElement("div");
+    row.className = "custom-game-input-row";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "custom-game-code-input";
+    input.placeholder = "Enter game code…";
+    input.spellcheck = false;
+
+    const errorEl = document.createElement("div");
+    errorEl.className = "custom-game-error";
+    errorEl.hidden = true;
+
+    const playBtn = document.createElement("button");
+    playBtn.className = "custom-game-play-btn";
+    playBtn.textContent = "Play";
+
+    const tryPlay = () => {
+        const code = input.value.trim();
+        if (!code) return;
+        try {
+            const spec = decodeCustomGame(code);
+            errorEl.hidden = true;
+            onChosen({
+                type: "custom",
+                key: `custom:${code}`,
+                label: `Custom · ${DIFFICULTY_LABELS[spec.difficulty]}`,
+                difficulty: spec.difficulty,
+                difficulty_label: DIFFICULTY_LABELS[spec.difficulty],
+                seed: spec.seed,
+                modifiers: spec.modifiers,
+                code,
+            });
+            input.value = "";
+        } catch (e) {
+            errorEl.textContent = "Invalid code — please check and try again.";
+            errorEl.hidden = false;
+        }
+    };
+
+    playBtn.addEventListener("click", tryPlay);
+    input.addEventListener("keydown", e => { if (e.key === "Enter") tryPlay(); });
+
+    row.appendChild(input);
+    row.appendChild(playBtn);
+    wrapper.appendChild(label);
+    wrapper.appendChild(row);
+    wrapper.appendChild(errorEl);
+    return wrapper;
+}
+
 function buildSectionHeading(text) {
     const h = document.createElement("div");
     h.className = "select-section-heading";

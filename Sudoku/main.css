@@ -81,6 +81,9 @@ body {
 
 .cell.selected {
     background: #e6f0ff;
+    outline: 2px solid #3b82f6;
+    outline-offset: -2px;
+    z-index: 1;
 }
 
 .cell[data-col="2"],
@@ -105,6 +108,9 @@ body {
 
 .cell.selected {
     background: #e6f0ff;
+    outline: 2px solid #3b82f6;
+    outline-offset: -2px;
+    z-index: 1;
 }
 
 .cell.conflict.selected {
@@ -810,11 +816,12 @@ body {
 .techniques-body {
     max-height: 0;
     overflow: hidden;
-    transition: max-height 0.3s ease;
+    transition: max-height 0.35s ease;
     background: white;
 }
 .techniques-open .techniques-body {
-    max-height: 600px;
+    /* Large enough for the longest list (extreme = 19 items × ~60px each) */
+    max-height: 1400px;
 }
 
 .techniques-list {
@@ -842,3 +849,534 @@ body {
     color: #6b7280;
     line-height: 1.4;
 }
+
+/* ── Modifier mode lock notice ───────────────────────────────────────────────── */
+.modifier-mode-lock {
+    font-size: 0.78rem;
+    color: #6b7280;
+    padding: 0.4rem 0.6rem;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    text-align: center;
+}
+
+/* ── Blackout cells ───────────────────────────────────────────────────────────── */
+.cell.blackout-cell {
+    color: transparent;
+    background: #1e293b;
+    transition: color 0.12s ease, background 0.12s ease;
+}
+
+/* ── Candidate-only filled cell ───────────────────────────────────────────────── */
+.cell.candidate-only-filled {
+    background: repeating-linear-gradient(
+        45deg,
+        #f3f4f6,
+        #f3f4f6 3px,
+        white 3px,
+        white 8px
+    );
+}
+
+/* ── Modifiers section ────────────────────────────────────────────────────────── */
+.modifiers-section {
+    margin-top: 1.25rem;
+}
+
+.modifiers-heading {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #9ca3af;
+    margin-bottom: 0.6rem;
+}
+
+.modifiers-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* Base tile */
+.modifier-tile {
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 0.55rem 0.75rem;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+    background: white;
+    user-select: none;
+}
+.modifier-tile:hover {
+    background: #f9fafb;
+}
+
+/* Active states per color */
+.modifier-tile--blue.modifier-tile--active   { border-color: #3b82f6; background: #eff6ff; }
+.modifier-tile--violet.modifier-tile--active { border-color: #8b5cf6; background: #f5f3ff; }
+.modifier-tile--red.modifier-tile--active    { border-color: #ef4444; background: #fef2f2; }
+.modifier-tile--amber.modifier-tile--active  { border-color: #f59e0b; background: #fffbeb; }
+.modifier-tile--emerald.modifier-tile--active{ border-color: #10b981; background: #ecfdf5; }
+
+/* Hover on active */
+.modifier-tile--blue.modifier-tile--active:hover    { background: #dbeafe; }
+.modifier-tile--violet.modifier-tile--active:hover  { background: #ede9fe; }
+.modifier-tile--red.modifier-tile--active:hover     { background: #fee2e2; }
+.modifier-tile--amber.modifier-tile--active:hover   { background: #fef3c7; }
+.modifier-tile--emerald.modifier-tile--active:hover { background: #d1fae5; }
+
+.modifier-tile-header {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.modifier-icon {
+    font-size: 0.95rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.modifier-label {
+    flex: 1;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.modifier-toggle-btn {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.18rem 0.55rem;
+    border-radius: 99px;
+    border: 1.5px solid #d1d5db;
+    background: white;
+    color: #9ca3af;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+    flex-shrink: 0;
+}
+.modifier-toggle-btn:hover {
+    border-color: #9ca3af;
+    color: #374151;
+}
+.modifier-toggle-btn--on {
+    background: #1e3a8a;
+    color: white;
+    border-color: #1e3a8a;
+}
+.modifier-toggle-btn--on:hover {
+    background: #1e40af;
+}
+
+.modifier-desc {
+    font-size: 0.72rem;
+    color: #6b7280;
+    line-height: 1.4;
+    margin-top: 0.3rem;
+    padding-left: 1.5rem; /* align under label, past icon */
+}
+
+/* Config row (Time Out seconds input) */
+.modifier-config-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #e5e7eb;
+    padding-left: 1.5rem;
+}
+
+.modifier-config-label {
+    font-size: 0.72rem;
+    color: #6b7280;
+    white-space: nowrap;
+}
+
+.modifier-config-input {
+    width: 5rem;
+    padding: 0.2rem 0.4rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    color: #111827;
+    text-align: right;
+}
+.modifier-config-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px #bfdbfe;
+}
+
+.modifier-config-unit {
+    font-size: 0.72rem;
+    color: #9ca3af;
+}
+
+/* ── Timeout flash overlay ────────────────────────────────────────────────────── */
+.timeout-flash {
+    position: absolute;
+    inset: 0;
+    background: rgba(220, 38, 38, 0);
+    pointer-events: none;
+    z-index: 5;
+    transition: background 0.8s ease;
+    border-radius: 4px;
+}
+.timeout-flash--visible {
+    background: rgba(220, 38, 38, 0.07);
+}
+.timeout-flash--out {
+    background: rgba(220, 38, 38, 0);
+    transition: background 1s ease;
+}
+
+/* ── Candidate-only fixed (given) cell ───────────────────────────────────────── */
+.cell.candidate-only-fixed {
+    background: #dde3f0;
+}
+.cell.candidate-only-fixed.selected {
+    background: #c7d4f0;
+}
+
+/* ── Modifier config select ───────────────────────────────────────────────────── */
+.modifier-config-select {
+    padding: 0.2rem 0.4rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    color: #111827;
+    background: white;
+    cursor: pointer;
+}
+.modifier-config-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px #bfdbfe;
+}
+
+/* ── Locked modifier pills ─────────────────────────────────────────────────────── */
+.locked-modifiers-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.locked-modifier-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 99px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border: 1.5px solid;
+}
+.locked-pill-detail {
+    font-weight: 400;
+    opacity: 0.75;
+}
+.locked-modifier-pill--blue   { background: #eff6ff; border-color: #3b82f6; color: #1e3a8a; }
+.locked-modifier-pill--violet { background: #f5f3ff; border-color: #8b5cf6; color: #5b21b6; }
+.locked-modifier-pill--red    { background: #fef2f2; border-color: #ef4444; color: #991b1b; }
+.locked-modifier-pill--amber  { background: #fffbeb; border-color: #f59e0b; color: #92400e; }
+.locked-modifier-pill--emerald{ background: #ecfdf5; border-color: #10b981; color: #064e3b; }
+
+/* ── Custom game section ───────────────────────────────────────────────────────── */
+.custom-game-section {
+    margin-top: 1.25rem;
+}
+
+.custom-game-create-btn {
+    width: 100%;
+    padding: 0.55rem 0.85rem;
+    background: white;
+    border: 1.5px dashed #d1d5db;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+.custom-game-create-btn:hover {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    color: #1e3a8a;
+}
+
+.custom-game-input-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #9ca3af;
+    margin-bottom: 0.4rem;
+}
+
+.custom-game-input-row {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.custom-game-code-input {
+    flex: 1;
+    padding: 0.4rem 0.6rem;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-family: monospace;
+    color: #111827;
+    transition: border-color 0.15s;
+}
+.custom-game-code-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px #bfdbfe;
+}
+
+.custom-game-play-btn {
+    padding: 0.4rem 0.75rem;
+    background: #1e3a8a;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.custom-game-play-btn:hover { background: #1e40af; }
+
+.custom-game-error {
+    font-size: 0.72rem;
+    color: #dc2626;
+    margin-top: 0.35rem;
+}
+
+/* ── Custom game popup ─────────────────────────────────────────────────────────── */
+.popup-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 200;
+    backdrop-filter: blur(2px);
+}
+
+.custom-game-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 201;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    width: min(480px, 94vw);
+    max-height: 88vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.popup-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem 0.75rem;
+    border-bottom: 1px solid #f3f4f6;
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 1;
+}
+
+.popup-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.popup-close-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    color: #9ca3af;
+    padding: 0.25rem;
+    line-height: 1;
+    border-radius: 4px;
+    transition: color 0.1s, background 0.1s;
+}
+.popup-close-btn:hover { color: #374151; background: #f3f4f6; }
+
+.popup-body {
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+}
+
+.popup-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.popup-field-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #374151;
+}
+.popup-field-hint {
+    font-weight: 400;
+    color: #9ca3af;
+}
+
+.popup-diff-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.popup-diff-btn {
+    padding: 0.3rem 0.65rem;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 6px;
+    background: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+.popup-diff-btn:hover { border-color: #3b82f6; color: #1e3a8a; }
+.popup-diff-btn.active { background: #1e3a8a; border-color: #1e3a8a; color: white; }
+
+.popup-seed-row {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.popup-seed-input {
+    flex: 1;
+    padding: 0.35rem 0.6rem;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    color: #111827;
+}
+.popup-seed-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px #bfdbfe; }
+
+.popup-rand-btn {
+    padding: 0.35rem 0.6rem;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: border-color 0.12s, background 0.12s;
+}
+.popup-rand-btn:hover { border-color: #3b82f6; background: #eff6ff; }
+
+.popup-mod-tile {
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    background: white;
+    user-select: none;
+    margin-bottom: 0.35rem;
+}
+.popup-mod-tile:hover { background: #f9fafb; }
+.popup-mod-tile.active { border-color: #3b82f6; background: #eff6ff; }
+
+.popup-mod-tile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.popup-footer {
+    padding: 0.85rem 1.25rem 1.1rem;
+    border-top: 1px solid #f3f4f6;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    position: sticky;
+    bottom: 0;
+    background: white;
+}
+
+.popup-generate-btn {
+    width: 100%;
+    padding: 0.6rem;
+    background: #1e3a8a;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.popup-generate-btn:hover { background: #1e40af; }
+
+.popup-code-block {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #f8fafc;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+}
+
+.popup-code-text {
+    flex: 1;
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: #1e3a8a;
+    word-break: break-all;
+    font-weight: 600;
+}
+
+.popup-copy-btn {
+    padding: 0.25rem 0.6rem;
+    border: 1.5px solid #d1d5db;
+    border-radius: 5px;
+    background: white;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color 0.12s, background 0.12s;
+    flex-shrink: 0;
+}
+.popup-copy-btn:hover { border-color: #3b82f6; background: #eff6ff; color: #1e3a8a; }
+
+.popup-play-btn {
+    width: 100%;
+    padding: 0.6rem;
+    background: #059669;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.popup-play-btn:hover { background: #047857; }
