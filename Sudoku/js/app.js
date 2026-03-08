@@ -1,10 +1,10 @@
 import {
     createInitialState, isSolved, toggleAutoCandidates, resetBoard, getConflicts,
-    selectCell, placeNumber, REGION_SETS, DEFAULT_REGION_MAP
+    selectCell, placeNumber, REGION_SETS, DEFAULT_REGION_MAP, generateRandomRegionMap
 } from "./state.js";
 import { render } from "./renderer.js";
 import { attachController } from "./controller.js";
-import { generate, solve } from "./generator.js";
+import { generate, solve, PRNG } from "./generator.js";
 import { showPuzzleSelect, showPuzzleInfo, showWinPanel } from "./sidebar.js";
 import {
     startModifierEffects, stopModifierEffects, restartLivingEffect
@@ -296,7 +296,7 @@ function getTodaysSeed(difficultyKey) {
 }
 
 // ─── Puzzle loading ───────────────────────────────────────────────────────────
-export function loadPuzzle(meta, options = {}) {
+export async function loadPuzzle(meta, options = {}) {
     stopTimer();
     boardArea.classList.remove("puzzle-complete");
     _wonThisLoad = false;
@@ -325,6 +325,21 @@ export function loadPuzzle(meta, options = {}) {
         regionType: meta.regionType || "classic",
         regionMap:  meta.regionMap  || (meta.regionType ? REGION_SETS[meta.regionType] : DEFAULT_REGION_MAP)
     };
+
+    // ── Dynamic Region Generation (V2) ──────────────────────────────────────
+    if (activeMeta.regionType === "chaos" && (!activeMeta.regionMap || activeMeta.regionMap === DEFAULT_REGION_MAP)) {
+        // Resolve canonical seed for generation
+        let seed = activeMeta.seed;
+        if (activeMeta.type === "daily") {
+            const d = new Date();
+            const dateStr = [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-");
+            const str = dateStr + activeMeta.key;
+            let hash = 0;
+            for (const char of str) hash = (Math.imul(31, hash) + char.charCodeAt(0)) | 0;
+            seed = hash;
+        }
+        activeMeta.regionMap = generateRandomRegionMap(new PRNG(seed));
+    }
 
     // Apply the right modifiers for each puzzle type:
     //   challenge/custom/daily-challenge with modifiers → locked to those
@@ -357,23 +372,39 @@ export function loadPuzzle(meta, options = {}) {
         return s;
     };
 
+    const onGenerateProgress = (p) => {
+        const labelEl = document.getElementById("overlay-label");
+        const barEl   = document.getElementById("overlay-progress-bar");
+        if (!labelEl || !barEl) return;
+
+        if (p.phase === "grid") {
+            labelEl.textContent = `Generating grid (attempt ${p.attempts}/100)…`;
+            barEl.style.width = `${(p.attempts / p.maxAttempts) * 30}%`;
+        } else {
+            labelEl.textContent = `Carving clues (attempt ${p.attempts})…`;
+            const base = (p.attempts / p.maxAttempts) * 30;
+            const extra = (p.clueIndex / p.totalClues) * 70;
+            barEl.style.width = `${base + extra}%`;
+        }
+    };
+
     if (options.viewCompleted) {
         showBoardOverlay("loading");
         const completionMs = getCompletionTime(meta) ?? 0;
-        setTimeout(() => {
-            const seed = meta.type === "daily" ? getTodaysSeed(meta.key) : meta.seed;
-            const puzzle = generate({ difficulty: meta.difficulty, seed, regionMap: activeMeta.regionMap });
-            const solution = solve(puzzle.map(row => [...row]), activeMeta.regionMap) ?? puzzle;
-            // Build a fully-filled board from the solution so all values are visible
-            const solvedPuzzle = solution.map((row, r) =>
-                row.map((val, c) => (puzzle[r][c] !== 0 ? puzzle[r][c] : val))
-            );
-            state = { ...createInitialState(solvedPuzzle, solution, null, activeMeta.regionMap, activeMeta.regionType), startTime: null, _priorElapsed: 0 };
-            render(state, boardArea, {}, getSettings(), null); // no mods — show everything
-            showBoardOverlay("none");
-            boardArea.classList.add("puzzle-complete");
-            showWinPanel(sidebarEl, meta, completionMs, onPuzzleChosen, onPuzzleSelectRequested);
-        }, 400);
+        
+        const seed = meta.type === "daily" ? getTodaysSeed(meta.key) : meta.seed;
+        const puzzle = await generate({ difficulty: meta.difficulty, seed, regionMap: activeMeta.regionMap, onProgress: onGenerateProgress });
+        const solution = solve(puzzle.map(row => [...row]), activeMeta.regionMap) ?? puzzle;
+        // Build a fully-filled board from the solution so all values are visible
+        const solvedPuzzle = solution.map((row, r) =>
+            row.map((val, c) => (puzzle[r][c] !== 0 ? puzzle[r][c] : val))
+        );
+        state = { ...createInitialState(solvedPuzzle, solution, null, activeMeta.regionMap, activeMeta.regionType), startTime: null, _priorElapsed: 0 };
+        render(state, boardArea, {}, getSettings(), null); // no mods — show everything
+        showBoardOverlay("none");
+        boardArea.classList.add("puzzle-complete");
+        showWinPanel(sidebarEl, meta, completionMs, onPuzzleChosen, onPuzzleSelectRequested);
+        
     } else if (saved) {
         state = applyModsToState({ 
             ...saved, 
@@ -388,28 +419,26 @@ export function loadPuzzle(meta, options = {}) {
         });
     } else {
         showBoardOverlay("loading");
-        setTimeout(() => {
-            let seed;
-            if (meta.type === "daily") {
-                seed = getTodaysSeed(meta.key);
-            } else if (meta.type === "random") {
-                seed = options.forceNew ? Math.floor(Math.random() * 1000000) : meta.seed;
-            } else {
-                // challenge, custom, daily-challenge all carry pre-computed meta.seed
-                seed = meta.seed;
-            }
+        let seed;
+        if (meta.type === "daily") {
+            seed = getTodaysSeed(meta.key);
+        } else if (meta.type === "random") {
+            seed = options.forceNew ? Math.floor(Math.random() * 1000000) : meta.seed;
+        } else {
+            // challenge, custom, daily-challenge all carry pre-computed meta.seed
+            seed = meta.seed;
+        }
 
-            const puzzle = generate({ difficulty: meta.difficulty, seed, regionMap: activeMeta.regionMap });
-            const solution = solve(puzzle.map(row => [...row]), activeMeta.regionMap);
-            state = applyModsToState({ ...createInitialState(puzzle, solution, null, activeMeta.regionMap, activeMeta.regionType), startTime: null, _priorElapsed: 0 });
+        const puzzle = await generate({ difficulty: meta.difficulty, seed, regionMap: activeMeta.regionMap, onProgress: onGenerateProgress });
+        const solution = solve(puzzle.map(row => [...row]), activeMeta.regionMap);
+        state = applyModsToState({ ...createInitialState(puzzle, solution, null, activeMeta.regionMap, activeMeta.regionType), startTime: null, _priorElapsed: 0 });
+        render(state, boardArea, activeMods, getSettings(), null);
+        showBoardOverlay("countdown", () => {
+            state = { ...state, startTime: Date.now() };
             render(state, boardArea, activeMods, getSettings(), null);
-            showBoardOverlay("countdown", () => {
-                state = { ...state, startTime: Date.now() };
-                render(state, boardArea, activeMods, getSettings(), null);
-                startTimer(state.startTime);
-                saveState(activeMeta, state);
-            });
-        }, 700);
+            startTimer(state.startTime);
+            saveState(activeMeta, state);
+        });
     }
 
     if (!options.viewCompleted) {
@@ -491,7 +520,7 @@ function launchConfetti() {
 // ─── Board overlay ────────────────────────────────────────────────────────────
 let _countdownTimer = null;
 
-function showBoardOverlay(mode, onDone) {
+function showBoardOverlay(mode, onDone, progress = 0) {
     if (_countdownTimer) { clearInterval(_countdownTimer); _countdownTimer = null; }
 
     const existing = document.getElementById("board-overlay");
@@ -509,10 +538,11 @@ function showBoardOverlay(mode, onDone) {
     overlay.className = "board-overlay";
 
     if (mode === "loading") {
+        const progressPct = Math.min(100, Math.round(progress));
         overlay.innerHTML = `
             <div class="overlay-content">
-                <div class="overlay-label">Generating puzzle…</div>
-                <div class="overlay-progress"><div class="overlay-progress-bar"></div></div>
+                <div class="overlay-label" id="overlay-label">Generating puzzle…</div>
+                <div class="overlay-progress"><div class="overlay-progress-bar" id="overlay-progress-bar" style="width: ${progressPct}%"></div></div>
             </div>`;
         if (!existing) boardArea.appendChild(overlay);
         requestAnimationFrame(() => overlay.classList.add("visible"));
@@ -620,7 +650,7 @@ function onPuzzleSelectRequested() {
     showPuzzleSelect(sidebarEl, onPuzzleChosen);
 }
 
-function onPuzzleChosen(meta) {
+async function onPuzzleChosen(meta) {
     stopTimer();
     // Clear the URL if it contains a shared puzzle code
     if (window.location.search) {
@@ -637,16 +667,16 @@ function onPuzzleChosen(meta) {
     const savedState = !completed ? loadState(meta) : null;
     const inProgress = !!savedState;
 
-    const playNewGame = (currentMeta) => {
+    const playNewGame = async (currentMeta) => {
         const newMeta = { ...currentMeta };
         if (newMeta.type === "random") {
             newMeta.seed = Math.floor(Math.random() * 1000000);
         }
-        loadPuzzle(newMeta, { forceNew: true });
+        await loadPuzzle(newMeta, { forceNew: true });
     };
 
-    const restartGame = (currentMeta) => {
-        loadPuzzle(currentMeta, { forceRestart: true });
+    const restartGame = async (currentMeta) => {
+        await loadPuzzle(currentMeta, { forceRestart: true });
     };
 
     if (completed || inProgress) {
@@ -660,7 +690,7 @@ function onPuzzleChosen(meta) {
             onPuzzleSelectRequested                          // Dismiss
         );
     } else {
-        loadPuzzle(meta);
+        await loadPuzzle(meta);
     }
 }
 
@@ -683,7 +713,7 @@ if (puzzleCode) {
             regionType: spec.regionType,
             regionMap: spec.regionMap
         };
-        loadPuzzle(meta);
+        await loadPuzzle(meta);
     } catch (e) {
         console.error("Failed to load shared puzzle:", e);
         showBoardOverlay("select");

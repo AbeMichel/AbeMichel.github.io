@@ -679,6 +679,7 @@ function buildPuzzleSelect(onChosen) {
         seed: ch.seed,
         description: ch.description,
         modifiers: ch.modifiers ?? null,
+        regionType: ch.regionType || "classic",
     }));
     el.appendChild(buildPuzzleGrid(challengePuzzles, onChosen, 4));
 

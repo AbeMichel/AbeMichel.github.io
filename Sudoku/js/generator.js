@@ -706,15 +706,20 @@ class HumanSolver {
 }
 
 const TIER_MAP = { "veryeasy": 0, "easy": 1, "medium": 2, "hard": 3, "veryhard": 4 };
-
-export function generate({ difficulty, seed, regionMap = DEFAULT_REGION_MAP }) {
+export async function generate({ difficulty, seed, regionMap = DEFAULT_REGION_MAP, onProgress }) {
   validateRegionMap(regionMap);
   let currentSeed = seed;
   const dlx = new DLXSolver(regionMap);
   const human = new HumanSolver(regionMap);
   const targetLvl = TIER_MAP[difficulty] ?? 0;
+  let attempts = 0;
+  const maxAttempts = 100;
 
-  while (true) {
+  while (attempts++ < maxAttempts) {
+    if (onProgress) onProgress({ phase: 'grid', attempts, maxAttempts });
+    // Yield every few attempts to keep UI responsive
+    if (attempts % 5 === 0) await new Promise(r => setTimeout(r, 0));
+
     const prng = new PRNG(currentSeed++);
     const board = generateSolvedGrid(regionMap, prng);
 
@@ -729,6 +734,10 @@ export function generate({ difficulty, seed, regionMap = DEFAULT_REGION_MAP }) {
     //   (a) break uniqueness, or
     //   (b) push the puzzle above the target difficulty ceiling.
     for (let i = 0; i < 81; i++) {
+      if (onProgress) onProgress({ phase: 'clues', attempts, maxAttempts, clueIndex: i, totalClues: 81 });
+      // Yield during long clue removal phase
+      if (i % 20 === 0) await new Promise(r => setTimeout(r, 0));
+
       const cell = order[i];
       const r = (cell / 9) | 0, c = cell % 9;
       const digit = board.grid[cell];
@@ -759,13 +768,15 @@ export function generate({ difficulty, seed, regionMap = DEFAULT_REGION_MAP }) {
       currLvl = TIER_MAP[res.difficulty];
     }
 
-    // Accept the board only if the fully-minimised puzzle actually reaches
-    // the requested difficulty (not just stays under it).
-    if (currLvl === targetLvl) {
+    // Accept the board only if it reaches (or exceeds, if attempts are high) target difficulty.
+    // Chaos puzzles can sometimes be naturally harder than classic.
+    if (currLvl === targetLvl || (attempts > 50 && currLvl >= targetLvl)) {
       return board.toArray();
     }
     // Otherwise this seed never produced enough tension — try the next one.
   }
+
+  throw new Error(`Failed to generate ${difficulty} puzzle after ${maxAttempts} attempts.`);
 }
 
 export function solve(board, regionMap = DEFAULT_REGION_MAP) {

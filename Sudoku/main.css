@@ -1250,7 +1250,7 @@ body.dark-mode .puzzle-card-badge--chaos {
     width: 0%;
     background: var(--brand-color);
     border-radius: 99px;
-    animation: progress-fill 0.65s ease forwards;
+    transition: width 0.2s ease-out;
 }
 @keyframes progress-fill {
     from { width: 0%; }
