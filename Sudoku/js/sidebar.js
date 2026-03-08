@@ -1373,6 +1373,11 @@ function buildSettingsPanel(sidebar, onBack) {
 
     const SETTING_DEFS = [
         {
+            key:     "darkMode",
+            label:   "Dark Mode",
+            desc:    "Use a dark theme for everything.",
+        },
+        {
             key:     "timerVisible",
             label:   "Show Timer",
             desc:    "Display the elapsed time while solving.",

@@ -21,9 +21,25 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { solve }           from "./generator.js";
-import { isModifierActive } from "./modifiers.js";
+import { isModifierActive, getModifierValue } from "./modifiers.js";
 
 // ── Board helpers ─────────────────────────────────────────────────────────────
+
+function getRequiredDigit(board, mods) {
+    if (!isModifierActive(mods, "ordered")) return null;
+    const dir = getModifierValue(mods, "ordered") ?? "asc";
+    const ascending = dir !== "desc";
+
+    const counts = new Array(10).fill(0);
+    for (const row of board)
+        for (const val of row)
+            if (val !== 0) counts[val]++;
+
+    for (let d = (ascending ? 1 : 9); ascending ? d <= 9 : d >= 1; ascending ? d++ : d--) {
+        if (counts[d] < 9) return d;
+    }
+    return null;
+}
 
 /** Extract a plain 9×9 number[][] from game state. */
 function flatBoard(state) {
@@ -216,6 +232,21 @@ function mostConstrainedCell(board, cands) {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+function getHouseCells(type, idx) {
+    const cells = [];
+    if (type === "row") {
+        for (let c = 0; c < 9; c++) cells.push({ r: idx, c });
+    } else if (type === "col") {
+        for (let r = 0; r < 9; r++) cells.push({ r, c: idx });
+    } else {
+        const br = Math.floor(idx / 3) * 3, bc = (idx % 3) * 3;
+        for (let dr = 0; dr < 3; dr++)
+            for (let dc = 0; dc < 3; dc++)
+                cells.push({ r: br + dr, c: bc + dc });
+    }
+    return cells;
+}
+
 /**
  * "Next Number" — reveal the correct digit for one cell.
  *
@@ -229,9 +260,17 @@ function mostConstrainedCell(board, cands) {
 export function getNextNumber(state, mods = {}) {
     const board = flatBoard(state);
     const cands = buildCandidates(board);
+    const required = getRequiredDigit(board, mods);
+    const dir = getModifierValue(mods, "ordered") ?? "asc";
+    const ascending = dir !== "desc";
+
+    const isAllowed = (v) => {
+        if (required === null) return true;
+        return ascending ? (v <= required) : (v >= required);
+    };
 
     const ns = detectNakedSingle(board, cands);
-    if (ns) return {
+    if (ns && isAllowed(ns.value)) return {
         type:        "number",
         cells:       [{ row: ns.row, col: ns.col }],
         value:       ns.value,
@@ -240,13 +279,37 @@ export function getNextNumber(state, mods = {}) {
     };
 
     const hs = detectHiddenSingle(board, cands);
-    if (hs) return {
+    if (hs && isAllowed(hs.value)) return {
         type:        "number",
         cells:       [{ row: hs.row, col: hs.col }],
         value:       hs.value,
         label:       "Next Number",
         description: `Place ${hs.value} — no other cell in that house can hold it.`,
     };
+
+    // If we have a required digit and didn't find a single, look specifically for a cell that MUST hold it
+    if (required !== null) {
+        const houses = [
+            ...Array.from({length: 9}, (_, i) => ({ type: "row", idx: i })),
+            ...Array.from({length: 9}, (_, i) => ({ type: "col", idx: i })),
+            ...Array.from({length: 9}, (_, i) => ({ type: "box", idx: i })),
+        ];
+
+        for (const house of houses) {
+            const cells = getHouseCells(house.type, house.idx);
+            const possible = cells.filter(({r, c}) => board[r][c] === 0 && cands[r][c].has(required));
+            if (possible.length === 1) {
+                const { r, c } = possible[0];
+                return {
+                    type:        "number",
+                    cells:       [{ row: r, col: c }],
+                    value:       required,
+                    label:       "Next Number",
+                    description: `Place ${required} — it's required by the Ordered modifier and this is its only spot in the ${house.type}.`,
+                };
+            }
+        }
+    }
 
     // Advanced puzzle state — backtrack for the tightest cell
     const cell = mostConstrainedCell(board, cands);
@@ -255,12 +318,31 @@ export function getNextNumber(state, mods = {}) {
     const solved = solve(board);
     if (!solved) return null;
 
+    const val = solved[cell.row][cell.col];
+    if (!isAllowed(val)) {
+        // The most constrained cell isn't allowed yet. Search for any allowed cell.
+        for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+                if (board[r][c] === 0 && isAllowed(solved[r][c])) {
+                    return {
+                        type:        "number",
+                        cells:       [{ row: r, col: c }],
+                        value:       solved[r][c],
+                        label:       "Next Number",
+                        description: `Place ${solved[r][c]} — it's one of the numbers allowed by the Ordered modifier.`,
+                    };
+                }
+            }
+        }
+        return null;
+    }
+
     return {
         type:        "number",
         cells:       [{ row: cell.row, col: cell.col }],
-        value:       solved[cell.row][cell.col],
+        value:       val,
         label:       "Next Number",
-        description: `Place ${solved[cell.row][cell.col]} in this cell.`,
+        description: `Place ${val} in this cell.`,
     };
 }
 

@@ -1,4 +1,7 @@
-import { createInitialState, isSolved, toggleAutoCandidates, resetBoard, getConflicts } from "./state.js";
+import {
+    createInitialState, isSolved, toggleAutoCandidates, resetBoard, getConflicts,
+    selectCell, placeNumber
+} from "./state.js";
 import { render } from "./renderer.js";
 import { attachController } from "./controller.js";
 import { generate, solve } from "./generator.js";
@@ -15,13 +18,19 @@ import {
     loadModifiers, saveModifiers, isModifierActive, getModifierValue,
     toggleModifier, setModifierValue
 } from "./modifiers.js";
-import { loadSettings, getSettings, updateSettings } from "./settings.js";
+import { loadSettings, getSettings, updateSettings as _updateSettings } from "./settings.js";
 import { computeHint } from "./hints.js";
+
+function applyTheme() {
+    const s = getSettings();
+    document.body.classList.toggle("dark-mode", s.darkMode);
+}
 
 // ─── Startup cleanup ──────────────────────────────────────────────────────────
 pruneStaleDaily();
 pruneStaleCompletions();
 loadSettings(); // hydrate settings store from localStorage
+applyTheme();   // apply persisted dark mode preference on boot
 
 // ─── DOM roots ────────────────────────────────────────────────────────────────
 const boardArea = document.querySelector(".board-area");
@@ -36,7 +45,12 @@ let activeMods = loadModifiers();
 export function getMods() { return activeMods; }
 
 // Re-export settings accessors so sidebar and other modules import from one place
-export { getSettings, updateSettings };
+export { getSettings };
+export function updateSettings(patch) {
+    const res = _updateSettings(patch);
+    if ("darkMode" in patch) applyTheme();
+    return res;
+}
 
 export function updateMods(newMods) {
     activeMods = newMods;
@@ -78,9 +92,34 @@ export function clearHint()      { activeHint = null; rerender(); }
  */
 export function requestHint(type) {
     if (!state) return null;
-    activeHint = computeHint(type, state, activeMods);
+    const hint = computeHint(type, state, activeMods);
+    if (!hint) return null;
+
+    activeHint = hint;
+
+    // Direct board hints (Cell/Number) should select the target
+    if (hint.cells && hint.cells.length > 0) {
+        const { row, col } = hint.cells[0];
+        setState(selectCell(state, row, col));
+        activeHint = hint; // Restore since setState cleared it
+    }
+
+    if (hint.type === "number") {
+        // Automatically place the number
+        setState(placeNumber(state, hint.value));
+        activeHint = hint; // Restore again
+
+        // Clear the highlight after 1.5 seconds
+        setTimeout(() => {
+            if (activeHint === hint) {
+                activeHint = null;
+                rerender();
+            }
+        }, 1500);
+    }
+
     rerender();
-    return activeHint;
+    return hint;
 }
 
 function getState() { return state; }

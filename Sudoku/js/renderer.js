@@ -159,13 +159,8 @@ function renderBoard(state, mods, settings = {}, hint = null) {
             // ── Hint highlight ────────────────────────────────────────────────
             if (hintCells.has(`${row},${col}`)) {
                 if (hint.type === "number") {
-                    // Ghost digit: shown over the empty cell, dimmed until the
-                    // player clicks it (handled by the controller via placeNumber)
+                    // Highlight the cell that just received its value
                     cell.classList.add("cell--hint-number");
-                    const ghost = document.createElement("span");
-                    ghost.className = "hint-ghost";
-                    ghost.textContent = symFor(hint.value);
-                    cell.appendChild(ghost);
                 } else {
                     // Cell hint: highlight only — no digit shown
                     cell.classList.add("cell--hint-cell");
