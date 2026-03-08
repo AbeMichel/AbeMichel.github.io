@@ -1,903 +1,815 @@
 /**
- * Sudoku Generator
- *
- * Difficulty levels map to the Sudokis.com strategy table:
- *   easy       → Easy 1–10    (Direct Rule only)
- *   medium     → Medium 1–10  (+ Hidden Single)
- *   difficult  → Difficult 1–10 (+ Naked/Hidden Pairs/Triples/Foursomes, House Interactions, X-Wing)
- *   very       → Very Difficult 1–10 (+ XY/XYZ Wings/Chains, Swordfish, Jellyfish, X-Chain, WXYZ/VWXYZ)
- *   extreme    → Extremely Difficult 1–12 (+ General Chains, Brute Force)
- *
- * The generator works by:
- *   1. Filling a complete valid board using a seeded PRNG.
- *   2. Removing clues one at a time while ensuring the puzzle remains uniquely
- *      solvable using ONLY the techniques permitted for the chosen difficulty.
- *   3. Returning the board as a 9×9 array where 0 = empty, 1–9 = fixed clue.
+ * High-Performance Sudoku Generator
+ * Architecture: PRNG -> Grid Generation -> Clue Removal -> DLX Uniqueness -> Human Solver
  */
 
-// ---------------------------------------------------------------------------
-// Seeded PRNG (Mulberry32)
-// ---------------------------------------------------------------------------
-function createRng(seed) {
-  let s = seed >>> 0;
-  return function () {
-    s += 0x6d2b79f5;
-    let t = s;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+class PRNG {
+  constructor(seed) {
+    this.state = seed | 0;
+  }
+  nextFloat() {
+    this.state |= 0;
+    this.state = (this.state + 0x6d2b79f5) | 0;
+    let t = Math.imul(this.state ^ (this.state >>> 15), 1 | this.state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function hashSeed(str) {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
   }
-  return h >>> 0;
-}
-
-function shuffle(arr, rng) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+  nextInt(min, max) {
+    return Math.floor(this.nextFloat() * (max - min)) + min;
   }
-  return arr;
-}
-
-// ---------------------------------------------------------------------------
-// Board helpers
-// ---------------------------------------------------------------------------
-function emptyBoard() {
-  return Array.from({ length: 9 }, () => new Array(9).fill(0));
-}
-
-function cloneBoard(b) {
-  return b.map(r => r.slice());
-}
-
-function peers(r, c) {
-  const set = new Set();
-  for (let i = 0; i < 9; i++) {
-    set.add(`${r},${i}`);
-    set.add(`${i},${c}`);
-  }
-  const br = Math.floor(r / 3) * 3;
-  const bc = Math.floor(c / 3) * 3;
-  for (let dr = 0; dr < 3; dr++)
-    for (let dc = 0; dc < 3; dc++)
-      set.add(`${br + dr},${bc + dc}`);
-  set.delete(`${r},${c}`);
-  return [...set].map(s => s.split(',').map(Number));
-}
-
-function isValid(board, r, c, v) {
-  return peers(r, c).every(([pr, pc]) => board[pr][pc] !== v);
-}
-
-// ---------------------------------------------------------------------------
-// Candidates
-// ---------------------------------------------------------------------------
-function buildCandidates(board) {
-  const cands = Array.from({ length: 9 }, () =>
-    Array.from({ length: 9 }, () => new Set())
-  );
-  for (let r = 0; r < 9; r++)
-    for (let c = 0; c < 9; c++)
-      if (board[r][c] === 0)
-        for (let v = 1; v <= 9; v++)
-          if (isValid(board, r, c, v))
-            cands[r][c].add(v);
-  return cands;
-}
-
-function elimFromCands(cands, r, c, v) {
-  cands[r][c].delete(v);
-}
-
-function setCandCell(cands, board, r, c, v) {
-  board[r][c] = v;
-  for (const [pr, pc] of peers(r, c))
-    cands[pr][pc].delete(v);
-  cands[r][c] = new Set();
-}
-
-// ---------------------------------------------------------------------------
-// Solving Techniques
-// ---------------------------------------------------------------------------
-
-// Naked Single: a cell has only one candidate
-function nakedSingle(board, cands) {
-  for (let r = 0; r < 9; r++)
-    for (let c = 0; c < 9; c++)
-      if (board[r][c] === 0 && cands[r][c].size === 1) {
-        const v = [...cands[r][c]][0];
-        setCandCell(cands, board, r, c, v);
-        return true;
-      }
-  return false;
-}
-
-// Hidden Single: in a house, a value appears in only one cell
-function hiddenSingle(board, cands) {
-  const houses = getHouses();
-  for (const house of houses) {
-    for (let v = 1; v <= 9; v++) {
-      const cells = house.filter(([r, c]) => board[r][c] === 0 && cands[r][c].has(v));
-      if (cells.length === 1) {
-        const [r, c] = cells[0];
-        setCandCell(cands, board, r, c, v);
-        return true;
-      }
+  shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = this.nextInt(0, i + 1);
+      const temp = array[i];
+      array[i] = array[j];
+      array[j] = temp;
     }
+    return array;
   }
-  return false;
 }
 
-function getHouses() {
-  const houses = [];
-  for (let i = 0; i < 9; i++) {
-    houses.push(Array.from({ length: 9 }, (_, j) => [i, j]));       // row
-    houses.push(Array.from({ length: 9 }, (_, j) => [j, i]));       // col
-    const br = Math.floor(i / 3) * 3, bc = (i % 3) * 3;
-    const box = [];
-    for (let dr = 0; dr < 3; dr++) for (let dc = 0; dc < 3; dc++) box.push([br + dr, bc + dc]);
-    houses.push(box);
+class BitmaskBoard {
+  constructor() {
+    this.grid = new Int8Array(81);
+    this.rowM = new Uint16Array(9);
+    this.colM = new Uint16Array(9);
+    this.boxM = new Uint16Array(9);
   }
-  return houses;
-}
-
-// Naked Subset (Pair / Triple / Foursome)
-function nakedSubset(board, cands, size) {
-  const houses = getHouses();
-  let changed = false;
-  for (const house of houses) {
-    const empties = house.filter(([r, c]) => board[r][c] === 0 && cands[r][c].size > 0 && cands[r][c].size <= size);
-    for (const combo of combinations(empties, size)) {
-      const union = new Set();
-      for (const [r, c] of combo) for (const v of cands[r][c]) union.add(v);
-      if (union.size === size) {
-        const comboSet = new Set(combo.map(([r, c]) => `${r},${c}`));
-        for (const [r, c] of house) {
-          if (board[r][c] !== 0 || comboSet.has(`${r},${c}`)) continue;
-          for (const v of union) {
-            if (cands[r][c].has(v)) { cands[r][c].delete(v); changed = true; }
-          }
-        }
-      }
-    }
+  copyFrom(other) {
+    this.grid.set(other.grid);
+    this.rowM.set(other.rowM);
+    this.colM.set(other.colM);
+    this.boxM.set(other.boxM);
   }
-  return changed;
-}
-
-// Hidden Subset (Pair / Triple / Foursome)
-function hiddenSubset(board, cands, size) {
-  const houses = getHouses();
-  let changed = false;
-  for (const house of houses) {
-    const emptyCells = house.filter(([r, c]) => board[r][c] === 0);
-    const valueCells = {};
-    for (let v = 1; v <= 9; v++) {
-      const cells = emptyCells.filter(([r, c]) => cands[r][c].has(v));
-      if (cells.length >= 2 && cells.length <= size) valueCells[v] = cells;
-    }
-    const vals = Object.keys(valueCells).map(Number);
-    for (const vCombo of combinations(vals, size)) {
-      const allCells = new Set();
-      for (const v of vCombo) for (const [r, c] of valueCells[v]) allCells.add(`${r},${c}`);
-      if (allCells.size === size) {
-        const vSet = new Set(vCombo);
-        for (const key of allCells) {
-          const [r, c] = key.split(',').map(Number);
-          for (const v of [...cands[r][c]]) {
-            if (!vSet.has(v)) { cands[r][c].delete(v); changed = true; }
-          }
-        }
-      }
-    }
+  getBox(r, c) {
+    return ((r / 3) | 0) * 3 + ((c / 3) | 0);
   }
-  return changed;
-}
-
-// Interaction (Row/Col ↔ Block)
-function interaction(board, cands) {
-  let changed = false;
-  // For each block, check if a value is confined to one row or one column
-  for (let br = 0; br < 3; br++) {
-    for (let bc = 0; bc < 3; bc++) {
-      for (let v = 1; v <= 9; v++) {
-        const cells = [];
-        for (let dr = 0; dr < 3; dr++)
-          for (let dc = 0; dc < 3; dc++) {
-            const r = br * 3 + dr, c = bc * 3 + dc;
-            if (board[r][c] === 0 && cands[r][c].has(v)) cells.push([r, c]);
-          }
-        if (cells.length < 2) continue;
-        const rows = [...new Set(cells.map(([r]) => r))];
-        const cols = [...new Set(cells.map(([, c]) => c))];
-        if (rows.length === 1) {
-          // eliminate from rest of row
-          const row = rows[0];
-          const blockCols = new Set(cells.map(([, c]) => c));
-          for (let c = 0; c < 9; c++) {
-            if (blockCols.has(c) || board[row][c] !== 0) continue;
-            if (cands[row][c].has(v)) { cands[row][c].delete(v); changed = true; }
-          }
-        }
-        if (cols.length === 1) {
-          const col = cols[0];
-          const blockRows = new Set(cells.map(([r]) => r));
-          for (let r = 0; r < 9; r++) {
-            if (blockRows.has(r) || board[r][col] !== 0) continue;
-            if (cands[r][col].has(v)) { cands[r][col].delete(v); changed = true; }
-          }
-        }
-      }
-    }
+  setDigit(r, c, digit) {
+    this.grid[r * 9 + c] = digit;
+    const mask = 1 << digit;
+    this.rowM[r] |= mask;
+    this.colM[c] |= mask;
+    this.boxM[this.getBox(r, c)] |= mask;
   }
-  // Reverse: row/col confined to block
-  for (let i = 0; i < 9; i++) {
-    for (let v = 1; v <= 9; v++) {
-      // Row i
-      const rowCells = [];
-      for (let c = 0; c < 9; c++) if (board[i][c] === 0 && cands[i][c].has(v)) rowCells.push([i, c]);
-      if (rowCells.length >= 2) {
-        const bcs = [...new Set(rowCells.map(([, c]) => Math.floor(c / 3)))];
-        if (bcs.length === 1) {
-          const bc = bcs[0];
-          const br = Math.floor(i / 3);
-          const rowSet = new Set(rowCells.map(([, c]) => c));
-          for (let dr = 0; dr < 3; dr++) {
-            const r2 = br * 3 + dr;
-            if (r2 === i) continue;
-            for (let dc = 0; dc < 3; dc++) {
-              const c2 = bc * 3 + dc;
-              if (board[r2][c2] === 0 && cands[r2][c2].has(v)) { cands[r2][c2].delete(v); changed = true; }
-            }
-          }
-        }
-      }
-      // Col i
-      const colCells = [];
-      for (let r = 0; r < 9; r++) if (board[r][i] === 0 && cands[r][i].has(v)) colCells.push([r, i]);
-      if (colCells.length >= 2) {
-        const brs = [...new Set(colCells.map(([r]) => Math.floor(r / 3)))];
-        if (brs.length === 1) {
-          const br = brs[0];
-          const bc = Math.floor(i / 3);
-          const colRowSet = new Set(colCells.map(([r]) => r));
-          for (let dc = 0; dc < 3; dc++) {
-            const c2 = bc * 3 + dc;
-            if (c2 === i) continue;
-            for (let dr = 0; dr < 3; dr++) {
-              const r2 = br * 3 + dr;
-              if (board[r2][c2] === 0 && cands[r2][c2].has(v)) { cands[r2][c2].delete(v); changed = true; }
-            }
-          }
-        }
-      }
-    }
+  clearDigit(r, c) {
+    const digit = this.grid[r * 9 + c];
+    this.grid[r * 9 + c] = 0;
+    const mask = ~(1 << digit);
+    this.rowM[r] &= mask;
+    this.colM[c] &= mask;
+    this.boxM[this.getBox(r, c)] &= mask;
   }
-  return changed;
-}
-
-// X-Wing
-function xWing(board, cands) {
-  let changed = false;
-  for (let v = 1; v <= 9; v++) {
-    // Rows → eliminate from columns
-    const rowData = [];
+  getCandidatesMask(r, c) {
+    return ~(this.rowM[r] | this.colM[c] | this.boxM[this.getBox(r, c)]) & 0x3fe;
+  }
+  toArray() {
+    const out = [];
     for (let r = 0; r < 9; r++) {
-      const cols = [];
-      for (let c = 0; c < 9; c++) if (board[r][c] === 0 && cands[r][c].has(v)) cols.push(c);
-      if (cols.length === 2) rowData.push({ r, cols });
+      const row = [];
+      for (let c = 0; c < 9; c++) row.push(this.grid[r * 9 + c]);
+      out.push(row);
     }
-    for (let i = 0; i < rowData.length; i++)
-      for (let j = i + 1; j < rowData.length; j++) {
-        if (rowData[i].cols[0] === rowData[j].cols[0] && rowData[i].cols[1] === rowData[j].cols[1]) {
-          const [c1, c2] = rowData[i].cols;
-          const rows = new Set([rowData[i].r, rowData[j].r]);
-          for (let r = 0; r < 9; r++) {
-            if (rows.has(r)) continue;
-            for (const c of [c1, c2]) {
-              if (board[r][c] === 0 && cands[r][c].has(v)) { cands[r][c].delete(v); changed = true; }
-            }
-          }
-        }
-      }
-    // Cols → eliminate from rows
-    const colData = [];
-    for (let c = 0; c < 9; c++) {
-      const rows = [];
-      for (let r = 0; r < 9; r++) if (board[r][c] === 0 && cands[r][c].has(v)) rows.push(r);
-      if (rows.length === 2) colData.push({ c, rows });
-    }
-    for (let i = 0; i < colData.length; i++)
-      for (let j = i + 1; j < colData.length; j++) {
-        if (colData[i].rows[0] === colData[j].rows[0] && colData[i].rows[1] === colData[j].rows[1]) {
-          const [r1, r2] = colData[i].rows;
-          const cols = new Set([colData[i].c, colData[j].c]);
-          for (let c = 0; c < 9; c++) {
-            if (cols.has(c)) continue;
-            for (const r of [r1, r2]) {
-              if (board[r][c] === 0 && cands[r][c].has(v)) { cands[r][c].delete(v); changed = true; }
-            }
-          }
-        }
-      }
+    return out;
   }
-  return changed;
 }
 
-// Swordfish
-function swordfish(board, cands) {
-  let changed = false;
-  for (let v = 1; v <= 9; v++) {
-    // Row-based
-    const rowData = [];
+class GridGenerator {
+  constructor(prng) {
+    this.prng = prng;
+    this.base = [
+      1,2,3,4,5,6,7,8,9, 4,5,6,7,8,9,1,2,3, 7,8,9,1,2,3,4,5,6,
+      2,3,4,5,6,7,8,9,1, 5,6,7,8,9,1,2,3,4, 8,9,1,2,3,4,5,6,7,
+      3,4,5,6,7,8,9,1,2, 6,7,8,9,1,2,3,4,5, 9,1,2,3,4,5,6,7,8
+    ];
+  }
+  generate() {
+    const board = new BitmaskBoard();
+    const digits = [1,2,3,4,5,6,7,8,9];
+    this.prng.shuffle(digits);
+    const map = [0, ...digits];
+
+    let rBase = [0,1,2,3,4,5,6,7,8];
+    let cBase = [0,1,2,3,4,5,6,7,8];
+
+    for (let i = 0; i < 3; i++) {
+      this.prng.shuffle(rBase.slice(i*3, i*3+3)).forEach((v, j) => rBase[i*3+j] = v);
+      this.prng.shuffle(cBase.slice(i*3, i*3+3)).forEach((v, j) => cBase[i*3+j] = v);
+    }
+
+    const bands = this.prng.shuffle([0,1,2]);
+    const stacks = this.prng.shuffle([0,1,2]);
+    
+    let rows = [], cols = [];
+    for(let b of bands) rows.push(...rBase.slice(b*3, b*3+3));
+    for(let s of stacks) cols.push(...cBase.slice(s*3, s*3+3));
+
     for (let r = 0; r < 9; r++) {
-      const cols = [];
-      for (let c = 0; c < 9; c++) if (board[r][c] === 0 && cands[r][c].has(v)) cols.push(c);
-      if (cols.length >= 2 && cols.length <= 3) rowData.push({ r, cols });
-    }
-    for (const combo of combinations(rowData, 3)) {
-      const allCols = [...new Set(combo.flatMap(d => d.cols))];
-      if (allCols.length === 3) {
-        const rows = new Set(combo.map(d => d.r));
-        const colSet = new Set(allCols);
-        for (let r = 0; r < 9; r++) {
-          if (rows.has(r)) continue;
-          for (const c of colSet) {
-            if (board[r][c] === 0 && cands[r][c].has(v)) { cands[r][c].delete(v); changed = true; }
-          }
-        }
+      for (let c = 0; c < 9; c++) {
+        board.setDigit(r, c, map[this.base[rows[r] * 9 + cols[c]]]);
       }
     }
-    // Col-based
-    const colData = [];
-    for (let c = 0; c < 9; c++) {
-      const rows = [];
-      for (let r = 0; r < 9; r++) if (board[r][c] === 0 && cands[r][c].has(v)) rows.push(r);
-      if (rows.length >= 2 && rows.length <= 3) colData.push({ c, rows });
-    }
-    for (const combo of combinations(colData, 3)) {
-      const allRows = [...new Set(combo.flatMap(d => d.rows))];
-      if (allRows.length === 3) {
-        const cols = new Set(combo.map(d => d.c));
-        const rowSet = new Set(allRows);
-        for (let c = 0; c < 9; c++) {
-          if (cols.has(c)) continue;
-          for (const r of rowSet) {
-            if (board[r][c] === 0 && cands[r][c].has(v)) { cands[r][c].delete(v); changed = true; }
-          }
-        }
-      }
-    }
+    return board;
   }
-  return changed;
 }
 
-// Jellyfish
-function jellyfish(board, cands) {
-  let changed = false;
-  for (let v = 1; v <= 9; v++) {
-    for (const [lineKey, crossKey] of [['r', 'c'], ['c', 'r']]) {
-      const lineData = [];
-      for (let i = 0; i < 9; i++) {
-        const cross = [];
-        for (let j = 0; j < 9; j++) {
-          const r = lineKey === 'r' ? i : j;
-          const c = lineKey === 'r' ? j : i;
-          if (board[r][c] === 0 && cands[r][c].has(v)) cross.push(j);
-        }
-        if (cross.length >= 2 && cross.length <= 4) lineData.push({ i, cross });
-      }
-      for (const combo of combinations(lineData, 4)) {
-        const allCross = [...new Set(combo.flatMap(d => d.cross))];
-        if (allCross.length === 4) {
-          const lineSet = new Set(combo.map(d => d.i));
-          const crossSet = new Set(allCross);
-          for (let j = 0; j < 9; j++) {
-            if (crossSet.has(j)) continue;  // wait, we eliminate from cross lines not in lineSet
-          }
-          for (let j = 0; j < 9; j++) {
-            if (lineSet.has(j)) continue;
-            for (const cr of crossSet) {
-              const r = lineKey === 'r' ? j : cr;
-              const c = lineKey === 'r' ? cr : j;
-              if (board[r][c] === 0 && cands[r][c].has(v)) { cands[r][c].delete(v); changed = true; }
+class DLXSolver {
+  constructor() {
+    const NODES = 3245;
+    this.L = new Int32Array(NODES);
+    this.R = new Int32Array(NODES);
+    this.U = new Int32Array(NODES);
+    this.D = new Int32Array(NODES);
+    this.C = new Int32Array(NODES);
+    this.S = new Int32Array(325);
+    this.rowHead = new Int32Array(729);
+    this.givenNodes = new Int32Array(81);
+    this.solutions = 0;
+
+    for (let i = 0; i <= 324; i++) {
+      this.L[i] = i - 1; this.R[i] = i + 1;
+      this.U[i] = i; this.D[i] = i; this.C[i] = i;
+    }
+    this.L[0] = 324; this.R[324] = 0;
+
+    let idx = 325;
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        const b = ((r / 3) | 0) * 3 + ((c / 3) | 0);
+        for (let d = 0; d < 9; d++) {
+          const rId = r * 81 + c * 9 + d;
+          this.rowHead[rId] = idx;
+          const cols = [
+            1 + r * 9 + c,
+            82 + r * 9 + d,
+            163 + c * 9 + d,
+            244 + b * 9 + d
+          ];
+          for (let i = 0; i < 4; i++) {
+            const col = cols[i];
+            const n = idx++;
+            this.C[n] = col;
+            this.U[n] = this.U[col];
+            this.D[n] = col;
+            this.D[this.U[col]] = n;
+            this.U[col] = n;
+            this.S[col]++;
+            if (i === 0) {
+              this.L[n] = n; this.R[n] = n;
+            } else {
+              const first = this.rowHead[rId];
+              this.L[n] = this.L[first];
+              this.R[n] = first;
+              this.R[this.L[first]] = n;
+              this.L[first] = n;
             }
           }
         }
       }
     }
   }
-  return changed;
-}
 
-// XY-Wing: pivot has 2 candidates (XY), two pincers share one candidate each (XZ, YZ)
-function xyWing(board, cands) {
-  let changed = false;
-  const bivalue = [];
-  for (let r = 0; r < 9; r++)
-    for (let c = 0; c < 9; c++)
-      if (board[r][c] === 0 && cands[r][c].size === 2) bivalue.push([r, c]);
-
-  for (const [pr, pc] of bivalue) {
-    const [x, y] = [...cands[pr][pc]];
-    const pivotPeers = peers(pr, pc);
-    // find pincers
-    const pincerXZ = bivalue.filter(([r, c]) => {
-      if (r === pr && c === pc) return false;
-      return pivotPeers.some(([pr2, pc2]) => pr2 === r && pc2 === c) && cands[r][c].has(x) && !cands[r][c].has(y);
-    });
-    const pincerYZ = bivalue.filter(([r, c]) => {
-      if (r === pr && c === pc) return false;
-      return pivotPeers.some(([pr2, pc2]) => pr2 === r && pc2 === c) && cands[r][c].has(y) && !cands[r][c].has(x);
-    });
-    for (const [r1, c1] of pincerXZ) {
-      const z1 = [...cands[r1][c1]].find(v => v !== x);
-      for (const [r2, c2] of pincerYZ) {
-        const z2 = [...cands[r2][c2]].find(v => v !== y);
-        if (z1 !== z2) continue;
-        const z = z1;
-        // cells seen by both pincers
-        const p1peers = new Set(peers(r1, c1).map(([r, c]) => `${r},${c}`));
-        for (const [r, c] of peers(r2, c2)) {
-          if (!p1peers.has(`${r},${c}`)) continue;
-          if (board[r][c] === 0 && cands[r][c].has(z)) { cands[r][c].delete(z); changed = true; }
-        }
+  cover(c) {
+    this.L[this.R[c]] = this.L[c];
+    this.R[this.L[c]] = this.R[c];
+    for (let i = this.D[c]; i !== c; i = this.D[i]) {
+      for (let j = this.R[i]; j !== i; j = this.R[j]) {
+        this.U[this.D[j]] = this.U[j];
+        this.D[this.U[j]] = this.D[j];
+        this.S[this.C[j]]--;
       }
     }
   }
-  return changed;
-}
 
-// XYZ-Wing
-function xyzWing(board, cands) {
-  let changed = false;
-  const trivalue = [];
-  for (let r = 0; r < 9; r++)
-    for (let c = 0; c < 9; c++)
-      if (board[r][c] === 0 && cands[r][c].size === 3) trivalue.push([r, c]);
-
-  const bivalue = [];
-  for (let r = 0; r < 9; r++)
-    for (let c = 0; c < 9; c++)
-      if (board[r][c] === 0 && cands[r][c].size === 2) bivalue.push([r, c]);
-
-  for (const [pr, pc] of trivalue) {
-    const xyz = [...cands[pr][pc]];
-    const pivotPeers = peers(pr, pc);
-    for (const combo of combinations(bivalue.filter(([r, c]) => pivotPeers.some(([r2, c2]) => r2 === r && c2 === c)), 2)) {
-      const [[r1, c1], [r2, c2]] = combo;
-      const all = new Set([...xyz, ...cands[r1][c1], ...cands[r2][c2]]);
-      if (all.size !== 3) continue;
-      const shared = [...cands[r1][c1]].filter(v => cands[r2][c2].has(v) && cands[pr][pc].has(v));
-      if (shared.length !== 1) continue;
-      const z = shared[0];
-      const p1peers = new Set(peers(r1, c1).map(([r, c]) => `${r},${c}`));
-      const p2peers = new Set(peers(r2, c2).map(([r, c]) => `${r},${c}`));
-      for (const [r, c] of pivotPeers) {
-        if (!p1peers.has(`${r},${c}`) || !p2peers.has(`${r},${c}`)) continue;
-        if (board[r][c] === 0 && cands[r][c].has(z)) { cands[r][c].delete(z); changed = true; }
+  uncover(c) {
+    for (let i = this.U[c]; i !== c; i = this.U[i]) {
+      for (let j = this.L[i]; j !== i; j = this.L[j]) {
+        this.S[this.C[j]]++;
+        this.U[this.D[j]] = j;
+        this.D[this.U[j]] = j;
       }
     }
+    this.R[this.L[c]] = c;
+    this.L[this.R[c]] = c;
   }
-  return changed;
-}
 
-// X-Chain
-function xChain(board, cands) {
-  let changed = false;
-  for (let v = 1; v <= 9; v++) {
-    // Build strong links (conjugate pairs in a house)
-    const strongLinks = [];
-    for (const house of getHouses()) {
-      const cells = house.filter(([r, c]) => board[r][c] === 0 && cands[r][c].has(v));
-      if (cells.length === 2) strongLinks.push(cells);
+  search() {
+    if (this.R[0] === 0) { this.solutions++; return; }
+    let c = this.R[0], minS = this.S[c];
+    for (let j = this.R[c]; j !== 0; j = this.R[j]) {
+      if (this.S[j] < minS) { minS = this.S[j]; c = j; }
     }
-    // Build adjacency: cell -> [connected cells via strong link]
-    const adj = {};
-    const key = (r, c) => `${r},${c}`;
-    for (const [a, b] of strongLinks) {
-      const ka = key(...a), kb = key(...b);
-      (adj[ka] = adj[ka] || []).push(b);
-      (adj[kb] = adj[kb] || []).push(a);
-    }
-    // BFS/DFS to find alternating chains. Color: 0=ON, 1=OFF
-    // If two cells of same color see each other, eliminate from cells that see both ends of each chain
-    const cells = Object.keys(adj).map(k => k.split(',').map(Number));
-    const visited = new Set();
-    for (const start of cells) {
-      if (visited.has(key(...start))) continue;
-      // BFS coloring
-      const color = {};
-      const queue = [[start, 0]];
-      color[key(...start)] = 0;
-      while (queue.length) {
-        const [cell, col] = queue.shift();
-        visited.add(key(...cell));
-        for (const nb of (adj[key(...cell)] || [])) {
-          const nk = key(...nb);
-          if (color[nk] === undefined) {
-            color[nk] = 1 - col;
-            queue.push([nb, 1 - col]);
-          }
-        }
+    this.cover(c);
+    for (let r = this.D[c]; r !== c; r = this.D[r]) {
+      for (let j = this.R[r]; j !== r; j = this.R[j]) this.cover(this.C[j]);
+      this.search();
+      if (this.solutions > 1) {
+        for (let j = this.L[r]; j !== r; j = this.L[j]) this.uncover(this.C[j]);
+        this.uncover(c);
+        return;
       }
-      const on = Object.entries(color).filter(([, c]) => c === 0).map(([k]) => k.split(',').map(Number));
-      const off = Object.entries(color).filter(([, c]) => c === 1).map(([k]) => k.split(',').map(Number));
-      // Any cell that sees both an ON and an OFF cell => eliminate v
-      for (let r = 0; r < 9; r++)
-        for (let c = 0; c < 9; c++) {
-          if (board[r][c] !== 0 || !cands[r][c].has(v)) continue;
-          const seesOn = on.some(([r2, c2]) => peers(r, c).some(([pr, pc]) => pr === r2 && pc === c2));
-          const seesOff = off.some(([r2, c2]) => peers(r, c).some(([pr, pc]) => pr === r2 && pc === c2));
-          if (seesOn && seesOff) { cands[r][c].delete(v); changed = true; }
-        }
+      for (let j = this.L[r]; j !== r; j = this.L[j]) this.uncover(this.C[j]);
     }
+    this.uncover(c);
   }
-  return changed;
-}
 
-// XY-Chain (bivalue chains)
-function xyChain(board, cands) {
-  let changed = false;
-  const bivalue = [];
-  for (let r = 0; r < 9; r++)
-    for (let c = 0; c < 9; c++)
-      if (board[r][c] === 0 && cands[r][c].size === 2) bivalue.push([r, c]);
-
-  const key = (r, c) => `${r},${c}`;
-  // For each bivalue cell as start, do DFS along bivalue chains
-  for (const [sr, sc] of bivalue) {
-    for (const startV of cands[sr][sc]) {
-      const endV = [...cands[sr][sc]].find(v => v !== startV);
-      // DFS: track chain, current cell, current "must match" value for next link
-      const stack = [{ r: sr, c: sc, mustMatch: endV, chain: [key(sr, sc)], enterWith: startV }];
-      while (stack.length) {
-        const { r, c, mustMatch, chain, enterWith } = stack.pop();
-        for (const [nr, nc] of peers(r, c)) {
-          if (board[nr][nc] !== 0 || cands[nr][nc].size !== 2) continue;
-          if (!cands[nr][nc].has(mustMatch)) continue;
-          const nk = key(nr, nc);
-          if (chain.includes(nk)) continue;
-          const nextV = [...cands[nr][nc]].find(v => v !== mustMatch);
-          const newChain = [...chain, nk];
-          // If end value equals start value and chain length >= 3, we have a valid chain
-          if (nextV === startV && newChain.length >= 3) {
-            // eliminate startV from cells that see both start and end
-            const startPeers = new Set(peers(sr, sc).map(([r2, c2]) => key(r2, c2)));
-            for (const [er, ec] of peers(nr, nc)) {
-              if (!startPeers.has(key(er, ec))) continue;
-              if (board[er][ec] === 0 && cands[er][ec].has(startV)) { cands[er][ec].delete(startV); changed = true; }
-            }
-          }
-          stack.push({ r: nr, c: nc, mustMatch: nextV, chain: newChain, enterWith: mustMatch });
-        }
+  hasUniqueSolution(board) {
+    this.solutions = 0;
+    let givenCount = 0;
+    for (let i = 0; i < 81; i++) {
+      const d = board.grid[i];
+      if (d > 0) {
+        const node = this.rowHead[i * 9 + (d - 1)];
+        this.givenNodes[givenCount++] = node;
+        this.cover(this.C[node]);
+        for (let j = this.R[node]; j !== node; j = this.R[j]) this.cover(this.C[j]);
       }
     }
+    this.search();
+    for (let i = givenCount - 1; i >= 0; i--) {
+      const node = this.givenNodes[i];
+      for (let j = this.L[node]; j !== node; j = this.L[j]) this.uncover(this.C[j]);
+      this.uncover(this.C[node]);
+    }
+    return this.solutions === 1;
   }
-  return changed;
 }
 
-// WXYZ-Wing (basic: 4-value pivot with 2-value pincers seeing pivot)
-function wxyzWing(board, cands) {
-  let changed = false;
-  const quadvalue = [];
-  for (let r = 0; r < 9; r++)
-    for (let c = 0; c < 9; c++)
-      if (board[r][c] === 0 && cands[r][c].size >= 2 && cands[r][c].size <= 4) quadvalue.push([r, c]);
-
-  for (const [pr, pc] of quadvalue) {
-    const pivotPeers = peers(pr, pc);
-    const peerCells = quadvalue.filter(([r, c]) =>
-      (r !== pr || c !== pc) && pivotPeers.some(([r2, c2]) => r2 === r && c2 === c)
-    );
-    for (const combo of combinations(peerCells, 3)) {
-      const allCells = [[pr, pc], ...combo];
-      const allVals = new Set();
-      for (const [r, c] of allCells) for (const v of cands[r][c]) allVals.add(v);
-      if (allVals.size !== 4) continue;
-      // Find restricted value: appears in only one cell outside pivot
-      for (const z of allVals) {
-        const cellsWithZ = allCells.filter(([r, c]) => cands[r][c].has(z));
-        if (cellsWithZ.length < 2) continue;
-        // If z appears in all cells of combo that have it, see if we can eliminate elsewhere
-        // Cells seen by ALL cells containing z
-        let seenByAll = null;
-        for (const [r, c] of cellsWithZ) {
-          const peerSet = new Set(peers(r, c).map(([r2, c2]) => `${r2},${c2}`));
-          if (seenByAll === null) { seenByAll = peerSet; }
-          else { for (const k of seenByAll) if (!peerSet.has(k)) seenByAll.delete(k); }
-        }
-        if (!seenByAll) continue;
-        for (const key of seenByAll) {
-          const [r, c] = key.split(',').map(Number);
-          if (allCells.some(([r2, c2]) => r2 === r && c2 === c)) continue;
-          if (board[r][c] === 0 && cands[r][c].has(z)) { cands[r][c].delete(z); changed = true; }
-        }
+class HumanSolver {
+  constructor() {
+    this.board = new BitmaskBoard();
+    this.cands = new Uint16Array(81);
+    this.houses = new Int32Array(27 * 9);
+    for (let i = 0; i < 9; i++) {
+      for (let j = 0; j < 9; j++) {
+        this.houses[i * 9 + j] = i * 9 + j;             // Rows 0-8
+        this.houses[(9 + i) * 9 + j] = j * 9 + i;       // Cols 9-17
+        this.houses[(18 + i) * 9 + j] =                 // Boxes 18-26
+          ((i / 3) | 0) * 27 + (i % 3) * 3 + ((j / 3) | 0) * 9 + (j % 3);
       }
     }
-  }
-  return changed;
-}
-
-// Naked Single Chain (General Chain / Brute Force assisted)
-// Try each candidate for a cell, solve with nakedSingle only, intersect results
-function nakedSingleChain(board, cands) {
-  let changed = false;
-  for (let r = 0; r < 9; r++)
-    for (let c = 0; c < 9; c++) {
-      if (board[r][c] !== 0 || cands[r][c].size < 2) continue;
-      const vals = [...cands[r][c]];
-      let intersection = null;
-      let anyContradiction = false;
-      const contradictVals = [];
-      for (const v of vals) {
-        const tb = cloneBoard(board);
-        const tc = cands.map(row => row.map(s => new Set(s)));
-        setCandCell(tc, tb, r, c, v);
-        let progress = true, contradiction = false;
-        while (progress) {
-          progress = false;
-          for (let r2 = 0; r2 < 9; r2++) for (let c2 = 0; c2 < 9; c2++)
-            if (tb[r2][c2] === 0 && tc[r2][c2].size === 0) { contradiction = true; break; }
-          if (contradiction) break;
-          if (nakedSingle(tb, tc)) progress = true;
-        }
-        if (contradiction) { contradictVals.push(v); anyContradiction = true; }
-        else {
-          const remaining = new Set();
-          for (let r2 = 0; r2 < 9; r2++) for (let c2 = 0; c2 < 9; c2++)
-            if (tb[r2][c2] !== 0) remaining.add(`${r2},${c2},${tb[r2][c2]}`);
-          if (intersection === null) intersection = remaining;
-          else for (const k of intersection) if (!remaining.has(k)) intersection.delete(k);
-        }
-      }
-      // Eliminate contradiction values
-      for (const v of contradictVals) {
-        if (cands[r][c].has(v)) { cands[r][c].delete(v); changed = true; }
-      }
-      // Apply intersected certain values
-      if (intersection) {
-        for (const key of intersection) {
-          const [r2, c2, v] = key.split(',').map(Number);
-          if (board[r2][c2] === 0) { setCandCell(cands, board, r2, c2, v); changed = true; }
-        }
-      }
-    }
-  return changed;
-}
-
-// ---------------------------------------------------------------------------
-// Utility: combinations
-// ---------------------------------------------------------------------------
-function combinations(arr, k) {
-  if (k === 0) return [[]];
-  if (arr.length < k) return [];
-  const result = [];
-  function helper(start, current) {
-    if (current.length === k) { result.push([...current]); return; }
-    for (let i = start; i < arr.length; i++) {
-      current.push(arr[i]);
-      helper(i + 1, current);
-      current.pop();
-    }
-  }
-  helper(0, []);
-  return result;
-}
-
-// ---------------------------------------------------------------------------
-// Difficulty configuration
-// ---------------------------------------------------------------------------
-const DIFFICULTY_CONFIG = {
-  easy: {
-    minClues: 36, maxClues: 50,
-    techniques: ['nakedSingle'],
-  },
-  medium: {
-    minClues: 28, maxClues: 35,
-    techniques: ['nakedSingle', 'hiddenSingle'],
-  },
-  difficult: {
-    minClues: 22, maxClues: 27,
-    techniques: ['nakedSingle', 'hiddenSingle', 'interaction',
-      'nakedPair', 'hiddenPair', 'nakedTriple', 'hiddenTriple',
-      'nakedFoursome', 'hiddenFoursome', 'xWing'],
-  },
-  very: {
-    minClues: 17, maxClues: 21,
-    techniques: ['nakedSingle', 'hiddenSingle', 'interaction',
-      'nakedPair', 'hiddenPair', 'nakedTriple', 'hiddenTriple',
-      'nakedFoursome', 'hiddenFoursome',
-      'xWing', 'xyWing', 'swordfish', 'xyzWing', 'xChain',
-      'xyChain', 'jellyfish', 'wxyzWing'],
-  },
-  extreme: {
-    minClues: 17, maxClues: 20,
-    techniques: ['nakedSingle', 'hiddenSingle', 'interaction',
-      'nakedPair', 'hiddenPair', 'nakedTriple', 'hiddenTriple',
-      'nakedFoursome', 'hiddenFoursome',
-      'xWing', 'xyWing', 'swordfish', 'xyzWing', 'xChain',
-      'xyChain', 'jellyfish', 'wxyzWing', 'nakedSingleChain'],
-  },
-};
-
-// ---------------------------------------------------------------------------
-// Solver using only allowed techniques
-// Returns { solved: bool, unique: bool } after attempting full solve
-// ---------------------------------------------------------------------------
-function solveWithTechniques(boardIn, allowedTechniques) {
-  const board = cloneBoard(boardIn);
-  const cands = buildCandidates(board);
-
-  const techFns = {
-    nakedSingle: (b, c) => nakedSingle(b, c),
-    hiddenSingle: (b, c) => hiddenSingle(b, c),
-    interaction: (b, c) => interaction(b, c),
-    nakedPair: (b, c) => nakedSubset(b, c, 2),
-    hiddenPair: (b, c) => hiddenSubset(b, c, 2),
-    nakedTriple: (b, c) => nakedSubset(b, c, 3),
-    hiddenTriple: (b, c) => hiddenSubset(b, c, 3),
-    nakedFoursome: (b, c) => nakedSubset(b, c, 4),
-    hiddenFoursome: (b, c) => hiddenSubset(b, c, 4),
-    xWing: (b, c) => xWing(b, c),
-    xyWing: (b, c) => xyWing(b, c),
-    swordfish: (b, c) => swordfish(b, c),
-    xyzWing: (b, c) => xyzWing(b, c),
-    xChain: (b, c) => xChain(b, c),
-    xyChain: (b, c) => xyChain(b, c),
-    jellyfish: (b, c) => jellyfish(b, c),
-    wxyzWing: (b, c) => wxyzWing(b, c),
-    nakedSingleChain: (b, c) => nakedSingleChain(b, c),
-  };
-
-  let progress = true;
-  while (progress) {
-    progress = false;
-    for (const t of allowedTechniques) {
-      if (techFns[t] && techFns[t](board, cands)) { progress = true; break; }
+    this.popCount = new Int8Array(1024);
+    for(let i=0; i<1024; i++) {
+      let c=0, n=i; while(n) { n &= n-1; c++; } this.popCount[i] = c;
     }
   }
 
-  const solved = board.every(row => row.every(v => v !== 0));
-  return { solved, board };
-}
-
-// Backtracking solver for uniqueness check (ignores technique constraints)
-function countSolutions(board, limit = 2) {
-  const empty = [];
-  for (let r = 0; r < 9; r++)
-    for (let c = 0; c < 9; c++)
-      if (board[r][c] === 0) empty.push([r, c]);
-
-  let count = 0;
-  function bt(idx) {
-    if (idx === empty.length) { count++; return count >= limit; }
-    const [r, c] = empty[idx];
-    for (let v = 1; v <= 9; v++) {
-      if (!isValid(board, r, c, v)) continue;
-      board[r][c] = v;
-      if (bt(idx + 1)) return true;
-      board[r][c] = 0;
-    }
-    return false;
-  }
-  bt(0);
-  return count;
-}
-
-// ---------------------------------------------------------------------------
-// Full board generator (backtracking + PRNG)
-// ---------------------------------------------------------------------------
-function generateFullBoard(rng) {
-  const board = emptyBoard();
-  const digits = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-
-  function bt(pos) {
-    if (pos === 81) return true;
-    const r = Math.floor(pos / 9), c = pos % 9;
-    const vals = shuffle([...digits], rng);
-    for (const v of vals) {
-      if (!isValid(board, r, c, v)) continue;
-      board[r][c] = v;
-      if (bt(pos + 1)) return true;
-      board[r][c] = 0;
-    }
-    return false;
-  }
-  bt(0);
-  return board;
-}
-
-// ---------------------------------------------------------------------------
-// Main export
-// ---------------------------------------------------------------------------
-/**
- * Generate a Sudoku puzzle.
- *
- * @param {string} difficulty - "easy" | "medium" | "difficult" | "very" | "extreme"
- * @param {number|string} seed - Any number or string used to seed the RNG
- * @returns {number[][]} 9×9 array; 0 = empty cell, 1–9 = given clue
- */
-export function generate(difficulty, seed) {
-  const normalised = (difficulty || 'medium').toLowerCase().trim();
-  const config = DIFFICULTY_CONFIG[normalised] || DIFFICULTY_CONFIG.medium;
-
-  const rng = createRng(typeof seed === 'number' ? seed : hashSeed(String(seed ?? 'default')));
-
-  // 1. Generate a complete valid board
-  const fullBoard = generateFullBoard(rng);
-
-  // 2. Determine how many clues to keep
-  const targetClues = config.minClues + Math.floor(rng() * (config.maxClues - config.minClues + 1));
-
-  // 3. Remove clues while maintaining unique solvability with allowed techniques
-  const puzzle = cloneBoard(fullBoard);
-  const positions = shuffle(
-    Array.from({ length: 81 }, (_, i) => [Math.floor(i / 9), i % 9]),
-    rng
-  );
-
-  let clues = 81;
-  for (const [r, c] of positions) {
-    if (clues <= targetClues) break;
-
-    const backup = puzzle[r][c];
-    puzzle[r][c] = 0;
-    clues--;
-
-    // Check: can this be solved with allowed techniques?
-    const { solved } = solveWithTechniques(puzzle, config.techniques);
-
-    if (!solved) {
-      // Technique-solve failed; for non-extreme levels restore the clue
-      if (normalised !== 'extreme') {
-        puzzle[r][c] = backup;
-        clues++;
+  solve(sourceBoard) {
+    this.board.copyFrom(sourceBoard);
+    for (let i = 0; i < 81; i++) {
+      if (this.board.grid[i] === 0) {
+        this.cands[i] = this.board.getCandidatesMask((i/9)|0, i%9);
       } else {
-        // For extreme, also allow brute-force uniqueness check (fall through)
-        const solutions = countSolutions(cloneBoard(puzzle));
-        if (solutions !== 1) { puzzle[r][c] = backup; clues++; }
+        this.cands[i] = 0;
       }
-    } else {
-      // Verify uniqueness via brute force for harder levels to be safe
-      if (normalised === 'difficult' || normalised === 'very' || normalised === 'extreme') {
-        const solutions = countSolutions(cloneBoard(puzzle));
-        if (solutions !== 1) { puzzle[r][c] = backup; clues++; }
-      }
+    }
+
+    let diffScore = 0, hardestLevel = 0; // 0:veryeasy, 1:easy, 2:medium, 3:hard, 4:veryhard
+    let changed = true;
+
+    while (changed) {
+      changed = false;
+      if (this.nakedSingle())      { diffScore += 10;  hardestLevel = Math.max(hardestLevel, 0); changed = true; continue; }
+      if (this.hiddenSingle())     { diffScore += 15;  hardestLevel = Math.max(hardestLevel, 1); changed = true; continue; }
+      if (this.pointingClaiming()) { diffScore += 30;  hardestLevel = Math.max(hardestLevel, 2); changed = true; continue; }
+      if (this.subsets(2))         { diffScore += 50;  hardestLevel = Math.max(hardestLevel, 2); changed = true; continue; }
+      if (this.hiddenSubsets(2))   { diffScore += 60;  hardestLevel = Math.max(hardestLevel, 2); changed = true; continue; }
+      if (this.subsets(3))         { diffScore += 80;  hardestLevel = Math.max(hardestLevel, 3); changed = true; continue; }
+      if (this.hiddenSubsets(3))   { diffScore += 100; hardestLevel = Math.max(hardestLevel, 3); changed = true; continue; }
+      if (this.subsets(4))         { diffScore += 120; hardestLevel = Math.max(hardestLevel, 3); changed = true; continue; }
+      if (this.hiddenSubsets(4))   { diffScore += 140; hardestLevel = Math.max(hardestLevel, 3); changed = true; continue; }
+      if (this.fish(2))            { diffScore += 160; hardestLevel = Math.max(hardestLevel, 4); changed = true; continue; }
+      if (this.fish(3))            { diffScore += 200; hardestLevel = Math.max(hardestLevel, 4); changed = true; continue; }
+      if (this.fish(4))            { diffScore += 240; hardestLevel = Math.max(hardestLevel, 4); changed = true; continue; }
+      if (this.xyWing())           { diffScore += 280; hardestLevel = Math.max(hardestLevel, 4); changed = true; continue; }
+      if (this.xyzWing())          { diffScore += 300; hardestLevel = Math.max(hardestLevel, 4); changed = true; continue; }
+    }
+
+    let solved = true;
+    for (let i = 0; i < 81; i++) {
+      if (this.board.grid[i] === 0) { solved = false; break; }
+    }
+
+    let diffStr = "veryeasy";
+    if (!solved)              diffStr = "extreme"; // requires techniques beyond what's implemented
+    else if (hardestLevel === 1) diffStr = "easy";
+    else if (hardestLevel === 2) diffStr = "medium";
+    else if (hardestLevel === 3) diffStr = "hard";
+    else if (hardestLevel === 4) diffStr = "veryhard";
+
+    return { solved, difficulty: diffStr };
+  }
+
+  placeDigit(cell, digit) {
+    this.board.setDigit((cell/9)|0, cell%9, digit);
+    this.cands[cell] = 0;
+    const mask = ~(1 << digit);
+    const r = (cell/9)|0, c = cell%9, b = ((r/3)|0)*3 + ((c/3)|0);
+    for (let i = 0; i < 9; i++) {
+      this.cands[this.houses[r * 9 + i]] &= mask;
+      this.cands[this.houses[(9 + c) * 9 + i]] &= mask;
+      this.cands[this.houses[(18 + b) * 9 + i]] &= mask;
     }
   }
 
-  return puzzle;
-}
-/**
- * Solve a puzzle board using backtracking.
- * Returns a solved 9×9 array, or null if unsolvable.
- * @param {number[][]} puzzle - 9×9 array where 0 = empty
- * @returns {number[][]|null}
- */
-export function solve(puzzle) {
-  const board = puzzle.map(r => r.slice());
-  const empty = [];
-  for (let r = 0; r < 9; r++)
-    for (let c = 0; c < 9; c++)
-      if (board[r][c] === 0) empty.push([r, c]);
+  remCand(cell, d) {
+    if (this.cands[cell] & (1 << d)) { this.cands[cell] &= ~(1 << d); return true; }
+    return false;
+  }
 
-  function bt(idx) {
-    if (idx === empty.length) return true;
-    const [r, c] = empty[idx];
-    for (let v = 1; v <= 9; v++) {
-      if (!isValid(board, r, c, v)) continue;
-      board[r][c] = v;
-      if (bt(idx + 1)) return true;
-      board[r][c] = 0;
+  nakedSingle() {
+    for (let i = 0; i < 81; i++) {
+      if (this.board.grid[i] === 0 && this.popCount[this.cands[i]] === 1) {
+        this.placeDigit(i, Math.log2(this.cands[i])); return true;
+      }
     }
     return false;
   }
-  return bt(0) ? board : null;
+
+  hiddenSingle() {
+    for (let h = 0; h < 27; h++) {
+      for (let d = 1; d <= 9; d++) {
+        let count = 0, lastCell = -1;
+        for (let i = 0; i < 9; i++) {
+          const cell = this.houses[h * 9 + i];
+          if (this.board.grid[cell] === 0 && (this.cands[cell] & (1 << d))) { count++; lastCell = cell; }
+        }
+        if (count === 1) { this.placeDigit(lastCell, d); return true; }
+      }
+    }
+    return false;
+  }
+
+  pointingClaiming() {
+    let changed = false;
+    for (let b = 0; b < 9; b++) {
+      for (let d = 1; d <= 9; d++) {
+        let rMask = 0, cMask = 0, count = 0;
+        for (let i = 0; i < 9; i++) {
+          const cell = this.houses[(18 + b) * 9 + i];
+          if (this.board.grid[cell] === 0 && (this.cands[cell] & (1 << d))) {
+            rMask |= (1 << ((cell / 9) | 0));
+            cMask |= (1 << (cell % 9));
+            count++;
+          }
+        }
+        if (count > 1) {
+          if (this.popCount[rMask] === 1) {
+            const r = Math.log2(rMask);
+            for (let c = 0; c < 9; c++) {
+              if ((((r/3)|0)*3 + ((c/3)|0)) !== b) changed |= this.remCand(r*9+c, d);
+            }
+          } else if (this.popCount[cMask] === 1) {
+            const c = Math.log2(cMask);
+            for (let r = 0; r < 9; r++) {
+              if ((((r/3)|0)*3 + ((c/3)|0)) !== b) changed |= this.remCand(r*9+c, d);
+            }
+          }
+        }
+      }
+    }
+    return changed;
+  }
+
+  subsets(size) {
+    for (let h = 0; h < 27; h++) {
+      let empty = [];
+      for (let i = 0; i < 9; i++) {
+        const c = this.houses[h * 9 + i];
+        if (this.board.grid[c] === 0) empty.push(c);
+      }
+      if (empty.length < size) continue;
+      
+      // Naked pairs/triples inline zero-alloc approach
+      if (size === 2) {
+        for (let i = 0; i < empty.length - 1; i++) {
+          for (let j = i + 1; j < empty.length; j++) {
+            const mask = this.cands[empty[i]] | this.cands[empty[j]];
+            if (this.popCount[mask] === 2) {
+              let changed = false;
+              for (let c of empty) {
+                if (c !== empty[i] && c !== empty[j]) {
+                  for (let d = 1; d <= 9; d++) {
+                    if (mask & (1 << d)) changed |= this.remCand(c, d);
+                  }
+                }
+              }
+              if (changed) return true;
+            }
+          }
+        }
+      } else if (size === 3) {
+        for (let i = 0; i < empty.length - 2; i++) {
+          for (let j = i + 1; j < empty.length - 1; j++) {
+            for (let k = j + 1; k < empty.length; k++) {
+              const mask = this.cands[empty[i]] | this.cands[empty[j]] | this.cands[empty[k]];
+              if (this.popCount[mask] === 3) {
+                let changed = false;
+                for (let c of empty) {
+                  if (c !== empty[i] && c !== empty[j] && c !== empty[k]) {
+                    for (let d = 1; d <= 9; d++) {
+                      if (mask & (1 << d)) changed |= this.remCand(c, d);
+                    }
+                  }
+                }
+                if (changed) return true;
+              }
+            }
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Hidden Subsets (pairs, triples, quads)
+   * A hidden subset exists when N digits appear only within the same N cells
+   * in a house. All other candidates can be removed from those N cells.
+   */
+  hiddenSubsets(size) {
+    for (let h = 0; h < 27; h++) {
+      const cells = [];
+      for (let i = 0; i < 9; i++) {
+        const c = this.houses[h * 9 + i];
+        if (this.board.grid[c] === 0) cells.push(c);
+      }
+      if (cells.length < size) continue;
+
+      // Build a list of digits that still appear in this house (as candidates)
+      const digits = [];
+      for (let d = 1; d <= 9; d++) {
+        for (let i = 0; i < cells.length; i++) {
+          if (this.cands[cells[i]] & (1 << d)) { digits.push(d); break; }
+        }
+      }
+      if (digits.length < size) continue;
+
+      // Enumerate all combinations of `size` digits
+      const combo = [];
+      const enumerate = (start) => {
+        if (combo.length === size) {
+          // Find which cells contain at least one of these digits
+          const covered = [];
+          for (const cell of cells) {
+            for (const d of combo) {
+              if (this.cands[cell] & (1 << d)) { covered.push(cell); break; }
+            }
+          }
+          if (covered.length !== size) return false;
+          // These size digits are confined to exactly size cells — eliminate all other candidates from those cells
+          let changed = false;
+          for (const cell of covered) {
+            for (let d = 1; d <= 9; d++) {
+              if (!combo.includes(d)) changed |= this.remCand(cell, d);
+            }
+          }
+          return changed;
+        }
+        for (let i = start; i < digits.length; i++) {
+          combo.push(digits[i]);
+          if (enumerate(i + 1)) return true;
+          combo.pop();
+        }
+        return false;
+      };
+      if (enumerate(0)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Fish patterns: X-Wing (size=2), Swordfish (size=3), Jellyfish (size=4)
+   * For a given digit, if its candidates in N rows are all confined to the same N columns
+   * (or vice versa), that digit can be eliminated from those columns (or rows) outside
+   * the defining rows.
+   */
+  fish(size) {
+    for (let d = 1; d <= 9; d++) {
+      // Try rows as base, columns as cover
+      if (this._fishDir(d, size, true)) return true;
+      // Try columns as base, rows as cover
+      if (this._fishDir(d, size, false)) return true;
+    }
+    return false;
+  }
+
+  _fishDir(d, size, rowsAsBase) {
+    // Collect base lines that have 2..size candidates for this digit
+    const baseLines = [];
+    for (let i = 0; i < 9; i++) {
+      let mask = 0;
+      for (let j = 0; j < 9; j++) {
+        const cell = rowsAsBase ? i * 9 + j : j * 9 + i;
+        if (this.board.grid[cell] === 0 && (this.cands[cell] & (1 << d))) {
+          mask |= (1 << j);
+        }
+      }
+      const cnt = this.popCount[mask];
+      if (cnt >= 2 && cnt <= size) baseLines.push({ line: i, mask });
+    }
+    if (baseLines.length < size) return false;
+
+    // Enumerate combinations of `size` base lines
+    const combo = [];
+    const enumerate = (start) => {
+      if (combo.length === size) {
+        let coverMask = 0;
+        for (const b of combo) coverMask |= b.mask;
+        if (this.popCount[coverMask] !== size) return false;
+        // Eliminate digit from cover lines outside the base lines
+        const baseSet = new Set(combo.map(b => b.line));
+        let changed = false;
+        for (let j = 0; j < 9; j++) {
+          if (!(coverMask & (1 << j))) continue;
+          for (let i = 0; i < 9; i++) {
+            if (baseSet.has(i)) continue;
+            const cell = rowsAsBase ? i * 9 + j : j * 9 + i;
+            changed |= this.remCand(cell, d);
+          }
+        }
+        return changed;
+      }
+      for (let i = start; i < baseLines.length; i++) {
+        combo.push(baseLines[i]);
+        if (enumerate(i + 1)) return true;
+        combo.pop();
+      }
+      return false;
+    };
+    return enumerate(0);
+  }
+
+  /**
+   * XY-Wing
+   * A pivot cell with exactly 2 candidates (X, Y) sees two wing cells:
+   * one with candidates (X, Z) and one with (Y, Z). Any cell that sees
+   * both wings cannot contain Z.
+   */
+  xyWing() {
+    // Collect all bivalue cells
+    const bivalue = [];
+    for (let i = 0; i < 81; i++) {
+      if (this.board.grid[i] === 0 && this.popCount[this.cands[i]] === 2) {
+        bivalue.push(i);
+      }
+    }
+
+    for (const pivot of bivalue) {
+      const [x, y] = this._digitsFromMask(this.cands[pivot]);
+      const pr = (pivot / 9) | 0, pc = pivot % 9;
+
+      // Find wing1: sees pivot, has candidates {X, Z} for some Z ≠ Y
+      for (const wing1 of bivalue) {
+        if (wing1 === pivot) continue;
+        if (!this._sees(pivot, wing1)) continue;
+        const w1cands = this.cands[wing1];
+        if (!(w1cands & (1 << x))) continue;           // must contain X
+        if (w1cands & (1 << y)) continue;              // must NOT contain Y
+        if (this.popCount[w1cands] !== 2) continue;
+        const [, z] = this._digitsFromMask(w1cands);   // z is the non-X digit
+
+        // Find wing2: sees pivot, has candidates {Y, Z}
+        for (const wing2 of bivalue) {
+          if (wing2 === pivot || wing2 === wing1) continue;
+          if (!this._sees(pivot, wing2)) continue;
+          const w2cands = this.cands[wing2];
+          if (!(w2cands & (1 << y))) continue;         // must contain Y
+          if (!(w2cands & (1 << z))) continue;         // must contain Z
+          if (w2cands & (1 << x)) continue;            // must NOT contain X
+          if (this.popCount[w2cands] !== 2) continue;
+
+          // Eliminate Z from all cells that see both wing1 and wing2
+          let changed = false;
+          for (let i = 0; i < 81; i++) {
+            if (i === wing1 || i === wing2) continue;
+            if (this.board.grid[i] !== 0) continue;
+            if (this._sees(wing1, i) && this._sees(wing2, i)) {
+              changed |= this.remCand(i, z);
+            }
+          }
+          if (changed) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * XYZ-Wing
+   * A pivot with exactly 3 candidates (X, Y, Z) sees two wings:
+   * one with {X, Z} and one with {Y, Z}. Any cell seeing all three
+   * (pivot + both wings) cannot contain Z.
+   */
+  xyzWing() {
+    for (let pivot = 0; pivot < 81; pivot++) {
+      if (this.board.grid[pivot] !== 0) continue;
+      if (this.popCount[this.cands[pivot]] !== 3) continue;
+      const pivotCands = this.cands[pivot];
+      const [x, y, z] = this._digitsFromMask(pivotCands);
+
+      for (let w1 = 0; w1 < 81; w1++) {
+        if (w1 === pivot || this.board.grid[w1] !== 0) continue;
+        if (!this._sees(pivot, w1)) continue;
+        if (this.popCount[this.cands[w1]] !== 2) continue;
+        const w1c = this.cands[w1];
+        // wing1 must be a 2-digit subset of pivot's candidates containing Z
+        if (!(w1c & (1 << z))) continue;
+        if ((w1c & ~pivotCands) !== 0) continue;
+        const w1other = this._digitsFromMask(w1c).find(d => d !== z);
+
+        for (let w2 = w1 + 1; w2 < 81; w2++) {
+          if (w2 === pivot || this.board.grid[w2] !== 0) continue;
+          if (!this._sees(pivot, w2)) continue;
+          if (this.popCount[this.cands[w2]] !== 2) continue;
+          const w2c = this.cands[w2];
+          if (!(w2c & (1 << z))) continue;
+          if ((w2c & ~pivotCands) !== 0) continue;
+          const w2other = this._digitsFromMask(w2c).find(d => d !== z);
+          // The two wings must cover different "other" digits
+          if (w1other === w2other) continue;
+          // Together with pivot they cover all three of X, Y, Z exactly
+          if ((w1c | w2c | pivotCands) !== pivotCands) continue;
+
+          // Eliminate Z from cells that see pivot, wing1, and wing2
+          let changed = false;
+          for (let i = 0; i < 81; i++) {
+            if (i === pivot || i === w1 || i === w2) continue;
+            if (this.board.grid[i] !== 0) continue;
+            if (this._sees(pivot, i) && this._sees(w1, i) && this._sees(w2, i)) {
+              changed |= this.remCand(i, z);
+            }
+          }
+          if (changed) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /** Returns true if two cells share a house (row, column, or box) */
+  _sees(a, b) {
+    if (a === b) return false;
+    const ar = (a / 9) | 0, ac = a % 9;
+    const br = (b / 9) | 0, bc = b % 9;
+    if (ar === br) return true;
+    if (ac === bc) return true;
+    if ((((ar / 3) | 0) === ((br / 3) | 0)) && (((ac / 3) | 0) === ((bc / 3) | 0))) return true;
+    return false;
+  }
+
+  /** Extract individual digit values from a candidate bitmask */
+  _digitsFromMask(mask) {
+    const digits = [];
+    for (let d = 1; d <= 9; d++) {
+      if (mask & (1 << d)) digits.push(d);
+    }
+    return digits;
+  }
+}
+
+const TIER_MAP = { "veryeasy": 0, "easy": 1, "medium": 2, "hard": 3, "veryhard": 4, "extreme": 5 };
+
+export function generate(difficulty, seed) {
+  let currentSeed = seed;
+  const dlx = new DLXSolver();
+  const human = new HumanSolver();
+  const targetLvl = TIER_MAP[difficulty] ?? 0;
+
+  while (true) {
+    const prng = new PRNG(currentSeed++);
+    const gen = new GridGenerator(prng);
+    const board = gen.generate();
+
+    const order = new Int8Array(81);
+    for (let i = 0; i < 81; i++) order[i] = i;
+    prng.shuffle(order);
+
+    let currLvl = 0;
+
+    // Full greedy pass: attempt to remove every clue, never short-circuit.
+    // A clue is kept only if removing it would either:
+    //   (a) break uniqueness, or
+    //   (b) push the puzzle above the target difficulty ceiling.
+    for (let i = 0; i < 81; i++) {
+      const cell = order[i];
+      const r = (cell / 9) | 0, c = cell % 9;
+      const digit = board.grid[cell];
+
+      if (digit === 0) continue;
+
+      // Fast path: if this cell already had only one legal candidate, removing
+      // it cannot affect any other cell's candidates, so uniqueness is trivially
+      // preserved and no DLX check is needed.
+      const maskBefore = board.getCandidatesMask(r, c);
+      board.clearDigit(r, c);
+
+      if (maskBefore !== (1 << digit)) {
+        if (!dlx.hasUniqueSolution(board)) {
+          board.setDigit(r, c, digit);
+          continue;
+        }
+      }
+
+      const res = human.solve(board);
+      if (!res.solved || TIER_MAP[res.difficulty] > targetLvl) {
+        // Removal makes the puzzle unsolvable at this tier — put it back.
+        board.setDigit(r, c, digit);
+        continue;
+      }
+
+      // Removal is valid; record the new difficulty level and keep going.
+      currLvl = TIER_MAP[res.difficulty];
+    }
+
+    // Accept the board only if the fully-minimised puzzle actually reaches
+    // the requested difficulty (not just stays under it).
+    if (currLvl === targetLvl) {
+      return board.toArray();
+    }
+    // Otherwise this seed never produced enough tension — try the next one.
+  }
+}
+
+export function solve(board) {
+  const N = 9;
+
+  const rowMask = new Array(N).fill(0);
+  const colMask = new Array(N).fill(0);
+  const boxMask = new Array(N).fill(0);
+  const empties = [];
+
+  const boxIndex = (r, c) => ((r / 3) | 0) * 3 + ((c / 3) | 0);
+
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      const val = board[r][c];
+      if (val === 0) {
+        empties.push([r, c]);
+      } else {
+        const bit = 1 << (val - 1);
+        rowMask[r] |= bit;
+        colMask[c] |= bit;
+        boxMask[boxIndex(r, c)] |= bit;
+      }
+    }
+  }
+
+  function countBits(x) {
+    x = x - ((x >> 1) & 0x55555555);
+    x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
+    return (((x + (x >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24;
+  }
+
+  function solveMini(k = 0) {
+    if (k === empties.length) return true;
+
+    let best = k;
+    let bestMask = 0;
+    let minOptions = 10;
+
+    for (let i = k; i < empties.length; i++) {
+      const [r, c] = empties[i];
+      const used = rowMask[r] | colMask[c] | boxMask[boxIndex(r, c)];
+      const mask = (~used) & 0x1FF;
+      const options = countBits(mask);
+
+      if (options < minOptions) {
+        minOptions = options;
+        best = i;
+        bestMask = mask;
+        if (options === 1) break;
+      }
+    }
+
+    if (minOptions === 0) return false;
+
+    [empties[k], empties[best]] = [empties[best], empties[k]];
+    const [r, c] = empties[k];
+    const b = boxIndex(r, c);
+    let mask = (~(rowMask[r] | colMask[c] | boxMask[b])) & 0x1FF;
+
+    while (mask) {
+      const bit = mask & -mask;
+      mask ^= bit;
+
+      const val = Math.log2(bit) + 1;
+
+      board[r][c] = val;
+      rowMask[r] |= bit;
+      colMask[c] |= bit;
+      boxMask[b] |= bit;
+
+      if (solveMini(k + 1)) return true;
+
+      board[r][c] = 0;
+      rowMask[r] ^= bit;
+      colMask[c] ^= bit;
+      boxMask[b] ^= bit;
+    }
+
+    [empties[k], empties[best]] = [empties[best], empties[k]];
+    return false;
+  }
+
+  return solveMini() ? board : null;
 }

@@ -1,6 +1,13 @@
 * { box-sizing: border-box; }
 
+html, body {
+    height: 100%;
+    overflow: hidden;
+}
+
 body {
+    display: flex;
+    flex-direction: column;
     margin: 0;
     font-family: system-ui, sans-serif;
     background: #f5f6f8;
@@ -32,9 +39,10 @@ body {
 .layout {
     display: grid;
     grid-template-columns: 2fr 1fr;
+    grid-template-rows: 1fr;
     flex: 1;
     min-height: calc(100vh - 3.5rem); /* subtract header height */
-    align-items: start;
+    overflow: hidden;
 }
 
 .board-area {
@@ -50,8 +58,9 @@ body {
     border-left: 1px solid #ddd;
     position: sticky;
     top: 0;
-    max-height: 100vh;
+    height: 100%;
     overflow-y: auto;
+    align-self: start; /* stay at top while content area scrolls */
 }
 
 .board {
@@ -61,6 +70,8 @@ body {
 
     width: min(90vw, 600px);
     aspect-ratio: 1 / 1;
+
+    position: relative; /* anchor for living-overlay clones */
 }
 
 .cell {
@@ -249,11 +260,6 @@ body {
     cursor: default;
 }
 /* ── Sidebar panels ────────────────────────────────────────────────────────── */
-.sidebar {
-    position: relative;
-    overflow-y: auto;
-}
-
 .sidebar-panel {
     display: flex;
     flex-direction: column;
@@ -1380,3 +1386,612 @@ body {
     transition: background 0.15s;
 }
 .popup-play-btn:hover { background: #047857; }
+/* ── Modifier tooltip ──────────────────────────────────────────────────────── */
+/* Zero-JS CSS tooltip. Any element with data-tooltip gets a hover popover.    */
+[data-tooltip] {
+    position: relative;
+}
+
+[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 7px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e293b;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 500;
+    line-height: 1.4;
+    padding: 0.35rem 0.6rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    max-width: 220px;
+    white-space: normal;
+    text-align: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    transform: translateX(-50%) translateY(3px);
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+[data-tooltip]:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Prevent tooltip clipping on left edge of sidebar */
+[data-tooltip].tooltip--right::after {
+    left: 0;
+    transform: translateX(0) translateY(3px);
+}
+[data-tooltip].tooltip--right:hover::after {
+    transform: translateX(0) translateY(0);
+}
+
+/* ── Puzzle button — difficulty badge ──────────────────────────────────────── */
+.pb-difficulty {
+    font-size: 0.66rem;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-top: 0.1rem;
+}
+
+/* ── Puzzle button — modifier icon strip ───────────────────────────────────── */
+.pb-mod-strip {
+    display: flex;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+    margin-top: 0.3rem;
+}
+
+/* Icon-only pill — reuses the locked-modifier-pill color classes */
+.pb-mod-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    border: 1.5px solid;
+    cursor: default;
+    flex-shrink: 0;
+}
+
+/* Inherit colors from existing locked-modifier-pill color tokens */
+.pb-mod-icon--blue    { background: #eff6ff; border-color: #93c5fd; }
+.pb-mod-icon--violet  { background: #f5f3ff; border-color: #c4b5fd; }
+.pb-mod-icon--red     { background: #fef2f2; border-color: #fca5a5; }
+.pb-mod-icon--amber   { background: #fffbeb; border-color: #fcd34d; }
+.pb-mod-icon--emerald { background: #ecfdf5; border-color: #6ee7b7; }
+
+/* ── Settings panel ────────────────────────────────────────────────────────── */
+.select-heading-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+}
+
+/* Settings gear button in the puzzle select heading */
+.select-settings-btn {
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    cursor: pointer;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+    border-radius: 6px;
+    transition: color 0.15s, background 0.15s;
+    flex-shrink: 0;
+}
+.select-settings-btn svg {
+    width: 18px;
+    height: 18px;
+}
+.select-settings-btn:hover {
+    color: #1e3a8a;
+    background: #eff6ff;
+}
+
+/* Settings list */
+.settings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-top: 1.25rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 0.9rem;
+    background: white;
+    border-bottom: 1px solid #f3f4f6;
+}
+.settings-row:last-child {
+    border-bottom: none;
+}
+.settings-row:hover {
+    background: #fafafa;
+}
+
+.settings-row-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.settings-row-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.settings-row-desc {
+    font-size: 0.7rem;
+    color: #9ca3af;
+    line-height: 1.35;
+}
+
+/* Settings toggle — same shape as modifier-toggle-btn for consistency */
+.settings-toggle {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.18rem 0.55rem;
+    border-radius: 99px;
+    border: 1.5px solid #d1d5db;
+    background: white;
+    color: #9ca3af;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+.settings-toggle:hover {
+    border-color: #9ca3af;
+    color: #374151;
+}
+.settings-toggle--on {
+    background: #1e3a8a;
+    color: white;
+    border-color: #1e3a8a;
+}
+.settings-toggle--on:hover {
+    background: #1e40af;
+}
+
+/* ── Mistake highlight (highlightMistakes setting) ─────────────────────────── */
+/* Distinct from .conflict — amber instead of red, signals a wrong answer
+   rather than a rule violation, so the visual language stays separate.       */
+.cell.mistake {
+    background: #fff7ed;
+    color: #c2410c;
+}
+.cell.mistake.selected {
+    background: #ffedd5;
+}
+
+/* ── Puzzle info nav row (back button + settings gear) ─────────────────────── */
+
+/* ── Daily Challenge card ──────────────────────────────────────────────────── */
+.puzzle-btn--daily-challenge {
+    border-color: #c7d2fe;
+    background: linear-gradient(135deg, #f5f3ff 0%, #eff6ff 100%);
+    min-height: 6rem;
+}
+.puzzle-btn--daily-challenge:hover {
+    background: linear-gradient(135deg, #ede9fe 0%, #dbeafe 100%);
+    border-color: #818cf8;
+    color: #1e1b4b;
+}
+.puzzle-btn--daily-challenge.puzzle-btn--completed {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+.puzzle-btn--daily-challenge.puzzle-btn--completed:hover {
+    background: #dcfce7;
+    border-color: #86efac;
+}
+
+/* Date + difficulty inline row */
+.pb-daily-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.15rem;
+}
+.pb-daily-date {
+    font-size: 0.66rem;
+    font-weight: 600;
+    color: #6366f1;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.puzzle-btn--daily-challenge.puzzle-btn--completed .pb-daily-date {
+    color: #15803d;
+}
+.pb-daily-sep {
+    font-size: 0.6rem;
+    color: #c4b5fd;
+}
+
+/* "No modifiers today" text */
+.pb-daily-no-mods {
+    font-size: 0.68rem;
+    color: #a5b4fc;
+    margin-top: 0.3rem;
+    font-style: italic;
+}
+
+/* ── Hint cell states ──────────────────────────────────────────────────────── */
+
+/* Cell hint — highlight only, no digit */
+.cell--hint-cell {
+    background: #fffbeb;
+    outline: 2px solid #f59e0b;
+    outline-offset: -2px;
+    z-index: 1;
+}
+.cell--hint-cell.selected {
+    background: #fef3c7;
+    outline-color: #d97706;
+}
+
+/* Number hint — cell + ghost digit */
+.cell--hint-number {
+    background: #f0fdf4;
+    outline: 2px solid #22c55e;
+    outline-offset: -2px;
+    z-index: 1;
+    position: relative;
+}
+.cell--hint-number.selected {
+    background: #dcfce7;
+    outline-color: #16a34a;
+}
+
+/* Ghost digit overlay — sits on top of any notes */
+.hint-ghost {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #16a34a;
+    opacity: 0.55;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* ── Hints sidebar section ─────────────────────────────────────────────────── */
+.hints-wrapper {
+    margin-top: 1.25rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.hints-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0.85rem;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.hints-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.hints-dismiss {
+    font-size: 0.68rem;
+    color: #9ca3af;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.1rem 0.3rem;
+    border-radius: 4px;
+    transition: color 0.1s, background 0.1s;
+}
+.hints-dismiss:hover {
+    color: #374151;
+    background: #e5e7eb;
+}
+
+/* Three-button row */
+.hints-btn-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    background: white;
+}
+
+.hint-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.65rem 0.3rem;
+    background: white;
+    border: none;
+    border-right: 1px solid #f3f4f6;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+.hint-btn:last-child { border-right: none; }
+.hint-btn:hover      { background: #eff6ff; }
+.hint-btn:active     { background: #dbeafe; }
+
+.hint-btn-icon  { font-size: 1.1rem; line-height: 1; }
+.hint-btn-label {
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: #374151;
+    text-align: center;
+    line-height: 1.2;
+}
+
+/* Result display */
+.hints-result {
+    padding: 0.6rem 0.85rem;
+    background: white;
+    border-top: 1px solid #f3f4f6;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+.hints-result-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #1e3a8a;
+}
+.hints-result-desc {
+    font-size: 0.71rem;
+    color: #6b7280;
+    line-height: 1.45;
+}
+
+/* Colour-code by hint type */
+.hints-result--number .hints-result-label  { color: #15803d; }
+.hints-result--cell   .hints-result-label  { color: #b45309; }
+.hints-result--technique .hints-result-label { color: #6d28d9; }
+.hints-result--none .hints-result-label    { color: #9ca3af; }
+
+/* ── New modifier tile color themes ──────────────────────────────────────────── */
+/* cyan not used; reusing existing colors but need to ensure all new keys map */
+/* Fragile = red (already exists), Living = violet (already exists),          */
+/* Decaying = amber (already exists), Ordered = blue (already exists),        */
+/* Small Notepad = emerald (already exists), Symbols = violet, Rainbow = amber */
+/* All covered by existing palette — no new tile color rules needed.           */
+
+/* ── Ordered modifier: show current required digit indicator ─────────────────── */
+.ordered-indicator {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #1e3a8a;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 4px;
+    padding: 0.15rem 0.45rem;
+    margin-top: 0.3rem;
+    text-align: center;
+    letter-spacing: 0.02em;
+}
+
+/* ── Fragile flash overlay ─────────────────────────────────────────────────── */
+.fragile-flash {
+    position: absolute;
+    inset: 0;
+    background: rgba(220, 38, 38, 0);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 20;
+    border-radius: inherit;
+    transition: background 0.15s ease;
+}
+.fragile-flash--visible {
+    background: rgba(220, 38, 38, 0.35);
+}
+.fragile-flash--out {
+    background: rgba(220, 38, 38, 0);
+    transition: background 0.5s ease;
+}
+
+/* ── Decaying cell states ──────────────────────────────────────────────────── */
+/* cell--decaying is applied once the cell has a _placedAt stamp */
+.cell--decaying {
+    /* subtle pulsing outline to signal the cell is temporary */
+    box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.3);
+}
+.cell--decaying-warn {
+    /* getting close to expiry — amber tint */
+    background: #fffbeb !important;
+    box-shadow: inset 0 0 0 2px rgba(245, 158, 11, 0.55);
+    animation: decay-pulse 1.4s ease-in-out infinite;
+}
+.cell--decaying-critical {
+    /* about to expire — strong red pulse */
+    background: #fef2f2 !important;
+    box-shadow: inset 0 0 0 2px rgba(239, 68, 68, 0.7);
+    animation: decay-pulse-critical 0.7s ease-in-out infinite;
+}
+@keyframes decay-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.65; }
+}
+@keyframes decay-pulse-critical {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+}
+
+/* ── Rainbow board ─────────────────────────────────────────────────────────── */
+/* Background colours are driven per-cell by the rAF loop in modifier-effects. */
+/* Text colour is intentionally never changed — only cell backgrounds shift.   */
+/* The .board--rainbow class is no longer needed since we patch inline styles. */
+
+/* ── Symbols: wider cells when emoji used ─────────────────────────────────── */
+/* Symbols are rendered in place of digits — no structural change needed;    */
+/* but we ensure notes grids use a slightly smaller font for wide glyphs.    */
+.board--has-symbols .note {
+    font-size: 0.55rem;
+}
+
+/* ── Symbols config grid in sidebar ───────────────────────────────────────── */
+.modifier-config-symbols {
+    padding: 0.5rem 0.6rem;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+}
+.modifier-symbols-grid {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    gap: 0.25rem;
+    margin-top: 0.35rem;
+}
+.modifier-symbol-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+}
+.modifier-symbol-num {
+    font-size: 0.58rem;
+    color: #9ca3af;
+    font-weight: 600;
+}
+.modifier-symbol-input {
+    width: 100%;
+    min-width: 0;
+    text-align: center;
+    font-size: 0.85rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 0.2rem 0;
+    background: white;
+    cursor: text;
+    transition: border-color 0.1s;
+}
+.modifier-symbol-input:focus {
+    outline: none;
+    border-color: #8b5cf6;
+    background: #faf5ff;
+}
+
+/* ── Small Notepad: puzzle-wide limit reached — dim all note grids ───────── */
+/* Applied to every empty cell when the global mark count hits the limit.    */
+.cell--notes-full .notes-grid {
+    opacity: 0.45;
+}
+/* Subtle outline on empty cells with no notes yet, to signal "full" */
+.cell--notes-full:not(:has(.notes-grid)) {
+    background: #fafafa;
+    cursor: not-allowed;
+}
+
+/* ── Event banner ─────────────────────────────────────────────────────────── */
+/* Slides down from the top of .board-area, auto-dismisses.                  */
+.event-banner {
+    position: absolute;
+    top: 0.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(-160%);
+    padding: 0.45rem 1.1rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 30;
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.22s ease;
+    opacity: 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+}
+.event-banner--visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+.event-banner--out {
+    transform: translateX(-50%) translateY(-160%);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* Colour themes */
+.event-banner--error {
+    background: #dc2626;
+    color: white;
+}
+.event-banner--warn {
+    background: #f59e0b;
+    color: white;
+}
+.event-banner--info {
+    background: #1e3a8a;
+    color: white;
+}
+.event-banner--living {
+    background: #7c3aed;
+    color: white;
+}
+
+/* ── Living modifier: animated cell clones ───────────────────────────────── */
+/* During a Living transform, real cells are hidden and absolutely-positioned */
+/* clones slide to their new positions. The overlay and clones are destroyed  */
+/* by the rerender() call that fires after the animation completes.           */
+
+.living-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    overflow: visible;
+}
+
+.living-cell-clone {
+    /* Layout — position/size set inline by JS */
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    box-sizing: border-box;
+
+    /* Typography — match .cell exactly */
+    font-size: 2rem;
+    line-height: 1;
+    padding: 0;
+
+    /* Visual */
+    background: white;
+
+    /* Slight shadow lifts clones above the hidden real cells */
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+    border-radius: 1px;
+
+    /* Borders are set inline per-cell to replicate the 3×3 box lines */
+}
+
+/* Carry colour from fixed / conflict classes into the clones */
+.living-cell-clone.fixed   { color: #1e3a8a; font-weight: 600; }
+.living-cell-clone.conflict { background: #fee2e2; color: #dc2626; }

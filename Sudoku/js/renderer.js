@@ -1,8 +1,8 @@
 import { getConflicts } from "./state.js";
 import { formatElapsed } from "./app.js";
-import { isModifierActive, getModifierValue } from "./modifiers.js";
+import { isModifierActive, getModifierValue, getModifierMultiValue } from "./modifiers.js";
 
-export function render(state, root, mods = {}) {
+export function render(state, root, mods = {}, settings = {}, hint = null) {
     // Preserve the overlay if present — don't nuke it with innerHTML=""
     const overlay = document.getElementById("board-overlay");
 
@@ -11,12 +11,12 @@ export function render(state, root, mods = {}) {
     // Re-attach overlay so it isn't lost
     if (overlay) root.appendChild(overlay);
 
-    root.appendChild(renderUtilityBar(state));
-    root.appendChild(renderBoard(state, mods));
+    root.appendChild(renderUtilityBar(state, settings));
+    root.appendChild(renderBoard(state, mods, settings, hint));
     root.appendChild(renderControls(state, mods));
 }
 
-function renderUtilityBar(state) {
+function renderUtilityBar(state, settings = {}) {
     const bar = document.createElement("div");
     bar.className = "utility-bar";
 
@@ -31,6 +31,8 @@ function renderUtilityBar(state) {
         displayMs = state.elapsed;
     }
     timer.textContent = formatElapsed(displayMs);
+    // timerVisible defaults to true when settings not yet passed
+    if (settings.timerVisible === false) timer.style.visibility = "hidden";
     bar.appendChild(timer);
 
     const actions = document.createElement("div");
@@ -64,7 +66,7 @@ function renderUtilityBar(state) {
     return bar;
 }
 
-function renderBoard(state, mods) {
+function renderBoard(state, mods, settings = {}, hint = null) {
     const conflicts = getConflicts(state.board);
     const board = document.createElement("section");
     board.className = "board";
@@ -76,6 +78,41 @@ function renderBoard(state, mods) {
     const blackoutMode  = blackout ? (getModifierValue(mods, "blackout") ?? "cell") : null;
     const selRow = state.selected.row;
     const selCol = state.selected.col;
+
+    // Settings flags — default to permissive when settings not passed
+    const showConflicts      = settings.showConflicts      !== false;
+    const highlightMistakes  = settings.highlightMistakes  === true;
+
+    // Build a fast lookup set of hinted cell coordinates
+    const hintCells = new Set(
+        (hint?.cells ?? []).map(({ row, col }) => `${row},${col}`)
+    );
+
+    // ── Symbols modifier ──────────────────────────────────────────────────────
+    // symMap maps digit 1–9 to its display character.
+    const symbolsValue = getModifierMultiValue(mods, "symbols");
+    const symMap = symbolsValue
+        ? Object.fromEntries(symbolsValue.map((sym, i) => [i + 1, sym || String(i + 1)]))
+        : null;
+    if (symMap) board.classList.add("board--has-symbols");
+
+    /** Convert a digit (1–9) to its display string. */
+    const symFor = (n) => (symMap && n >= 1 && n <= 9) ? symMap[n] : String(n);
+
+    // ── Small Notepad: pre-compute global note total for puzzle-wide limit ──────
+    let notepadTotal = 0;
+    const notepadLimit = isModifierActive(mods, "small-notepad")
+        ? (getModifierValue(mods, "small-notepad") ?? 20)
+        : Infinity;
+    if (isModifierActive(mods, "small-notepad")) {
+        for (const row of state.board)
+            for (const cell of row) {
+                const s = state.autoCandidates ? cell.autoNotes : cell.manualNotes;
+                notepadTotal += s.size;
+            }
+    }
+
+    // ── Rainbow: applied via JS rAF loop in modifier-effects — nothing to do here ──
 
     // Pre-compute which cells are revealed by the blackout mode
     function isRevealed(row, col) {
@@ -107,8 +144,36 @@ function renderBoard(state, mods) {
             if (cellData.fixed) {
                 cell.classList.add("fixed");
                 if (blackout && !isRevealed(row, col)) cell.classList.add("blackout-cell");
-            } else if (conflicts.has(`${row},${col}`)) {
+            } else if (showConflicts && conflicts.has(`${row},${col}`)) {
                 cell.classList.add("conflict");
+            }
+
+            // Highlight mistakes: non-fixed cells whose value is wrong
+            if (highlightMistakes && !cellData.fixed && cellData.value !== 0 && state.original) {
+                if (conflicts.has(`${row},${col}`)) {
+                    cell.classList.add("mistake");
+                }
+            }
+
+            // ── Hint highlight ────────────────────────────────────────────────
+            if (hintCells.has(`${row},${col}`)) {
+                if (hint.type === "number") {
+                    // Ghost digit: shown over the empty cell, dimmed until the
+                    // player clicks it (handled by the controller via placeNumber)
+                    cell.classList.add("cell--hint-number");
+                    const ghost = document.createElement("span");
+                    ghost.className = "hint-ghost";
+                    ghost.textContent = symFor(hint.value);
+                    cell.appendChild(ghost);
+                } else {
+                    // Cell hint: highlight only — no digit shown
+                    cell.classList.add("cell--hint-cell");
+                }
+            }
+
+            // ── Small Notepad: mark the board exhausted when global limit reached ──
+            if (isModifierActive(mods, "small-notepad") && cellData.value === 0 && notepadTotal >= notepadLimit) {
+                cell.classList.add("cell--notes-full");
             }
 
             if (candidateOnly) {
@@ -120,25 +185,24 @@ function renderBoard(state, mods) {
                     for (let i = 1; i <= 9; i++) {
                         const note = document.createElement("div");
                         note.className = "note";
-                        if (notes.has(i)) note.textContent = i;
+                        if (notes.has(i)) note.textContent = symFor(i);
                         notesGrid.appendChild(note);
                     }
                     cell.appendChild(notesGrid);
                 } else if (cellData.value !== 0) {
-                    // Fixed givens get a distinct solid fill; user-entered cells get a lighter fill
                     cell.classList.add(cellData.fixed ? "candidate-only-fixed" : "candidate-only-filled");
                 }
             } else {
                 const notes = state.autoCandidates ? cellData.autoNotes : cellData.manualNotes;
                 if (cellData.value !== 0) {
-                    cell.textContent = cellData.value;
+                    cell.textContent = symFor(cellData.value);
                 } else if (!noCandidate && notes.size > 0) {
                     const notesGrid = document.createElement("div");
                     notesGrid.className = "notes-grid";
                     for (let i = 1; i <= 9; i++) {
                         const note = document.createElement("div");
                         note.className = "note";
-                        if (notes.has(i)) note.textContent = i;
+                        if (notes.has(i)) note.textContent = symFor(i);
                         notesGrid.appendChild(note);
                     }
                     cell.appendChild(notesGrid);
@@ -158,6 +222,12 @@ function renderControls(state, mods) {
 
     const noCandidate   = isModifierActive(mods, "no-candidates");
     const candidateOnly = isModifierActive(mods, "candidate-only");
+
+    // ── Symbols for number pad ────────────────────────────────────────────────
+    const symbolsValue = getModifierMultiValue(mods, "symbols");
+    const padSymFor = (n) => (symbolsValue && n >= 1 && n <= 9)
+        ? (symbolsValue[n - 1] || String(n))
+        : String(n);
 
     // Mode toggle — always shown, but buttons disabled when a modifier locks the mode
     const toggle = document.createElement("div");
@@ -214,7 +284,7 @@ function renderControls(state, mods) {
 
     for (let i = 1; i <= 9; i++) {
         const btn = document.createElement("button");
-        btn.textContent = i;
+        btn.textContent = padSymFor(i);
         btn.dataset.number = i;
         btn.classList.add("num-btn");
         if (counts[i] >= 9) btn.classList.add("exhausted");

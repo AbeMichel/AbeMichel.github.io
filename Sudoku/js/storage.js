@@ -7,13 +7,19 @@
 //   sudoku:completed                        → { [storageKey]: { elapsed } }
 // ─────────────────────────────────────────────────────────────────────────────
 
-const TODAY = new Date().toISOString().slice(0, 10);
+const d = new Date();
+const TODAY = [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, "0"),
+    String(d.getDate()).padStart(2, "0")
+].join("-");
 
 // ── Key builders ──────────────────────────────────────────────────────────────
 export function storageKey(meta) {
-    if (meta.type === "daily")     return `sudoku:daily:${TODAY}:${meta.key}`;
-    if (meta.type === "challenge") return `sudoku:challenge:${meta.key}`;
-    if (meta.type === "random")    return `sudoku:random:${meta.difficulty}:${meta.seed}`;
+    if (meta.type === "daily")           return `sudoku:daily:${TODAY}:${meta.key}`;
+    if (meta.type === "daily-challenge") return `sudoku:daily-challenge:${TODAY}`;
+    if (meta.type === "challenge")       return `sudoku:challenge:${meta.key}`;
+    if (meta.type === "random")          return `sudoku:random:${meta.difficulty}:${meta.seed}`;
     return null;
 }
 
@@ -52,7 +58,9 @@ export function pruneStaleCompletions() {
         const completed = getCompleted();
         const pruned = {};
         for (const [k, v] of Object.entries(completed)) {
-            if (!k.startsWith("sudoku:daily:") || k.includes(`:${TODAY}:`))
+            const isStaleDaily          = k.startsWith("sudoku:daily:") && !k.includes(`:${TODAY}:`);
+            const isStaleDailyChallenge = k.startsWith("sudoku:daily-challenge:") && k !== `sudoku:daily-challenge:${TODAY}`;
+            if (!isStaleDaily && !isStaleDailyChallenge)
                 pruned[k] = v;
         }
         localStorage.setItem("sudoku:completed", JSON.stringify(pruned));
@@ -121,6 +129,10 @@ export function loadState(meta) {
         const raw = localStorage.getItem(key);
         if (!raw) return null;
         if (meta.type === "daily" && !key.includes(`:${TODAY}:`)) {
+            localStorage.removeItem(key);
+            return null;
+        }
+        if (meta.type === "daily-challenge" && key !== `sudoku:daily-challenge:${TODAY}`) {
             localStorage.removeItem(key);
             return null;
         }

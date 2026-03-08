@@ -1,8 +1,9 @@
 import { DAILY_DIFFICULTIES, CHALLENGES } from "./puzzles.js";
 import { isCompleted, loadState, getCompletionTime, getPersistedRandomSeed } from "./storage.js";
-import { formatElapsed } from "./app.js";
-import { MODIFIERS, MODIFIER_MAP, isModifierActive, getModifierValue, toggleModifier, setModifierValue } from "./modifiers.js";
+import { formatElapsed, getSettings, updateSettings, requestHint, clearHint, getActiveHint } from "./app.js";
+import { MODIFIERS, MODIFIER_MAP, isModifierActive, getModifierValue, getModifierMultiValue, toggleModifier, setModifierValue, setModifierSymbol } from "./modifiers.js";
 import { encodeCustomGame, decodeCustomGame, validateCode } from "./customgame.js";
+import { getDailyChallengeMeta } from "./dailychallenge.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TECHNIQUE DEFINITIONS
@@ -29,10 +30,11 @@ const TECHNIQUE_INFO = {
 };
 
 const TECHNIQUES_BY_DIFFICULTY = {
-    easy:     ["nakedSingle"],
-    medium:   ["nakedSingle", "hiddenSingle"],
-    hard:     ["nakedSingle", "hiddenSingle", "interaction", "nakedPair", "hiddenPair", "nakedTriple", "hiddenTriple", "nakedFoursome", "hiddenFoursome", "xWing"],
-    veryhard: ["nakedSingle", "hiddenSingle", "interaction", "nakedPair", "hiddenPair", "nakedTriple", "hiddenTriple", "nakedFoursome", "hiddenFoursome", "xWing", "xyWing", "swordfish", "xyzWing", "xChain", "xyChain", "jellyfish", "wxyzWing"],
+    veryeasy: ["nakedSingle"],
+    easy:     ["nakedSingle", "hiddenSingle"],
+    medium:   ["nakedSingle", "hiddenSingle", "interaction", "nakedPair", "hiddenPair"],
+    hard:     ["nakedSingle", "hiddenSingle", "interaction", "nakedPair", "hiddenPair", "nakedTriple", "hiddenTriple", "nakedFoursome", "hiddenFoursome"],
+    veryhard: ["nakedSingle", "hiddenSingle", "interaction", "nakedPair", "hiddenPair", "nakedTriple", "hiddenTriple", "nakedFoursome", "hiddenFoursome", "xWing", "xyWing", "swordfish", "xyzWing", "jellyfish"],
     extreme:  ["nakedSingle", "hiddenSingle", "interaction", "nakedPair", "hiddenPair", "nakedTriple", "hiddenTriple", "nakedFoursome", "hiddenFoursome", "xWing", "xyWing", "swordfish", "xyzWing", "xChain", "xyChain", "jellyfish", "wxyzWing", "nakedSingleChain"],
 };
 
@@ -47,17 +49,39 @@ function buildPuzzleInfo(meta, onSelectRequested, getMods, updateMods, modsLocke
     const el = document.createElement("div");
     el.className = "sidebar-panel";
 
+    // Nav row: back button (left) + settings gear (right)
+    const navRow = document.createElement("div");
+    navRow.className = "puzzle-info-nav";
+
     const backBtn = document.createElement("button");
     backBtn.className = "back-btn";
     backBtn.innerHTML = `‹ puzzle select`;
     backBtn.addEventListener("click", onSelectRequested);
+
+    const settingsBtn = document.createElement("button");
+    settingsBtn.className = "select-settings-btn";
+    settingsBtn.title = "Settings";
+    settingsBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+    settingsBtn.addEventListener("click", () => {
+        const sidebar = el.closest(".sidebar") ?? el.parentElement;
+        // Return from settings lands back on this puzzle's info panel
+        showSettingsPanel(sidebar, () => {
+            showPuzzleInfo(sidebar, meta, onSelectRequested, getMods, updateMods, modsLocked);
+        });
+    });
+
+    navRow.appendChild(backBtn);
+    navRow.appendChild(settingsBtn);
+    el.appendChild(navRow);
 
     const titleBlock = document.createElement("div");
     titleBlock.className = "puzzle-title-block";
 
     const mainTitle = document.createElement("div");
     mainTitle.className = "puzzle-main-title";
-    mainTitle.textContent = meta.type === "daily" ? "Daily" : meta.label;
+    mainTitle.textContent = meta.type === "daily" ? "Daily"
+        : meta.type === "daily-challenge"         ? "Daily Challenge"
+        : meta.label;
 
     const subTitle = document.createElement("div");
     subTitle.className = "puzzle-sub-title";
@@ -65,13 +89,12 @@ function buildPuzzleInfo(meta, onSelectRequested, getMods, updateMods, modsLocke
 
     titleBlock.appendChild(mainTitle);
     titleBlock.appendChild(subTitle);
-    el.appendChild(backBtn);
     el.appendChild(titleBlock);
 
-    // Modifier section — only shown for random (interactive) and challenge/custom with locked modifiers
+    // Modifier section — only shown for random (interactive) and challenge/custom/daily-challenge with locked modifiers
     if (meta.type === "random" && getMods && updateMods) {
         el.appendChild(buildModifiersSection(getMods, updateMods));
-    } else if ((meta.type === "challenge" || meta.type === "custom") && meta.modifiers && Object.keys(meta.modifiers).length > 0) {
+    } else if ((meta.type === "challenge" || meta.type === "custom" || meta.type === "daily-challenge") && meta.modifiers && Object.keys(meta.modifiers).length > 0) {
         el.appendChild(buildLockedModifiersSection(meta.modifiers));
     }
 
@@ -81,7 +104,63 @@ function buildPuzzleInfo(meta, onSelectRequested, getMods, updateMods, modsLocke
         el.appendChild(buildTechniquesDropdown(techniques));
     }
 
+    el.appendChild(buildHintsSection());
+
     return el;
+}
+
+/**
+ * Symbols modifier: 9 single-character inputs, one per digit position.
+ */
+function buildSymbolsConfig(getMods, updateMods, grid) {
+    const mods = getMods();
+    const current = getModifierMultiValue(mods, "symbols") ?? ["★","♦","♣","♠","♥","⬟","⬡","▲","●"];
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "modifier-config-symbols";
+
+    const label = document.createElement("div");
+    label.className = "modifier-config-label";
+    label.textContent = "Symbols (one char each)";
+    wrapper.appendChild(label);
+
+    const grid9 = document.createElement("div");
+    grid9.className = "modifier-symbols-grid";
+
+    for (let i = 0; i < 9; i++) {
+        const cell = document.createElement("div");
+        cell.className = "modifier-symbol-cell";
+
+        const numLabel = document.createElement("span");
+        numLabel.className = "modifier-symbol-num";
+        numLabel.textContent = String(i + 1);
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "modifier-symbol-input";
+        input.maxLength = 2; // allow emoji (some are 2 code units)
+        input.value = current[i] ?? String(i + 1);
+        input.title = `Symbol for ${i + 1}`;
+
+        input.addEventListener("click", e => e.stopPropagation());
+        input.addEventListener("input", (e) => {
+            e.stopPropagation();
+            // Take the last grapheme (in case user typed 2 chars) — simple: take last char(s) by length
+            const val = input.value.trim();
+            const sym = val ? [...val].slice(-1)[0] : String(i + 1); // last grapheme
+            input.value = sym;
+            const next = setModifierSymbol(getMods(), i, sym);
+            updateMods(next);
+            // Don't rebuild grid — inputs stay focused
+        });
+
+        cell.appendChild(numLabel);
+        cell.appendChild(input);
+        grid9.appendChild(cell);
+    }
+
+    wrapper.appendChild(grid9);
+    return wrapper;
 }
 
 function buildLockedModifiersSection(modifiers) {
@@ -105,13 +184,18 @@ function buildLockedModifiersSection(modifiers) {
         const pill = document.createElement("div");
         pill.className = `locked-modifier-pill locked-modifier-pill--${mod.color}`;
         pill.innerHTML = `<span>${mod.icon}</span><span>${mod.label}</span>`;
-        // Show config value if applicable (e.g. blackout mode, timeout seconds)
-        const val = typeof modifiers[key] === "object" ? modifiers[key].value : null;
+        // Show config value if applicable
+        const entry = modifiers[key];
+        const val = typeof entry === "object" && !Array.isArray(entry) ? entry.value : null;
         if (val !== null && mod.selectOptions) {
             const opt = mod.selectOptions.find(o => o.value === val);
             if (opt) pill.innerHTML += `<span class="locked-pill-detail">${opt.label}</span>`;
-        } else if (val !== null) {
-            pill.innerHTML += `<span class="locked-pill-detail">${val}s</span>`;
+        } else if (Array.isArray(val)) {
+            // Symbols — show first few symbols as preview
+            pill.innerHTML += `<span class="locked-pill-detail">${val.slice(0, 4).join("")}…</span>`;
+        } else if (typeof val === "number") {
+            const unit = mod.valueLabel ?? "s";
+            pill.innerHTML += `<span class="locked-pill-detail">${val} ${unit}</span>`;
         }
         pills.appendChild(pill);
     }
@@ -177,6 +261,10 @@ function buildModifierTile(mod, getMods, updateMods, grid, section) {
     // Configurable value input (e.g. Time Out seconds)
     if (mod.configurable && active) {
         tile.appendChild(buildModifierConfig(mod, getMods, updateMods, grid, section));
+    }
+    // Multi-value config (e.g. Symbols)
+    if (mod.multiConfig && active) {
+        tile.appendChild(buildSymbolsConfig(getMods, updateMods, grid));
     }
 
     const doToggle = () => {
@@ -263,6 +351,89 @@ function buildModifierConfig(mod, getMods, updateMods, grid, section) {
 // ─────────────────────────────────────────────────────────────────────────────
 // TECHNIQUES DROPDOWN
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// HINTS SECTION
+// ─────────────────────────────────────────────────────────────────────────────
+function buildHintsSection() {
+    const wrapper = document.createElement("div");
+    wrapper.className = "hints-wrapper";
+
+    // ── Header row ────────────────────────────────────────────────────────────
+    const header = document.createElement("div");
+    header.className = "hints-header";
+
+    const title = document.createElement("span");
+    title.className = "hints-title";
+    title.textContent = "Hints";
+
+    // Dismiss button — clears the active hint highlight from the board.
+    // Hidden until a hint is active.
+    const dismissBtn = document.createElement("button");
+    dismissBtn.className = "hints-dismiss";
+    dismissBtn.textContent = "✕ clear";
+    dismissBtn.hidden = true;
+    dismissBtn.addEventListener("click", () => {
+        clearHint();
+        resultEl.hidden = true;
+        dismissBtn.hidden = true;
+    });
+
+    header.appendChild(title);
+    header.appendChild(dismissBtn);
+    wrapper.appendChild(header);
+
+    // ── Three hint buttons ────────────────────────────────────────────────────
+    const btnRow = document.createElement("div");
+    btnRow.className = "hints-btn-row";
+
+    const HINT_TYPES = [
+        { type: "number",    label: "Next Number",    icon: "🔢" },
+        { type: "cell",      label: "Next Cell",      icon: "🎯" },
+        { type: "technique", label: "Next Technique", icon: "💡" },
+    ];
+
+    // Result area — shown below the buttons after a hint fires.
+    const resultEl = document.createElement("div");
+    resultEl.className = "hints-result";
+    resultEl.hidden = true;
+
+    for (const { type, label, icon } of HINT_TYPES) {
+        const btn = document.createElement("button");
+        btn.className = "hint-btn";
+        btn.innerHTML = `<span class="hint-btn-icon">${icon}</span><span class="hint-btn-label">${label}</span>`;
+        btn.title = label;
+
+        btn.addEventListener("click", () => {
+            const hint = requestHint(type);
+            if (!hint) {
+                resultEl.hidden = false;
+                resultEl.className = "hints-result hints-result--none";
+                resultEl.innerHTML = `<span class="hints-result-label">No hint available</span><span class="hints-result-desc">The puzzle may already be complete, or no applicable step was found.</span>`;
+                dismissBtn.hidden = true;
+                return;
+            }
+
+            // Render result
+            resultEl.hidden = false;
+            resultEl.className = `hints-result hints-result--${hint.type}`;
+            resultEl.innerHTML = `<span class="hints-result-label">${hint.label}</span><span class="hints-result-desc">${hint.description}</span>`;
+
+            // Dismiss button only makes sense for number/cell hints (technique has no board highlight)
+            dismissBtn.hidden = (hint.type === "technique");
+        });
+
+        btnRow.appendChild(btn);
+    }
+
+    wrapper.appendChild(btnRow);
+    wrapper.appendChild(resultEl);
+
+    return wrapper;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TECHNIQUES DROPDOWN
+// ─────────────────────────────────────────────────────────────────────────────
 function buildTechniquesDropdown(techniques) {
     const wrapper = document.createElement("div");
     wrapper.className = "techniques-wrapper";
@@ -320,8 +491,8 @@ function buildWinPanel(meta, totalMs, onPlayAnother, onPuzzleSelect) {
 
     const puzzleName = document.createElement("div");
     puzzleName.className = "win-puzzle-name";
-    puzzleName.textContent = meta.type === "daily"
-        ? `Daily ${meta.label}`
+    puzzleName.textContent = meta.type === "daily"           ? `Daily ${meta.label}`
+        : meta.type === "daily-challenge"                    ? "Daily Challenge"
         : meta.label;
 
     const timeBlock = document.createElement("div");
@@ -364,6 +535,11 @@ function buildWinPanel(meta, totalMs, onPlayAnother, onPuzzleSelect) {
 }
 
 function getNextPuzzleMeta(currentMeta) {
+    if (currentMeta.type === "daily-challenge") {
+        // After daily challenge, suggest the first daily difficulty
+        const first = DAILY_DIFFICULTIES[0];
+        return { type: "daily", key: first.key, label: first.label, difficulty: first.key, difficulty_label: first.label };
+    }
     if (currentMeta.type === "daily") {
         const idx = DAILY_DIFFICULTIES.findIndex(d => d.key === currentMeta.key);
         const next = DAILY_DIFFICULTIES[idx + 1];
@@ -405,10 +581,29 @@ function buildPuzzleSelect(onChosen) {
     const el = document.createElement("div");
     el.className = "sidebar-panel";
 
+    // Heading row — title left, settings gear right
+    const headingRow = document.createElement("div");
+    headingRow.className = "select-heading-row";
+
     const heading = document.createElement("div");
     heading.className = "select-heading";
     heading.textContent = "Puzzle Select";
-    el.appendChild(heading);
+
+    const settingsBtn = document.createElement("button");
+    settingsBtn.className = "select-settings-btn";
+    settingsBtn.title = "Settings";
+    settingsBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+    settingsBtn.addEventListener("click", () => {
+        const sidebar = el.closest(".sidebar") ?? el.parentElement;
+        showSettingsPanel(sidebar, () => showPuzzleSelect(sidebar, onChosen));
+    });
+
+    headingRow.appendChild(heading);
+    headingRow.appendChild(settingsBtn);
+    el.appendChild(headingRow);
+
+    el.appendChild(buildSectionHeading("Daily Challenge"));
+    el.appendChild(buildDailyChallengeCard(onChosen));
 
     el.appendChild(buildSectionHeading("Daily Puzzles"));
     const dailyPuzzles = DAILY_DIFFICULTIES.map(diff => ({
@@ -441,6 +636,107 @@ function buildPuzzleSelect(onChosen) {
     el.appendChild(buildCustomGameInput(onChosen));
 
     return el;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DAILY CHALLENGE CARD
+// ─────────────────────────────────────────────────────────────────────────────
+function buildDailyChallengeCard(onChosen) {
+    const meta = getDailyChallengeMeta();
+
+    const completed  = isCompleted(meta);
+    const savedState = !completed ? loadState(meta) : null;
+    const inProgress = !!savedState;
+    const completionMs = completed ? getCompletionTime(meta) : null;
+    const progressMs   = inProgress ? (savedState.elapsed ?? 0) : null;
+
+    const btn = document.createElement("button");
+    btn.className = "puzzle-btn puzzle-btn--daily-challenge";
+    if (completed) btn.classList.add("puzzle-btn--completed");
+
+    // ── Header row: title + status badge ─────────────────────────────────────
+    const labelRow = document.createElement("div");
+    labelRow.className = "pb-label-row";
+
+    const labelSpan = document.createElement("span");
+    labelSpan.className = "pb-label";
+    labelSpan.textContent = "Daily Challenge";
+    labelRow.appendChild(labelSpan);
+
+    if (completed) {
+        const badge = document.createElement("span");
+        badge.className = "pb-badge pb-badge--done";
+        badge.textContent = "✓ Done";
+        labelRow.appendChild(badge);
+    } else if (inProgress) {
+        const badge = document.createElement("span");
+        badge.className = "pb-badge pb-badge--progress";
+        badge.textContent = "In progress";
+        labelRow.appendChild(badge);
+    }
+    btn.appendChild(labelRow);
+
+    // ── Date + difficulty row ─────────────────────────────────────────────────
+    const metaRow = document.createElement("div");
+    metaRow.className = "pb-daily-meta";
+
+    const dateEl = document.createElement("span");
+    dateEl.className = "pb-daily-date";
+    // Format date as "Mon Mar 15" from the ISO string
+    dateEl.textContent = new Date(meta.date + "T12:00:00").toLocaleDateString("en-US", {
+        weekday: "short", month: "short", day: "numeric"
+    });
+    metaRow.appendChild(dateEl);
+
+    const sep = document.createElement("span");
+    sep.className = "pb-daily-sep";
+    sep.textContent = "·";
+    metaRow.appendChild(sep);
+
+    const diffEl = document.createElement("span");
+    diffEl.className = "pb-difficulty";
+    diffEl.textContent = meta.difficulty_label;
+    metaRow.appendChild(diffEl);
+
+    btn.appendChild(metaRow);
+
+    // ── Modifier icon strip ───────────────────────────────────────────────────
+    const modEntries = meta.modifiers ? Object.keys(meta.modifiers) : [];
+    if (modEntries.length > 0) {
+        const strip = document.createElement("div");
+        strip.className = "pb-mod-strip";
+        for (const key of modEntries) {
+            const mod = MODIFIER_MAP[key];
+            if (!mod) continue;
+            const pill = document.createElement("span");
+            pill.className = `pb-mod-icon pb-mod-icon--${mod.color}`;
+            pill.textContent = mod.icon;
+            pill.dataset.tooltip = mod.description;
+            strip.appendChild(pill);
+        }
+        btn.appendChild(strip);
+    } else {
+        // Explicitly show "No modifiers" so the card doesn't look incomplete
+        const none = document.createElement("div");
+        none.className = "pb-daily-no-mods";
+        none.textContent = "No modifiers today";
+        btn.appendChild(none);
+    }
+
+    // ── Time row ──────────────────────────────────────────────────────────────
+    if (completionMs != null || (progressMs != null && progressMs > 0)) {
+        const timeRow = document.createElement("div");
+        timeRow.className = "pb-time-row";
+        if (completionMs != null) {
+            timeRow.innerHTML = `<span class="pb-time-icon">⏱</span><span class="pb-time">${formatElapsed(completionMs)}</span>`;
+        } else {
+            timeRow.innerHTML = `<span class="pb-time-icon">⏱</span><span class="pb-time pb-time--progress">${formatElapsed(progressMs)}</span>`;
+        }
+        btn.appendChild(timeRow);
+    }
+
+    btn.addEventListener("click", () => onChosen(meta));
+    return btn;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -483,6 +779,31 @@ function buildPuzzleButton(meta, label, description, onChosen) {
     }
 
     btn.appendChild(labelRow);
+
+    // Difficulty label
+    if (meta.difficulty_label) {
+        const diffEl = document.createElement("div");
+        diffEl.className = "pb-difficulty";
+        diffEl.textContent = meta.difficulty_label;
+        btn.appendChild(diffEl);
+    }
+
+    // Modifier icon strip — shown when the puzzle has locked modifiers
+    const modEntries = meta.modifiers ? Object.keys(meta.modifiers) : [];
+    if (modEntries.length > 0) {
+        const strip = document.createElement("div");
+        strip.className = "pb-mod-strip";
+        for (const key of modEntries) {
+            const mod = MODIFIER_MAP[key];
+            if (!mod) continue;
+            const pill = document.createElement("span");
+            pill.className = `pb-mod-icon pb-mod-icon--${mod.color}`;
+            pill.textContent = mod.icon;
+            pill.dataset.tooltip = mod.description;
+            strip.appendChild(pill);
+        }
+        btn.appendChild(strip);
+    }
 
     // Time row
     if (completionMs != null || progressMs != null) {
@@ -604,8 +925,8 @@ function showCustomGamePopup(onChosen) {
     document.getElementById("custom-game-popup")?.remove();
     document.getElementById("custom-game-backdrop")?.remove();
 
-    const DIFFICULTY_KEYS = ["easy", "medium", "hard", "veryhard", "extreme"];
-    const DIFFICULTY_LABELS = { easy: "Easy", medium: "Medium", hard: "Hard", veryhard: "Very Hard", extreme: "Extreme" };
+    const DIFFICULTY_KEYS = ["veryeasy", "easy", "medium", "hard", "veryhard", "extreme"];
+    const DIFFICULTY_LABELS = { veryeasy: "Very Easy", easy: "Easy", medium: "Medium", hard: "Hard", veryhard: "Very Hard", extreme: "Extreme" };
 
     // State for the popup
     let popupDifficulty = "medium";
@@ -835,7 +1156,7 @@ function showCustomGamePopup(onChosen) {
 }
 
 function buildCustomGameInput(onChosen) {
-    const DIFFICULTY_LABELS = { easy: "Easy", medium: "Medium", hard: "Hard", veryhard: "Very Hard", extreme: "Extreme" };
+    const DIFFICULTY_LABELS = { veryeasy: "Very Easy", easy: "Easy", medium: "Medium", hard: "Hard", veryhard: "Very Hard", extreme: "Extreme" };
 
     const wrapper = document.createElement("div");
     wrapper.className = "custom-game-section";
@@ -904,10 +1225,109 @@ function buildSectionHeading(text) {
 
 function difficultyLabel(key) {
     const map = {
+        veryeasy: "Very Easy",
         easy: "Easy", medium: "Medium", hard: "Hard",
         veryhard: "Very Hard", extreme: "Extreme"
     };
     return map[key] ?? key;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SETTINGS PANEL
+// ─────────────────────────────────────────────────────────────────────────────
+export function showSettingsPanel(sidebar, onBack) {
+    transitionPanel(sidebar, buildSettingsPanel(sidebar, onBack));
+}
+
+function buildSettingsPanel(sidebar, onBack) {
+    const el = document.createElement("div");
+    el.className = "sidebar-panel";
+
+    const backBtn = document.createElement("button");
+    backBtn.className = "back-btn";
+    backBtn.textContent = "‹ back";
+    backBtn.addEventListener("click", () => onBack());
+    el.appendChild(backBtn);
+
+    const titleBlock = document.createElement("div");
+    titleBlock.className = "puzzle-title-block";
+    const mainTitle = document.createElement("div");
+    mainTitle.className = "puzzle-main-title";
+    mainTitle.textContent = "Settings";
+    titleBlock.appendChild(mainTitle);
+    el.appendChild(titleBlock);
+
+    const list = document.createElement("div");
+    list.className = "settings-list";
+
+    const SETTING_DEFS = [
+        {
+            key:     "timerVisible",
+            label:   "Show Timer",
+            desc:    "Display the elapsed time while solving.",
+        },
+        {
+            key:     "highlightMistakes",
+            label:   "Highlight Mistakes",
+            desc:    "Immediately flag cells whose value conflicts with the solution.",
+        },
+        {
+            key:     "showConflicts",
+            label:   "Show Conflicts",
+            desc:    "Highlight duplicate digits in the same row, column, or box.",
+        },
+        {
+            key:     "autoCandidateStart",
+            label:   "Start with Auto Candidates",
+            desc:    "Enable auto-candidate mode automatically when a new puzzle loads.",
+        },
+    ];
+
+    for (const def of SETTING_DEFS) {
+        list.appendChild(buildSettingRow(def));
+    }
+
+    el.appendChild(list);
+    return el;
+}
+
+function buildSettingRow(def) {
+    const row = document.createElement("div");
+    row.className = "settings-row";
+
+    const text = document.createElement("div");
+    text.className = "settings-row-text";
+
+    const label = document.createElement("div");
+    label.className = "settings-row-label";
+    label.textContent = def.label;
+
+    const desc = document.createElement("div");
+    desc.className = "settings-row-desc";
+    desc.textContent = def.desc;
+
+    text.appendChild(label);
+    text.appendChild(desc);
+
+    // Toggle button — reads live setting value each render
+    const toggle = document.createElement("button");
+    toggle.className = "settings-toggle";
+    const current = getSettings()[def.key];
+    toggle.setAttribute("aria-pressed", current);
+    toggle.classList.toggle("settings-toggle--on", current);
+    toggle.textContent = current ? "On" : "Off";
+
+    toggle.addEventListener("click", () => {
+        const next = !getSettings()[def.key];
+        updateSettings({ [def.key]: next });
+        toggle.setAttribute("aria-pressed", next);
+        toggle.classList.toggle("settings-toggle--on", next);
+        toggle.textContent = next ? "On" : "Off";
+    });
+
+    row.appendChild(text);
+    row.appendChild(toggle);
+    return row;
 }
 
 function transitionPanel(sidebar, newPanel) {

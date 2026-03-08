@@ -1,8 +1,11 @@
-import { createInitialState, isSolved, toggleAutoCandidates, resetBoard } from "./state.js";
+import { createInitialState, isSolved, toggleAutoCandidates, resetBoard, getConflicts } from "./state.js";
 import { render } from "./renderer.js";
 import { attachController } from "./controller.js";
 import { generate, solve } from "./generator.js";
 import { showPuzzleSelect, showPuzzleInfo, showWinPanel } from "./sidebar.js";
+import {
+    startModifierEffects, stopModifierEffects, restartLivingEffect
+} from "./modifier-effects.js";
 import {
     saveState, loadState, markCompleted, isCompleted,
     getCompletionTime, pruneStaleDaily, pruneStaleCompletions, clearState,
@@ -12,10 +15,13 @@ import {
     loadModifiers, saveModifiers, isModifierActive, getModifierValue,
     toggleModifier, setModifierValue
 } from "./modifiers.js";
+import { loadSettings, getSettings, updateSettings } from "./settings.js";
+import { computeHint } from "./hints.js";
 
 // ─── Startup cleanup ──────────────────────────────────────────────────────────
 pruneStaleDaily();
 pruneStaleCompletions();
+loadSettings(); // hydrate settings store from localStorage
 
 // ─── DOM roots ────────────────────────────────────────────────────────────────
 const boardArea = document.querySelector(".board-area");
@@ -29,9 +35,14 @@ let activeMods = loadModifiers();
 
 export function getMods() { return activeMods; }
 
+// Re-export settings accessors so sidebar and other modules import from one place
+export { getSettings, updateSettings };
+
 export function updateMods(newMods) {
     activeMods = newMods;
     saveModifiers(newMods);
+    // Restart Living effect whenever mods change (handles both on and off transitions)
+    restartLivingEffect(getState, setState, rerender, getMods, showEventBanner);
     if (state) {
         let s = state;
         // No Candidates: force out of notes mode so typing still places values
@@ -53,10 +64,31 @@ export function getModsRef() { return activeMods; }
 let state = null;
 let _wonThisLoad = false; // prevents double-firing win within a single load
 
+// ─── Hint state ───────────────────────────────────────────────────────────────
+// Cleared automatically whenever the board changes (setState) or a new puzzle
+// loads (loadPuzzle → stopTimer path). Sidebar reads via getActiveHint().
+let activeHint = null;
+
+export function getActiveHint()  { return activeHint; }
+export function clearHint()      { activeHint = null; rerender(); }
+
+/**
+ * Request a hint of the given type, store it, re-render with highlight, and
+ * return the result so the sidebar can display the description.
+ */
+export function requestHint(type) {
+    if (!state) return null;
+    activeHint = computeHint(type, state, activeMods);
+    rerender();
+    return activeHint;
+}
+
 function getState() { return state; }
 
 function setState(newState) {
     state = newState;
+    activeHint = null;   // any board change dismisses the current hint
+
     if (activeMeta && state?.startTime) {
         saveState(activeMeta, state);
         if (isSolved(state) && !_wonThisLoad) {
@@ -65,7 +97,6 @@ function setState(newState) {
             if (!isCompleted(activeMeta)) {
                 markCompleted(activeMeta, totalMs);
                 clearState(activeMeta);
-                // For random puzzles, immediately roll a new seed so next visit shows a fresh puzzle
                 if (activeMeta.type === "random") {
                     const nextSeed = Math.floor(Math.random() * 1000000);
                     setPersistedRandomSeed(activeMeta.key, nextSeed);
@@ -74,11 +105,25 @@ function setState(newState) {
             stopTimer();
             boardArea.classList.add("puzzle-complete");
             handleWin(activeMeta, totalMs);
+            return;
+        }
+
+        // ── Fragile modifier: reset on first wrong value ────────────────────
+        if (isModifierActive(activeMods, "fragile") && getConflicts(state.board).size > 0) {
+            flashFragileOverlay();
+            setTimeout(() => {
+                if (state) {
+                    state = softResetBoard(state);
+                    rerender();
+                    // Re-arm modifier effects with the fresh state
+                    startModifierEffects(getState, setState, rerender, getMods, showEventBanner);
+                }
+            }, 900);
         }
     }
 }
 
-function rerender() { if (state) render(state, boardArea, activeMods); }
+function rerender() { if (state) render(state, boardArea, activeMods, getSettings(), activeHint); }
 
 // ─── Timer — managed here, not in renderer ────────────────────────────────────
 let _timerInterval = null;
@@ -94,7 +139,14 @@ export function startTimer(startTime) {
         const elapsed = Date.now() - s.startTime + (s._priorElapsed ?? 0);
 
         const el = document.getElementById("puzzle-timer");
-        if (el) el.textContent = formatElapsed(elapsed);
+        if (el) {
+            if (getSettings().timerVisible) {
+                el.textContent = formatElapsed(elapsed);
+                el.style.visibility = "";
+            } else {
+                el.style.visibility = "hidden";
+            }
+        }
 
         // Time Out modifier: reset board when limit is reached
         if (isModifierActive(activeMods, "time-out")) {
@@ -112,13 +164,42 @@ export function startTimer(startTime) {
             }
         }
     }, 500);
+
+    // Start any modifier-driven interval effects (Living, Decaying)
+    startModifierEffects(getState, setState, rerender, getMods, showEventBanner);
 }
 
 export function stopTimer() {
     if (_timerInterval) { clearInterval(_timerInterval); _timerInterval = null; }
+    stopModifierEffects();
+}
+
+// ─── Event banner ─────────────────────────────────────────────────────────────
+// A non-blocking slide-down banner anchored to the top of boardArea.
+// style: "error" | "warn" | "info" | "living"
+let _bannerTimeout = null;
+export function showEventBanner(text, style = "info", durationMs = 1800) {
+    // Remove any existing banner immediately
+    const old = boardArea.querySelector(".event-banner");
+    if (old) old.remove();
+    if (_bannerTimeout) { clearTimeout(_bannerTimeout); _bannerTimeout = null; }
+
+    const banner = document.createElement("div");
+    banner.className = `event-banner event-banner--${style}`;
+    banner.textContent = text;
+    boardArea.appendChild(banner);
+
+    // Animate in on next frame
+    requestAnimationFrame(() => banner.classList.add("event-banner--visible"));
+
+    _bannerTimeout = setTimeout(() => {
+        banner.classList.add("event-banner--out");
+        setTimeout(() => banner.remove(), 400);
+    }, durationMs);
 }
 
 function flashTimeoutOverlay() {
+    // Keep the board red-flash for timeout (it's a full-board reset)
     const flash = document.createElement("div");
     flash.id = "timeout-flash";
     flash.className = "timeout-flash";
@@ -128,6 +209,20 @@ function flashTimeoutOverlay() {
         flash.classList.add("timeout-flash--out");
         setTimeout(() => flash.remove(), 600);
     }, 1200);
+    showEventBanner("⏱ Time's up — resetting!", "error", 1600);
+}
+
+function flashFragileOverlay() {
+    // Red flash on the board surface
+    const flash = document.createElement("div");
+    flash.className = "fragile-flash";
+    boardArea.appendChild(flash);
+    requestAnimationFrame(() => flash.classList.add("fragile-flash--visible"));
+    setTimeout(() => {
+        flash.classList.add("fragile-flash--out");
+        setTimeout(() => flash.remove(), 600);
+    }, 700);
+    showEventBanner("💥 Wrong number — resetting!", "error", 1400);
 }
 
 // Soft reset: clear user values and manual notes but preserve auto-candidates state and clock
@@ -160,7 +255,12 @@ export function formatElapsed(ms) {
 
 // ─── Seed helpers ─────────────────────────────────────────────────────────────
 function getTodaysSeed(difficultyKey) {
-    const date = new Date().toISOString().slice(0, 10);
+    const d = new Date();
+    const date = [
+        d.getFullYear(),
+        String(d.getMonth() + 1).padStart(2, "0"),
+        String(d.getDate()).padStart(2, "0")
+    ].join("-");
     const str  = date + difficultyKey;
     let hash = 0;
     for (const char of str)
@@ -173,6 +273,7 @@ export function loadPuzzle(meta, options = {}) {
     stopTimer();
     boardArea.classList.remove("puzzle-complete");
     _wonThisLoad = false;
+    activeHint = null;   // clear any hint from the previous puzzle
 
     // Resolve the canonical seed for random puzzles so storage keys are stable
     if (meta.type === "random") {
@@ -195,10 +296,10 @@ export function loadPuzzle(meta, options = {}) {
     activeMeta = meta;
 
     // Apply the right modifiers for each puzzle type:
-    //   challenge/custom with modifiers → locked to those
-    //   random                          → restore user's saved prefs
-    //   everything else                 → no modifiers
-    if ((meta.type === "challenge" || meta.type === "custom") && meta.modifiers) {
+    //   challenge/custom/daily-challenge with modifiers → locked to those
+    //   random                                          → restore user's saved prefs
+    //   everything else                                 → no modifiers
+    if ((meta.type === "challenge" || meta.type === "custom" || meta.type === "daily-challenge") && meta.modifiers) {
         activeMods = meta.modifiers;
     } else if (meta.type === "random") {
         activeMods = loadModifiers();
@@ -217,6 +318,11 @@ export function loadPuzzle(meta, options = {}) {
         if (isModifierActive(activeMods, "candidate-only") && !s.autoCandidates) {
             return toggleAutoCandidates(s);
         }
+        // autoCandidateStart setting — only apply to fresh starts, not restored saves
+        // (saved state already has the player's explicit autoCandidates preference)
+        if (getSettings().autoCandidateStart && !s.autoCandidates && !s.elapsed) {
+            return toggleAutoCandidates(s);
+        }
         return s;
     };
 
@@ -232,17 +338,17 @@ export function loadPuzzle(meta, options = {}) {
                 row.map((val, c) => (puzzle[r][c] !== 0 ? puzzle[r][c] : val))
             );
             state = { ...createInitialState(solvedPuzzle), startTime: null, _priorElapsed: 0 };
-            render(state, boardArea, {}); // no mods — show everything
+            render(state, boardArea, {}, getSettings(), null); // no mods — show everything
             showBoardOverlay("none");
             boardArea.classList.add("puzzle-complete");
             showWinPanel(sidebarEl, meta, completionMs, onPuzzleChosen, onPuzzleSelectRequested);
         }, 400);
     } else if (saved) {
         state = applyModsToState(saved);
-        render(state, boardArea, activeMods);
+        render(state, boardArea, activeMods, getSettings(), null);
         showBoardOverlay("countdown", () => {
             state = { ...state, startTime: Date.now(), _priorElapsed: saved.elapsed ?? 0 };
-            render(state, boardArea, activeMods);
+            render(state, boardArea, activeMods, getSettings(), null);
             startTimer(state.startTime);
         });
     } else {
@@ -254,15 +360,16 @@ export function loadPuzzle(meta, options = {}) {
             } else if (meta.type === "random") {
                 seed = options.forceNew ? Math.floor(Math.random() * 1000000) : meta.seed;
             } else {
+                // challenge, custom, daily-challenge all carry pre-computed meta.seed
                 seed = meta.seed;
             }
 
             const puzzle = generate(meta.difficulty, seed);
             state = applyModsToState({ ...createInitialState(puzzle), startTime: null, _priorElapsed: 0 });
-            render(state, boardArea, activeMods);
+            render(state, boardArea, activeMods, getSettings(), null);
             showBoardOverlay("countdown", () => {
                 state = { ...state, startTime: Date.now() };
-                render(state, boardArea, activeMods);
+                render(state, boardArea, activeMods, getSettings(), null);
                 startTimer(state.startTime);
                 saveState(activeMeta, state);
             });
@@ -270,7 +377,7 @@ export function loadPuzzle(meta, options = {}) {
     }
 
     if (!options.viewCompleted) {
-        const modsLocked = (meta.type === "challenge" || meta.type === "custom") && !!meta.modifiers;
+        const modsLocked = (meta.type === "challenge" || meta.type === "custom" || meta.type === "daily-challenge") && !!meta.modifiers;
         showPuzzleInfo(sidebarEl, meta, onPuzzleSelectRequested, getMods, updateMods, modsLocked);
     }
 }
@@ -278,7 +385,7 @@ export function loadPuzzle(meta, options = {}) {
 // ─── Win handler ──────────────────────────────────────────────────────────────
 function handleWin(meta, totalMs) {
     // Re-render without active modifiers so the completed board is fully visible
-    if (state) render(state, boardArea, {});
+    if (state) render(state, boardArea, {}, getSettings(), null);
     launchConfetti();
     setTimeout(() => {
         showWinPanel(sidebarEl, meta, totalMs, onPuzzleChosen, onPuzzleSelectRequested);
@@ -516,4 +623,23 @@ function onPuzzleChosen(meta) {
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 showBoardOverlay("select");
 showPuzzleSelect(sidebarEl, onPuzzleChosen);
-attachController(boardArea, getState, setState, rerender, getMods);
+/**
+ * Called by the controller after every successful value placement.
+ * Stamps _placedAt on the cell for the Decaying modifier.
+ */
+function onValuePlaced(newState, number) {
+    if (!isModifierActive(activeMods, "decaying")) return;
+    if (number === 0) return;       // erase — no timestamp needed
+    if (newState.mode !== "value") return;  // notes don't decay
+
+    const { row, col } = newState.selected;
+    const cell = newState.board?.[row]?.[col];
+    if (!cell || cell.fixed || cell.value === 0) return;
+
+    // Stamp directly on the live state cell (state is already committed)
+    if (state?.board?.[row]?.[col]) {
+        state.board[row][col]._placedAt = Date.now();
+    }
+}
+
+attachController(boardArea, getState, setState, rerender, getMods, onValuePlaced);

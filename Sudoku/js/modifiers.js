@@ -47,7 +47,7 @@ export const MODIFIERS = [
         color:        "red",
         incompatible: [],
         configurable: true,     // renders an extra seconds input
-        defaultValue: 300,      // seconds
+        defaultValue: 60,      // seconds
         minValue:     30,
         maxValue:     3600,
         valueLabel:   "seconds",
@@ -59,6 +59,86 @@ export const MODIFIERS = [
         description:  "Values are hidden — only candidates are shown. Auto-candidates enabled.",
         color:        "emerald",
         incompatible: ["no-candidates"],
+    },
+    {
+        key:          "fragile",
+        label:        "Fragile",
+        icon:         "💥",
+        description:  "One wrong number resets the puzzle. Every placement counts.",
+        color:        "red",
+        incompatible: [],
+    },
+    {
+        key:          "living",
+        label:        "Living",
+        icon:         "🌀",
+        description:  "The board shifts every few seconds — rows, columns, or orientation swap while staying valid.",
+        color:        "violet",
+        incompatible: [],
+        configurable: true,
+        defaultValue: 10,
+        minValue:     5,
+        maxValue:     60,
+        valueLabel:   "seconds",
+    },
+    {
+        key:          "decaying",
+        label:        "Decaying",
+        icon:         "⏳",
+        description:  "Entered values expire after a set time. A fading glow warns you before they vanish.",
+        color:        "amber",
+        incompatible: [],
+        configurable: true,
+        defaultValue: 20,
+        minValue:     5,
+        maxValue:     120,
+        valueLabel:   "seconds",
+    },
+    {
+        key:          "ordered",
+        label:        "Ordered",
+        icon:         "🔢",
+        description:  "Place all 1s before 2s, all 2s before 3s, and so on. Optionally reversed.",
+        color:        "blue",
+        incompatible: [],
+        configurable:  true,
+        defaultValue:  "asc",
+        selectOptions: [
+            { value: "asc",  label: "1 → 9" },
+            { value: "desc", label: "9 → 1" },
+        ],
+    },
+    {
+        key:          "small-notepad",
+        label:        "Small Notepad",
+        icon:         "📝",
+        description:  "Limit total candidate marks across the whole puzzle.",
+        color:        "emerald",
+        incompatible: ["no-candidates", "candidate-only"],
+        configurable: true,
+        defaultValue: 20,
+        minValue:     1,
+        maxValue:     81,
+        valueLabel:   "marks total",
+    },
+    {
+        key:          "symbols",
+        label:        "Symbols",
+        icon:         "🔣",
+        description:  "Replace the nine digits with custom single-character symbols.",
+        color:        "violet",
+        incompatible: [],
+        // Not a standard number/select config — sidebar renders it with multiConfig
+        multiConfig:  true,
+        defaultValue: ["★","♦","♣","♠","♥","⬟","⬡","▲","●"],
+    },
+    {
+        key:          "rainbow",
+        label:        "Rainbow",
+        icon:         "🌈",
+        description:  "The board hues smoothly cycle through the rainbow.",
+        color:        "amber",
+        incompatible: [],
     },
 ];
 
@@ -89,7 +169,16 @@ export function isModifierActive(mods, key) {
 export function getModifierValue(mods, key) {
     const entry = mods[key];
     if (!entry) return null;
-    return typeof entry === "object" ? entry.value : null;
+    return typeof entry === "object" && !Array.isArray(entry) ? entry.value : null;
+}
+
+/** For multiConfig modifiers (e.g. symbols) — returns array value or null. */
+export function getModifierMultiValue(mods, key) {
+    const entry = mods[key];
+    if (!entry) return null;
+    if (Array.isArray(entry)) return entry;
+    if (typeof entry === "object" && Array.isArray(entry.value)) return entry.value;
+    return null;
 }
 
 export function toggleModifier(mods, key) {
@@ -101,7 +190,11 @@ export function toggleModifier(mods, key) {
     } else {
         // Remove incompatible modifiers
         for (const incompat of (mod.incompatible ?? [])) delete next[incompat];
-        next[key] = mod.configurable ? { value: mod.defaultValue } : true;
+        if (mod.multiConfig) {
+            next[key] = { value: mod.defaultValue }; // store as { value: array }
+        } else {
+            next[key] = mod.configurable ? { value: mod.defaultValue } : true;
+        }
     }
     return next;
 }
@@ -111,4 +204,13 @@ export function setModifierValue(mods, key, value) {
     if (!mod?.configurable) return mods;
     if (!mods[key]) return mods; // not active
     return { ...mods, [key]: { value } };
+}
+
+/** Update one symbol in a symbols array — index 0–8. */
+export function setModifierSymbol(mods, index, symbol) {
+    const current = getModifierMultiValue(mods, "symbols");
+    if (!current) return mods;
+    const next = [...current];
+    next[index] = symbol || String(index + 1); // fallback to digit if cleared
+    return { ...mods, symbols: { value: next } };
 }
