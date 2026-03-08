@@ -290,7 +290,7 @@ class HumanSolver {
     }
 
     let diffStr = "veryeasy";
-    if (!solved)              diffStr = "extreme"; // requires techniques beyond what's implemented
+    if (!solved)              diffStr = "veryhard";
     else if (hardestLevel === 1) diffStr = "easy";
     else if (hardestLevel === 2) diffStr = "medium";
     else if (hardestLevel === 3) diffStr = "hard";
@@ -667,7 +667,7 @@ class HumanSolver {
   }
 }
 
-const TIER_MAP = { "veryeasy": 0, "easy": 1, "medium": 2, "hard": 3, "veryhard": 4, "extreme": 5 };
+const TIER_MAP = { "veryeasy": 0, "easy": 1, "medium": 2, "hard": 3, "veryhard": 4 };
 
 export function generate(difficulty, seed) {
   let currentSeed = seed;

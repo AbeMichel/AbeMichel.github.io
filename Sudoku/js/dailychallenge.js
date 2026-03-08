@@ -31,11 +31,19 @@ import { MODIFIER_MAP } from "./modifiers.js";
 const DAILY_MODIFIER_POOL = [
     "no-candidates",
     "blackout",
+    "time-out",
     "candidate-only",
+    "fragile",
+    "living",
+    "decaying",
+    "ordered",
+    "small-notepad",
+    "symbols",
+    "rainbow"
 ];
 
 // Difficulty keys in ascending order — probability weights favour the middle
-const DIFFICULTIES = ["veryeasy", "easy", "medium", "hard", "veryhard", "extreme"];
+const DIFFICULTIES = ["veryeasy", "easy", "medium", "hard", "veryhard"];
 // Weighted index table: veryeasy×1, easy×1, medium×2, hard×3, veryhard×2, extreme×1 (total 10)
 const DIFFICULTY_WEIGHTS = [1, 1, 2, 3, 2, 1];
 
@@ -120,7 +128,7 @@ export function getDailyChallengeMeta(dateStr) {
     }
 
     // ── Build label + description ─────────────────────────────────────────────
-    const diffLabel = { veryeasy: "Very Easy", easy: "Easy", medium: "Medium", hard: "Hard", veryhard: "Very Hard", extreme: "Extreme" };
+    const diffLabel = { veryeasy: "Very Easy", easy: "Easy", medium: "Medium", hard: "Hard", veryhard: "Very Hard" };
     const modKeys   = Object.keys(modifiers);
     const modLabels = modKeys.map(k => MODIFIER_MAP[k]?.label ?? k);
 

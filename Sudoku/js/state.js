@@ -1,9 +1,10 @@
 const SIZE = 9;
 
-export function createInitialState(puzzle = null, startTime = Date.now()) {
+export function createInitialState(puzzle = null, solution = null, startTime = Date.now()) {
     return {
         board: puzzle ? createBoardFromPuzzle(puzzle) : createEmptyBoard(),
         original: puzzle ? puzzle.map(row => [...row]) : null,
+        solution: solution ? solution.map(row => [...row]) : null,
         selected: { row: 0, col: 0 },
         mode: "value",
         autoCandidates: false,
@@ -14,7 +15,7 @@ export function createInitialState(puzzle = null, startTime = Date.now()) {
 }
 
 export function resetBoard(state) {
-    return createInitialState(state.original);
+    return createInitialState(state.original, state.solution);
 }
 
 function createBoardFromPuzzle(puzzle) {

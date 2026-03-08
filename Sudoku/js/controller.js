@@ -10,7 +10,7 @@ import {
 } from "./state.js";
 import { isModifierActive, getModifierValue } from "./modifiers.js";
 
-export function attachController(root, getState, setState, rerender, getMods, onValuePlaced) {
+export function attachController(root, getState, setState, rerender, getMods, onCellInput) {
 
     root.addEventListener("click", (e) => {
         const cell = e.target.closest(".cell");
@@ -39,7 +39,7 @@ export function attachController(root, getState, setState, rerender, getMods, on
             if (!guardPlacement(getState(), num, getMods())) return;
             const newState = placeNumber(getState(), num);
             setState(newState);
-            onValuePlaced?.(newState, num);
+            onCellInput?.(newState, num);
             rerender();
             return;
         }
@@ -86,7 +86,7 @@ export function attachController(root, getState, setState, rerender, getMods, on
             if (!guardPlacement(getState(), num, getMods())) return;
             const newState = placeNumber(getState(), num);
             setState(newState);
-            onValuePlaced?.(newState, num);
+            onCellInput?.(newState, num);
             rerender();
             return;
         }

@@ -149,8 +149,9 @@ function renderBoard(state, mods, settings = {}, hint = null) {
             }
 
             // Highlight mistakes: non-fixed cells whose value is wrong
-            if (highlightMistakes && !cellData.fixed && cellData.value !== 0 && state.original) {
-                if (conflicts.has(`${row},${col}`)) {
+            if (highlightMistakes && !cellData.fixed && cellData.value !== 0 && state.solution) {
+                const correctValue = state.solution[row][col];
+                if (cellData.value !== correctValue) {
                     cell.classList.add("mistake");
                 }
             }

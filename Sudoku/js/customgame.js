@@ -17,7 +17,7 @@ import { MODIFIERS } from "./modifiers.js";
 
 const VERSION = 1;
 
-const DIFFICULTY_KEYS = ["veryeasy", "easy", "medium", "hard", "veryhard", "extreme"];
+const DIFFICULTY_KEYS = ["veryeasy", "easy", "medium", "hard", "veryhard"];
 const DIFFICULTY_IDX  = Object.fromEntries(DIFFICULTY_KEYS.map((k, i) => [k, i]));
 
 // ── Encoding ─────────────────────────────────────────────────────────────────

@@ -126,7 +126,7 @@ const ACHIEVEMENT_DEFS = [
     { id: "first-solve", label: "First Steps", desc: "Complete your first puzzle", check: (s) => s.totalSolves >= 1 },
     { id: "streak-3", label: "Reliable", desc: "Maintain a 3-day streak", check: (s, m, streak) => streak.current >= 3 },
     { id: "streak-7", label: "Dedicated", desc: "Maintain a 7-day streak", check: (s, m, streak) => streak.current >= 7 },
-    { id: "master-extreme", label: "Grandmaster", desc: "Solve an Extreme puzzle", check: (s, m) => s.solveCounts?.extreme >= 1 },
+    { id: "master-veryhard", label: "Sudoku Scholar", desc: "Solve a Very Hard puzzle", check: (s, m) => s.solveCounts?.veryhard >= 1 },
     { id: "speed-demon", label: "Speed Demon", desc: "Solve any puzzle in under 2 minutes", check: (s) => Object.values(s.fastestTimes || {}).some(t => t < 120000) },
 ];
 
@@ -208,6 +208,7 @@ function serialiseState(state) {
     return {
         board:          serialiseBoard(state.board),
         original:       state.original,
+        solution:       state.solution,
         selected:       state.selected,
         mode:           state.mode,
         autoCandidates: state.autoCandidates,
@@ -220,6 +221,7 @@ function deserialiseState(raw) {
     return {
         board:          deserialiseBoard(raw.board),
         original:       raw.original,
+        solution:       raw.solution ?? null,
         selected:       raw.selected ?? { row: 0, col: 0 },
         mode:           raw.mode ?? "value",
         autoCandidates: raw.autoCandidates ?? false,

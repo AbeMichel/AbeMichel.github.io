@@ -35,7 +35,6 @@ const TECHNIQUES_BY_DIFFICULTY = {
     medium:   ["nakedSingle", "hiddenSingle", "interaction", "nakedPair", "hiddenPair"],
     hard:     ["nakedSingle", "hiddenSingle", "interaction", "nakedPair", "hiddenPair", "nakedTriple", "hiddenTriple", "nakedFoursome", "hiddenFoursome"],
     veryhard: ["nakedSingle", "hiddenSingle", "interaction", "nakedPair", "hiddenPair", "nakedTriple", "hiddenTriple", "nakedFoursome", "hiddenFoursome", "xWing", "xyWing", "swordfish", "xyzWing", "jellyfish"],
-    extreme:  ["nakedSingle", "hiddenSingle", "interaction", "nakedPair", "hiddenPair", "nakedTriple", "hiddenTriple", "nakedFoursome", "hiddenFoursome", "xWing", "xyWing", "swordfish", "xyzWing", "xChain", "xyChain", "jellyfish", "wxyzWing", "nakedSingleChain"],
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -973,8 +972,8 @@ export function showStatsPopup() {
 
     const diffList = document.createElement("div");
     diffList.className = "stats-difficulty-list";
-    const D_ORDER = ["veryeasy", "easy", "medium", "hard", "veryhard", "extreme"];
-    const D_LABELS = { veryeasy: "Very Easy", easy: "Easy", medium: "Medium", hard: "Hard", veryhard: "Very Hard", extreme: "Extreme" };
+    const D_ORDER = ["veryeasy", "easy", "medium", "hard", "veryhard"];
+    const D_LABELS = { veryeasy: "Very Easy", easy: "Easy", medium: "Medium", hard: "Hard", veryhard: "Very Hard" };
 
     for (const dKey of D_ORDER) {
         const count = stats.solveCounts?.[dKey] || 0;
@@ -1037,8 +1036,8 @@ function showCustomGamePopup(onChosen) {
     document.getElementById("custom-game-popup")?.remove();
     document.getElementById("custom-game-backdrop")?.remove();
 
-    const DIFFICULTY_KEYS = ["veryeasy", "easy", "medium", "hard", "veryhard", "extreme"];
-    const DIFFICULTY_LABELS = { veryeasy: "Very Easy", easy: "Easy", medium: "Medium", hard: "Hard", veryhard: "Very Hard", extreme: "Extreme" };
+    const DIFFICULTY_KEYS = ["veryeasy", "easy", "medium", "hard", "veryhard"];
+    const DIFFICULTY_LABELS = { veryeasy: "Very Easy", easy: "Easy", medium: "Medium", hard: "Hard", veryhard: "Very Hard" };
 
     // State for the popup
     let popupDifficulty = "medium";
@@ -1268,7 +1267,7 @@ function showCustomGamePopup(onChosen) {
 }
 
 function buildCustomGameInput(onChosen) {
-    const DIFFICULTY_LABELS = { veryeasy: "Very Easy", easy: "Easy", medium: "Medium", hard: "Hard", veryhard: "Very Hard", extreme: "Extreme" };
+    const DIFFICULTY_LABELS = { veryeasy: "Very Easy", easy: "Easy", medium: "Medium", hard: "Hard", veryhard: "Very Hard" };
 
     const wrapper = document.createElement("div");
     wrapper.className = "custom-game-section";
@@ -1339,7 +1338,7 @@ function difficultyLabel(key) {
     const map = {
         veryeasy: "Very Easy",
         easy: "Easy", medium: "Medium", hard: "Hard",
-        veryhard: "Very Hard", extreme: "Extreme"
+        veryhard: "Very Hard"
     };
     return map[key] ?? key;
 }

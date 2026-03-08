@@ -3,12 +3,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const DAILY_DIFFICULTIES = [
-    { key: "veryeasy",  label: "Very Easy" },
-    { key: "easy",      label: "Easy" },
-    { key: "medium",    label: "Medium" },
-    { key: "hard",      label: "Hard" },
-    { key: "veryhard",  label: "Very Hard" },
-    { key: "extreme",   label: "Extreme" },
+    { key: "veryeasy", label: "Very Easy" },
+    { key: "easy",     label: "Easy" },
+    { key: "medium",   label: "Medium" },
+    { key: "hard",     label: "Hard" },
+    { key: "veryhard", label: "Very Hard" },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -79,7 +78,7 @@ export const CHALLENGES = [
         id:          "void",
         label:       "The Void",
         description: "Stare long enough and it stares back.",
-        difficulty:  "extreme",
+        difficulty:  "veryhard",
         seed:        9999,
         modifiers:   { 
             "blackout": { value: "box" } 
@@ -89,7 +88,7 @@ export const CHALLENGES = [
         id:          "pain",
         label:       "Pain",
         description: "Only for the determined. Good luck.",
-        difficulty:  "extreme",
+        difficulty:  "veryhard",
         seed:        4444,
         modifiers:   { 
             "no-candidates": true,

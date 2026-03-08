@@ -108,19 +108,6 @@ function setState(newState) {
             handleWin(activeMeta, totalMs);
             return;
         }
-
-        // ── Fragile modifier: reset on first wrong value ────────────────────
-        if (isModifierActive(activeMods, "fragile") && getConflicts(state.board).size > 0) {
-            flashFragileOverlay();
-            setTimeout(() => {
-                if (state) {
-                    state = softResetBoard(state);
-                    rerender();
-                    // Re-arm modifier effects with the fresh state
-                    startModifierEffects(getState, setState, rerender, getMods, showEventBanner);
-                }
-            }, 900);
-        }
     }
 }
 
@@ -333,12 +320,12 @@ export function loadPuzzle(meta, options = {}) {
         setTimeout(() => {
             const seed = meta.type === "daily" ? getTodaysSeed(meta.key) : meta.seed;
             const puzzle = generate(meta.difficulty, seed);
-            const solution = solve(puzzle) ?? puzzle;
+            const solution = solve(puzzle.map(row => [...row])) ?? puzzle;
             // Build a fully-filled board from the solution so all values are visible
             const solvedPuzzle = solution.map((row, r) =>
                 row.map((val, c) => (puzzle[r][c] !== 0 ? puzzle[r][c] : val))
             );
-            state = { ...createInitialState(solvedPuzzle), startTime: null, _priorElapsed: 0 };
+            state = { ...createInitialState(solvedPuzzle, solution), startTime: null, _priorElapsed: 0 };
             render(state, boardArea, {}, getSettings(), null); // no mods — show everything
             showBoardOverlay("none");
             boardArea.classList.add("puzzle-complete");
@@ -366,7 +353,8 @@ export function loadPuzzle(meta, options = {}) {
             }
 
             const puzzle = generate(meta.difficulty, seed);
-            state = applyModsToState({ ...createInitialState(puzzle), startTime: null, _priorElapsed: 0 });
+            const solution = solve(puzzle.map(row => [...row]));
+            state = applyModsToState({ ...createInitialState(puzzle, solution), startTime: null, _priorElapsed: 0 });
             render(state, boardArea, activeMods, getSettings(), null);
             showBoardOverlay("countdown", () => {
                 state = { ...state, startTime: Date.now() };
@@ -657,25 +645,41 @@ if (puzzleCode) {
     showPuzzleSelect(sidebarEl, onPuzzleChosen);
 }
 /**
- * Called by the controller after every successful value placement.
- * Stamps _placedAt on the cell for the Decaying modifier.
+ * Called by the controller after every successful cell input (value or note).
  */
-function onValuePlaced(newState, number) {
-    if (!isModifierActive(activeMods, "decaying")) return;
-    if (number === 0) return;       // erase — no timestamp needed
-    if (newState.mode !== "value") return;  // notes don't decay
+function onCellInput(newState, number) {
+    if (number === 0) return; // ignore erases for decay/fragile triggers
 
-    const { row, col } = newState.selected;
-    const cell = newState.board?.[row]?.[col];
-    if (!cell || cell.fixed || cell.value === 0) return;
+    // ── Fragile modifier: reset on first wrong value ────────────────────
+    if (isModifierActive(activeMods, "fragile") && newState.mode === "value") {
+        const { row, col } = newState.selected;
+        const cell = newState.board?.[row]?.[col];
+        if (cell && !cell.fixed && cell.value !== 0 && newState.solution) {
+            const correctValue = newState.solution[row][col];
+            if (cell.value !== correctValue) {
+                flashFragileOverlay();
+                setTimeout(() => {
+                    if (state) {
+                        state = softResetBoard(state);
+                        rerender();
+                        // Re-arm modifier effects with the fresh state
+                        startModifierEffects(getState, setState, rerender, getMods, showEventBanner);
+                    }
+                }, 900);
+            }
+        }
+    }
 
-    // Stamp directly on the live state cell (state is already committed)
-    if (state?.board?.[row]?.[col]) {
-        state.board[row][col]._placedAt = Date.now();
+    // ── Decaying modifier: stamp placement time ─────────────────────────
+    if (isModifierActive(activeMods, "decaying") && newState.mode === "value") {
+        const { row, col } = newState.selected;
+        if (state?.board?.[row]?.[col]) {
+            state.board[row][col]._placedAt = Date.now();
+        }
     }
 }
 
-attachController(boardArea, getState, setState, rerender, getMods, onValuePlaced);
+attachController(boardArea, getState, setState, rerender, getMods, onCellInput);
 
 // ─── Header Streak & Achievements ─────────────────────────────────────────────
 import { getGlobalStats } from "./storage.js";
