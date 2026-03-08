@@ -14,16 +14,21 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { MODIFIERS } from "./modifiers.js";
+import { REGION_SETS, generateRandomRegionMap } from "./state.js";
+import { PRNG } from "./generator.js";
 
-const VERSION = 1;
+const VERSION = 2;
 
 const DIFFICULTY_KEYS = ["veryeasy", "easy", "medium", "hard", "veryhard"];
 const DIFFICULTY_IDX  = Object.fromEntries(DIFFICULTY_KEYS.map((k, i) => [k, i]));
 
+const REGION_KEYS = ["classic", "_unused_1", "_unused_2", "chaos"];
+const REGION_IDX  = Object.fromEntries(REGION_KEYS.map((k, i) => [k, i]));
+
 // ── Encoding ─────────────────────────────────────────────────────────────────
 
 export function encodeCustomGame(spec) {
-    // spec: { difficulty, seed, modifiers }
+    // spec: { difficulty, seed, modifiers, regionType }
     // modifiers: { [key]: true | { value: string|number } }
     const bytes = [];
 
@@ -36,6 +41,9 @@ export function encodeCustomGame(spec) {
     bytes.push((seed >>> 16) & 0xff);
     bytes.push((seed >>>  8) & 0xff);
     bytes.push( seed         & 0xff);
+
+    // regionType (added in V2)
+    bytes.push(REGION_IDX[spec.regionType] ?? 0);
 
     const activeMods = Object.entries(spec.modifiers ?? {});
     bytes.push(activeMods.length & 0xff);
@@ -62,7 +70,7 @@ export function encodeCustomGame(spec) {
 }
 
 export function decodeCustomGame(code) {
-    // Returns { difficulty, seed, modifiers } or throws on invalid
+    // Returns { difficulty, seed, modifiers, regionType, regionMap } or throws on invalid
     const bytes = base62Decode(code.trim());
     const deobf = xorObfuscate(bytes); // XOR is its own inverse
 
@@ -73,7 +81,7 @@ export function decodeCustomGame(code) {
     };
 
     const version = read();
-    if (version !== VERSION) throw new Error(`Unknown version ${version}`);
+    if (version < 1 || version > VERSION) throw new Error(`Unknown version ${version}`);
 
     const diffIdx = read();
     const difficulty = DIFFICULTY_KEYS[diffIdx];
@@ -81,6 +89,12 @@ export function decodeCustomGame(code) {
 
     const seedB0 = read(), seedB1 = read(), seedB2 = read(), seedB3 = read();
     const seed = ((seedB0 << 24) | (seedB1 << 16) | (seedB2 << 8) | seedB3) >>> 0;
+
+    let regionType = "classic";
+    if (version >= 2) {
+        const rIdx = read();
+        regionType = REGION_KEYS[rIdx] ?? "classic";
+    }
 
     const modCount = read();
     const modifiers = {};
@@ -101,7 +115,13 @@ export function decodeCustomGame(code) {
         }
     }
 
-    return { difficulty, seed, modifiers };
+    // Resolve regionMap
+    let regionMap = REGION_SETS[regionType];
+    if (regionType === "chaos" || !regionMap) {
+        regionMap = generateRandomRegionMap(new PRNG(seed));
+    }
+
+    return { difficulty, seed, modifiers, regionType, regionMap };
 }
 
 export function validateCode(code) {

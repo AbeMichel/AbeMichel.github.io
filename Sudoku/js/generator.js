@@ -1,9 +1,11 @@
+import { DEFAULT_REGION_MAP, getRegionIndex, validateRegionMap } from './state.js';
+
 /**
  * High-Performance Sudoku Generator
  * Architecture: PRNG -> Grid Generation -> Clue Removal -> DLX Uniqueness -> Human Solver
  */
 
-class PRNG {
+export class PRNG {
   constructor(seed) {
     this.state = seed | 0;
   }
@@ -29,27 +31,29 @@ class PRNG {
 }
 
 class BitmaskBoard {
-  constructor() {
+  constructor(regionMap = DEFAULT_REGION_MAP) {
     this.grid = new Int8Array(81);
     this.rowM = new Uint16Array(9);
     this.colM = new Uint16Array(9);
-    this.boxM = new Uint16Array(9);
+    this.regionM = new Uint16Array(9);
+    this.regionMap = regionMap;
   }
   copyFrom(other) {
     this.grid.set(other.grid);
     this.rowM.set(other.rowM);
     this.colM.set(other.colM);
-    this.boxM.set(other.boxM);
+    this.regionM.set(other.regionM);
+    this.regionMap = other.regionMap;
   }
-  getBox(r, c) {
-    return ((r / 3) | 0) * 3 + ((c / 3) | 0);
+  getRegion(r, c) {
+    return getRegionIndex(r, c, this.regionMap);
   }
   setDigit(r, c, digit) {
     this.grid[r * 9 + c] = digit;
     const mask = 1 << digit;
     this.rowM[r] |= mask;
     this.colM[c] |= mask;
-    this.boxM[this.getBox(r, c)] |= mask;
+    this.regionM[this.getRegion(r, c)] |= mask;
   }
   clearDigit(r, c) {
     const digit = this.grid[r * 9 + c];
@@ -57,10 +61,10 @@ class BitmaskBoard {
     const mask = ~(1 << digit);
     this.rowM[r] &= mask;
     this.colM[c] &= mask;
-    this.boxM[this.getBox(r, c)] &= mask;
+    this.regionM[this.getRegion(r, c)] &= mask;
   }
   getCandidatesMask(r, c) {
-    return ~(this.rowM[r] | this.colM[c] | this.boxM[this.getBox(r, c)]) & 0x3fe;
+    return ~(this.rowM[r] | this.colM[c] | this.regionM[this.getRegion(r, c)]) & 0x3fe;
   }
   toArray() {
     const out = [];
@@ -73,47 +77,69 @@ class BitmaskBoard {
   }
 }
 
-class GridGenerator {
-  constructor(prng) {
-    this.prng = prng;
-    this.base = [
-      1,2,3,4,5,6,7,8,9, 4,5,6,7,8,9,1,2,3, 7,8,9,1,2,3,4,5,6,
-      2,3,4,5,6,7,8,9,1, 5,6,7,8,9,1,2,3,4, 8,9,1,2,3,4,5,6,7,
-      3,4,5,6,7,8,9,1,2, 6,7,8,9,1,2,3,4,5, 9,1,2,3,4,5,6,7,8
-    ];
-  }
-  generate() {
-    const board = new BitmaskBoard();
-    const digits = [1,2,3,4,5,6,7,8,9];
-    this.prng.shuffle(digits);
-    const map = [0, ...digits];
+function countSetBits(n) {
+  n = n - ((n >> 1) & 0x55555555);
+  n = (n & 0x33333333) + ((n >> 2) & 0x33333333);
+  return (((n + (n >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
+}
 
-    let rBase = [0,1,2,3,4,5,6,7,8];
-    let cBase = [0,1,2,3,4,5,6,7,8];
+export function generateSolvedGrid(regionMap, prng) {
+  const board = new BitmaskBoard(regionMap);
+  const cells = new Int8Array(81);
+  for (let i = 0; i < 81; i++) cells[i] = i;
 
-    for (let i = 0; i < 3; i++) {
-      this.prng.shuffle(rBase.slice(i*3, i*3+3)).forEach((v, j) => rBase[i*3+j] = v);
-      this.prng.shuffle(cBase.slice(i*3, i*3+3)).forEach((v, j) => cBase[i*3+j] = v);
-    }
+  function backtrack(k) {
+    if (k === 81) return true;
 
-    const bands = this.prng.shuffle([0,1,2]);
-    const stacks = this.prng.shuffle([0,1,2]);
-    
-    let rows = [], cols = [];
-    for(let b of bands) rows.push(...rBase.slice(b*3, b*3+3));
-    for(let s of stacks) cols.push(...cBase.slice(s*3, s*3+3));
+    let minCands = 10;
+    let bestIdx = k;
+    let bestMask = 0;
 
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
-        board.setDigit(r, c, map[this.base[rows[r] * 9 + cols[c]]]);
+    for (let i = k; i < 81; i++) {
+      const cell = cells[i];
+      const r = (cell / 9) | 0, c = cell % 9;
+      const mask = board.getCandidatesMask(r, c);
+      const count = countSetBits(mask);
+      if (count === 0) return false;
+      if (count < minCands) {
+        minCands = count;
+        bestIdx = i;
+        bestMask = mask;
+        if (count === 1) break;
       }
     }
-    return board;
+
+    const cell = cells[bestIdx];
+    cells[bestIdx] = cells[k];
+    cells[k] = cell;
+
+    const r = (cell / 9) | 0, c = cell % 9;
+    const candidates = [];
+    let m = bestMask;
+    while (m) {
+      const bit = m & -m;
+      candidates.push(Math.round(Math.log2(bit)));
+      m ^= bit;
+    }
+    prng.shuffle(candidates);
+
+    for (const d of candidates) {
+      board.setDigit(r, c, d);
+      if (backtrack(k + 1)) return true;
+      board.clearDigit(r, c);
+    }
+
+    cells[k] = cells[bestIdx];
+    cells[bestIdx] = cell;
+    return false;
   }
+
+  backtrack(0);
+  return board;
 }
 
 class DLXSolver {
-  constructor() {
+  constructor(regionMap = DEFAULT_REGION_MAP) {
     const NODES = 3245;
     this.L = new Int32Array(NODES);
     this.R = new Int32Array(NODES);
@@ -134,7 +160,7 @@ class DLXSolver {
     let idx = 325;
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
-        const b = ((r / 3) | 0) * 3 + ((c / 3) | 0);
+        const b = getRegionIndex(r, c, regionMap);
         for (let d = 0; d < 9; d++) {
           const rId = r * 81 + c * 9 + d;
           this.rowHead[rId] = idx;
@@ -235,18 +261,30 @@ class DLXSolver {
 }
 
 class HumanSolver {
-  constructor() {
-    this.board = new BitmaskBoard();
+  constructor(regionMap = DEFAULT_REGION_MAP) {
+    this.board = new BitmaskBoard(regionMap);
     this.cands = new Uint16Array(81);
     this.houses = new Int32Array(27 * 9);
+    this.regionMap = regionMap;
+
     for (let i = 0; i < 9; i++) {
       for (let j = 0; j < 9; j++) {
         this.houses[i * 9 + j] = i * 9 + j;             // Rows 0-8
         this.houses[(9 + i) * 9 + j] = j * 9 + i;       // Cols 9-17
-        this.houses[(18 + i) * 9 + j] =                 // Boxes 18-26
-          ((i / 3) | 0) * 27 + (i % 3) * 3 + ((j / 3) | 0) * 9 + (j % 3);
       }
     }
+    
+    // Build region houses from regionMap
+    const regionCells = Array.from({length: 9}, () => []);
+    for (let i = 0; i < 81; i++) {
+      regionCells[regionMap[i]].push(i);
+    }
+    for (let i = 0; i < 9; i++) {
+      for (let j = 0; j < 9; j++) {
+        this.houses[(18 + i) * 9 + j] = regionCells[i][j];
+      }
+    }
+
     this.popCount = new Int8Array(1024);
     for(let i=0; i<1024; i++) {
       let c=0, n=i; while(n) { n &= n-1; c++; } this.popCount[i] = c;
@@ -303,7 +341,7 @@ class HumanSolver {
     this.board.setDigit((cell/9)|0, cell%9, digit);
     this.cands[cell] = 0;
     const mask = ~(1 << digit);
-    const r = (cell/9)|0, c = cell%9, b = ((r/3)|0)*3 + ((c/3)|0);
+    const r = (cell/9)|0, c = cell%9, b = getRegionIndex(r, c, this.regionMap);
     for (let i = 0; i < 9; i++) {
       this.cands[this.houses[r * 9 + i]] &= mask;
       this.cands[this.houses[(9 + c) * 9 + i]] &= mask;
@@ -356,12 +394,12 @@ class HumanSolver {
           if (this.popCount[rMask] === 1) {
             const r = Math.log2(rMask);
             for (let c = 0; c < 9; c++) {
-              if ((((r/3)|0)*3 + ((c/3)|0)) !== b) changed |= this.remCand(r*9+c, d);
+              if (getRegionIndex(r, c, this.regionMap) !== b) changed |= this.remCand(r*9+c, d);
             }
           } else if (this.popCount[cMask] === 1) {
             const c = Math.log2(cMask);
             for (let r = 0; r < 9; r++) {
-              if ((((r/3)|0)*3 + ((c/3)|0)) !== b) changed |= this.remCand(r*9+c, d);
+              if (getRegionIndex(r, c, this.regionMap) !== b) changed |= this.remCand(r*9+c, d);
             }
           }
         }
@@ -653,7 +691,7 @@ class HumanSolver {
     const br = (b / 9) | 0, bc = b % 9;
     if (ar === br) return true;
     if (ac === bc) return true;
-    if ((((ar / 3) | 0) === ((br / 3) | 0)) && (((ac / 3) | 0) === ((bc / 3) | 0))) return true;
+    if (getRegionIndex(ar, ac, this.regionMap) === getRegionIndex(br, bc, this.regionMap)) return true;
     return false;
   }
 
@@ -669,16 +707,16 @@ class HumanSolver {
 
 const TIER_MAP = { "veryeasy": 0, "easy": 1, "medium": 2, "hard": 3, "veryhard": 4 };
 
-export function generate(difficulty, seed) {
+export function generate({ difficulty, seed, regionMap = DEFAULT_REGION_MAP }) {
+  validateRegionMap(regionMap);
   let currentSeed = seed;
-  const dlx = new DLXSolver();
-  const human = new HumanSolver();
+  const dlx = new DLXSolver(regionMap);
+  const human = new HumanSolver(regionMap);
   const targetLvl = TIER_MAP[difficulty] ?? 0;
 
   while (true) {
     const prng = new PRNG(currentSeed++);
-    const gen = new GridGenerator(prng);
-    const board = gen.generate();
+    const board = generateSolvedGrid(regionMap, prng);
 
     const order = new Int8Array(81);
     for (let i = 0; i < 81; i++) order[i] = i;
@@ -730,15 +768,13 @@ export function generate(difficulty, seed) {
   }
 }
 
-export function solve(board) {
+export function solve(board, regionMap = DEFAULT_REGION_MAP) {
   const N = 9;
 
   const rowMask = new Array(N).fill(0);
   const colMask = new Array(N).fill(0);
-  const boxMask = new Array(N).fill(0);
+  const regionMask = new Array(N).fill(0);
   const empties = [];
-
-  const boxIndex = (r, c) => ((r / 3) | 0) * 3 + ((c / 3) | 0);
 
   for (let r = 0; r < N; r++) {
     for (let c = 0; c < N; c++) {
@@ -749,7 +785,7 @@ export function solve(board) {
         const bit = 1 << (val - 1);
         rowMask[r] |= bit;
         colMask[c] |= bit;
-        boxMask[boxIndex(r, c)] |= bit;
+        regionMask[getRegionIndex(r, c, regionMap)] |= bit;
       }
     }
   }
@@ -769,7 +805,7 @@ export function solve(board) {
 
     for (let i = k; i < empties.length; i++) {
       const [r, c] = empties[i];
-      const used = rowMask[r] | colMask[c] | boxMask[boxIndex(r, c)];
+      const used = rowMask[r] | colMask[c] | regionMask[getRegionIndex(r, c, regionMap)];
       const mask = (~used) & 0x1FF;
       const options = countBits(mask);
 
@@ -785,8 +821,8 @@ export function solve(board) {
 
     [empties[k], empties[best]] = [empties[best], empties[k]];
     const [r, c] = empties[k];
-    const b = boxIndex(r, c);
-    let mask = (~(rowMask[r] | colMask[c] | boxMask[b])) & 0x1FF;
+    const b = getRegionIndex(r, c, regionMap);
+    let mask = (~(rowMask[r] | colMask[c] | regionMask[b])) & 0x1FF;
 
     while (mask) {
       const bit = mask & -mask;
@@ -797,14 +833,14 @@ export function solve(board) {
       board[r][c] = val;
       rowMask[r] |= bit;
       colMask[c] |= bit;
-      boxMask[b] |= bit;
+      regionMask[b] |= bit;
 
       if (solveMini(k + 1)) return true;
 
       board[r][c] = 0;
       rowMask[r] ^= bit;
       colMask[c] ^= bit;
-      boxMask[b] ^= bit;
+      regionMask[b] ^= bit;
     }
 
     [empties[k], empties[best]] = [empties[best], empties[k]];

@@ -17,6 +17,7 @@ export const DEFAULT_SETTINGS = {
     showConflicts:      true,
     autoCandidateStart: false,
     darkMode:           false,
+    colorRegions:       false,
 };
 
 // Module-level singleton — mutated in place by updateSettings()

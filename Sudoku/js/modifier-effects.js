@@ -61,7 +61,7 @@ function startLivingEffect(getState, setState, rerender, getMods, showBanner) {
     _livingInterval = setInterval(() => {
         if (!isModifierActive(getMods(), "living")) return;
         const s = getState();
-        if (!s?.startTime) return;
+        if (!s?.startTime || s.regionType !== "classic") return;
         applyLivingTransform(getState, setState, rerender, showBanner);
     }, (getModifierValue(getMods(), "living") ?? 10) * 1000);
 }
@@ -70,7 +70,10 @@ function startLivingEffect(getState, setState, rerender, getMods, showBanner) {
 export function restartLivingEffect(getState, setState, rerender, getMods, showBanner) {
     if (_livingInterval) { clearInterval(_livingInterval); _livingInterval = null; }
     if (isModifierActive(getMods(), "living")) {
-        startLivingEffect(getState, setState, rerender, getMods, showBanner);
+        const s = getState();
+        if (!s || s.regionType === "classic") {
+            startLivingEffect(getState, setState, rerender, getMods, showBanner);
+        }
     }
 }
 
@@ -85,8 +88,9 @@ function applyLivingTransform(getState, setState, rerender, showBanner) {
     if (boardEl.querySelector(".living-overlay")) return;
 
     const board = s.board;
+    const regionMap = s.regionMap;
     const choice = Math.floor(Math.random() * 3);
-    let newBoard, permMap, bannerText;
+    let newBoard, newRegionMap, permMap, bannerText;
 
     if (choice === 0) {
         const [b1, b2] = pickTwo([0, 1, 2]);
@@ -96,6 +100,14 @@ function applyLivingTransform(getState, setState, rerender, showBanner) {
             if (band === b2) return board[b1 * 3 + (r % 3)];
             return row;
         });
+        newRegionMap = new Int8Array(81);
+        for (let r = 0; r < 9; r++) {
+            const band = Math.floor(r / 3);
+            let targetR = r;
+            if (band === b1) targetR = b2 * 3 + (r % 3);
+            else if (band === b2) targetR = b1 * 3 + (r % 3);
+            for (let c = 0; c < 9; c++) newRegionMap[targetR * 9 + c] = regionMap[r * 9 + c];
+        }
         permMap = buildBandSwapMap("row", b1, b2);
         bannerText = "\u{1F300} The rows shifted!";
     } else if (choice === 1) {
@@ -108,6 +120,14 @@ function applyLivingTransform(getState, setState, rerender, showBanner) {
                 return cell;
             })
         );
+        newRegionMap = new Int8Array(81);
+        for (let c = 0; c < 9; c++) {
+            const stack = Math.floor(c / 3);
+            let targetC = c;
+            if (stack === st1) targetC = st2 * 3 + (c % 3);
+            else if (stack === st2) targetC = st1 * 3 + (c % 3);
+            for (let r = 0; r < 9; r++) newRegionMap[r * 9 + targetC] = regionMap[r * 9 + c];
+        }
         permMap = buildBandSwapMap("col", st1, st2);
         bannerText = "\u{1F300} The columns shifted!";
     } else {
@@ -115,6 +135,13 @@ function applyLivingTransform(getState, setState, rerender, showBanner) {
         newBoard = Array.from({ length: size }, (_, r) =>
             Array.from({ length: size }, (_, c) => board[size - 1 - c][r])
         );
+        newRegionMap = new Int8Array(81);
+        // Correct rotation for flat array: (r, c) -> (c, 8-r)
+        for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+                newRegionMap[c * 9 + (8 - r)] = regionMap[r * 9 + c];
+            }
+        }
         permMap = buildRotationMap();
         bannerText = "\u{1F300} The board rotated!";
     }
@@ -126,12 +153,10 @@ function applyLivingTransform(getState, setState, rerender, showBanner) {
     const cellH = firstCell.getBoundingClientRect().height;
 
     // ── Build the clone overlay ───────────────────────────────────────────────
-    // One absolutely-positioned clone per cell, initially at the cell's current
-    // grid position, then translated to its destination via CSS transition.
     const overlay = document.createElement("div");
     overlay.className = "living-overlay";
 
-    const clones = []; // { el, dx, dy }
+    const clones = [];
 
     for (let r = 0; r < 9; r++) {
         for (let c = 0; c < 9; c++) {
@@ -153,11 +178,19 @@ function applyLivingTransform(getState, setState, rerender, showBanner) {
                 if (!skip.has(cl)) clone.classList.add(cl);
             }
 
+            // Copy data attributes (like data-region)
+            for (const attr of realCell.attributes) {
+                if (attr.name.startsWith("data-")) {
+                    clone.setAttribute(attr.name, attr.value);
+                }
+            }
+
             clone.innerHTML = realCell.innerHTML;
 
-            // Thick 3x3 box-line borders replicated inline
-            const bR = (c === 2 || c === 5) ? "2px solid #111" : "1px solid #ccc";
-            const bB = (r === 2 || r === 5) ? "2px solid #111" : "1px solid #ccc";
+            // Dynamic borders for clones based on regionMap
+            const regionId = regionMap[r * 9 + c];
+            const bR = (c < 8 && regionMap[r * 9 + (c + 1)] !== regionId) ? "2px solid #111" : "1px solid #ccc";
+            const bB = (r < 8 && regionMap[(r + 1) * 9 + c] !== regionId) ? "2px solid #111" : "1px solid #ccc";
 
             Object.assign(clone.style, {
                 position:     "absolute",
@@ -180,12 +213,11 @@ function applyLivingTransform(getState, setState, rerender, showBanner) {
 
     boardEl.appendChild(overlay);
 
-    // Hide real cells — clones take visual ownership during animation
+    // Hide real cells
     boardEl.querySelectorAll(".cell:not(.living-cell-clone)").forEach(el => {
         el.style.visibility = "hidden";
     });
 
-    // Two rAF frames: first paints the clones at rest, second triggers transitions
     requestAnimationFrame(() => requestAnimationFrame(() => {
         const ease = `${LIVING_ANIM_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`;
         for (const { el, dx, dy } of clones) {
@@ -194,13 +226,10 @@ function applyLivingTransform(getState, setState, rerender, showBanner) {
         }
     }));
 
-    // After the animation: commit state, rerender (destroys clones with #board), restore visibility
     setTimeout(() => {
         const newHistory = [...s.history, s.board];
-        setState({ ...s, board: newBoard, history: newHistory, future: [] });
+        setState({ ...s, board: newBoard, regionMap: newRegionMap, history: newHistory, future: [] });
         rerender();
-
-        // Freshly rendered cells have no inline style — nothing to restore
         showBanner?.(bannerText, "living", 1600);
     }, LIVING_ANIM_MS + 40);
 }

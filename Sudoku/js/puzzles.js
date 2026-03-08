@@ -95,4 +95,12 @@ export const CHALLENGES = [
             "time-out": { value: 240 }
         },
     },
+    {
+        id:          "chaos-theory",
+        label:       "Chaos Theory",
+        description: "Rules were made to be broken.",
+        difficulty:  "hard",
+        regionType:  "chaos",
+        seed:        42,
+    },
 ];

@@ -1,6 +1,6 @@
 import {
     createInitialState, isSolved, toggleAutoCandidates, resetBoard, getConflicts,
-    selectCell, placeNumber
+    selectCell, placeNumber, REGION_SETS, DEFAULT_REGION_MAP
 } from "./state.js";
 import { render } from "./renderer.js";
 import { attachController } from "./controller.js";
@@ -320,7 +320,11 @@ export function loadPuzzle(meta, options = {}) {
         }
     }
 
-    activeMeta = meta;
+    activeMeta = {
+        ...meta,
+        regionType: meta.regionType || "classic",
+        regionMap:  meta.regionMap  || (meta.regionType ? REGION_SETS[meta.regionType] : DEFAULT_REGION_MAP)
+    };
 
     // Apply the right modifiers for each puzzle type:
     //   challenge/custom/daily-challenge with modifiers → locked to those
@@ -358,20 +362,24 @@ export function loadPuzzle(meta, options = {}) {
         const completionMs = getCompletionTime(meta) ?? 0;
         setTimeout(() => {
             const seed = meta.type === "daily" ? getTodaysSeed(meta.key) : meta.seed;
-            const puzzle = generate(meta.difficulty, seed);
-            const solution = solve(puzzle.map(row => [...row])) ?? puzzle;
+            const puzzle = generate({ difficulty: meta.difficulty, seed, regionMap: activeMeta.regionMap });
+            const solution = solve(puzzle.map(row => [...row]), activeMeta.regionMap) ?? puzzle;
             // Build a fully-filled board from the solution so all values are visible
             const solvedPuzzle = solution.map((row, r) =>
                 row.map((val, c) => (puzzle[r][c] !== 0 ? puzzle[r][c] : val))
             );
-            state = { ...createInitialState(solvedPuzzle, solution), startTime: null, _priorElapsed: 0 };
+            state = { ...createInitialState(solvedPuzzle, solution, null, activeMeta.regionMap, activeMeta.regionType), startTime: null, _priorElapsed: 0 };
             render(state, boardArea, {}, getSettings(), null); // no mods — show everything
             showBoardOverlay("none");
             boardArea.classList.add("puzzle-complete");
             showWinPanel(sidebarEl, meta, completionMs, onPuzzleChosen, onPuzzleSelectRequested);
         }, 400);
     } else if (saved) {
-        state = applyModsToState(saved);
+        state = applyModsToState({ 
+            ...saved, 
+            regionType: saved.regionType || activeMeta.regionType,
+            regionMap:  saved.regionMap  || activeMeta.regionMap
+        });
         render(state, boardArea, activeMods, getSettings(), null);
         showBoardOverlay("countdown", () => {
             state = { ...state, startTime: Date.now(), _priorElapsed: saved.elapsed ?? 0 };
@@ -391,9 +399,9 @@ export function loadPuzzle(meta, options = {}) {
                 seed = meta.seed;
             }
 
-            const puzzle = generate(meta.difficulty, seed);
-            const solution = solve(puzzle.map(row => [...row]));
-            state = applyModsToState({ ...createInitialState(puzzle, solution), startTime: null, _priorElapsed: 0 });
+            const puzzle = generate({ difficulty: meta.difficulty, seed, regionMap: activeMeta.regionMap });
+            const solution = solve(puzzle.map(row => [...row]), activeMeta.regionMap);
+            state = applyModsToState({ ...createInitialState(puzzle, solution, null, activeMeta.regionMap, activeMeta.regionType), startTime: null, _priorElapsed: 0 });
             render(state, boardArea, activeMods, getSettings(), null);
             showBoardOverlay("countdown", () => {
                 state = { ...state, startTime: Date.now() };
@@ -672,6 +680,8 @@ if (puzzleCode) {
             difficulty_label: spec.difficulty.charAt(0).toUpperCase() + spec.difficulty.slice(1),
             seed: spec.seed,
             modifiers: spec.modifiers,
+            regionType: spec.regionType,
+            regionMap: spec.regionMap
         };
         loadPuzzle(meta);
     } catch (e) {

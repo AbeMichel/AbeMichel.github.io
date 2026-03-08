@@ -733,6 +733,14 @@ function buildDailyChallengeCard(onChosen) {
         badge.textContent = "In progress";
         labelRow.appendChild(badge);
     }
+
+    if (meta.regionType === "chaos") {
+        const chaosBadge = document.createElement("span");
+        chaosBadge.className = "pb-badge pb-badge--chaos";
+        chaosBadge.textContent = "Chaos";
+        labelRow.appendChild(chaosBadge);
+    }
+
     btn.appendChild(labelRow);
 
     // ── Date + difficulty row ─────────────────────────────────────────────────
@@ -838,6 +846,13 @@ function buildPuzzleGrid(puzzles, onChosen, limit = 0) {
         const status = document.createElement("div");
         status.className = "puzzle-card-status";
         status.textContent = completed ? "✓ Done" : (inProgress ? "In Progress" : (puzzle.difficulty_label || ""));
+
+        if (puzzle.regionType === "chaos") {
+            const chaosBadge = document.createElement("span");
+            chaosBadge.className = "puzzle-card-badge--chaos";
+            chaosBadge.textContent = "Chaos";
+            status.appendChild(chaosBadge);
+        }
 
         card.appendChild(label);
         card.appendChild(status);
@@ -1039,8 +1054,12 @@ function showCustomGamePopup(onChosen) {
     const DIFFICULTY_KEYS = ["veryeasy", "easy", "medium", "hard", "veryhard"];
     const DIFFICULTY_LABELS = { veryeasy: "Very Easy", easy: "Easy", medium: "Medium", hard: "Hard", veryhard: "Very Hard" };
 
+    const REGION_KEYS = ["classic", "chaos"];
+    const REGION_LABELS = { classic: "Classic (3x3)", chaos: "Chaos" };
+
     // State for the popup
     let popupDifficulty = "medium";
+    let popupRegionType = "classic";
     let popupSeed = Math.floor(Math.random() * 999999) + 1;
     let popupMods = {};
     let generatedCode = null;
@@ -1094,6 +1113,34 @@ function showCustomGamePopup(onChosen) {
         diffRow.appendChild(diffBtns);
         body.appendChild(diffRow);
 
+        // Region (Grid Layout) picker
+        const regionRow = document.createElement("div");
+        regionRow.className = "popup-field";
+        const regionLabel = document.createElement("div");
+        regionLabel.className = "popup-field-label";
+        regionLabel.textContent = "Grid Layout";
+        const regionBtns = document.createElement("div");
+        regionBtns.className = "popup-diff-btns"; // reusing same styling
+        for (const rk of REGION_KEYS) {
+            const b = document.createElement("button");
+            b.className = `popup-diff-btn${popupRegionType === rk ? " active" : ""}`;
+            b.textContent = REGION_LABELS[rk];
+            b.addEventListener("click", () => { 
+                popupRegionType = rk; 
+                if (rk !== "classic") {
+                    for (const k in popupMods) {
+                        if (MODIFIER_MAP[k]?.classicOnly) delete popupMods[k];
+                    }
+                }
+                generatedCode = null; 
+                renderPopup(); 
+            });
+            regionBtns.appendChild(b);
+        }
+        regionRow.appendChild(regionLabel);
+        regionRow.appendChild(regionBtns);
+        body.appendChild(regionRow);
+
         // Seed input
         const seedRow = document.createElement("div");
         seedRow.className = "popup-field";
@@ -1131,6 +1178,9 @@ function showCustomGamePopup(onChosen) {
             const active = !!popupMods[mod.key];
             const tile = document.createElement("div");
             tile.className = `popup-mod-tile${active ? " active" : ""}`;
+            if (mod.classicOnly && popupRegionType !== "classic") {
+                tile.classList.add("popup-mod-tile--limited");
+            }
             const tileHeader = document.createElement("div");
             tileHeader.className = "popup-mod-tile-header";
             tileHeader.innerHTML = `<span>${mod.icon} ${mod.label}</span>`;
@@ -1182,6 +1232,9 @@ function showCustomGamePopup(onChosen) {
                     delete popupMods[mod.key];
                 } else {
                     for (const k of (mod.incompatible ?? [])) delete popupMods[k];
+                    if (mod.classicOnly && popupRegionType !== "classic") {
+                        popupRegionType = "classic";
+                    }
                     popupMods[mod.key] = mod.configurable ? { value: mod.defaultValue } : true;
                 }
                 generatedCode = null;
@@ -1205,7 +1258,12 @@ function showCustomGamePopup(onChosen) {
             genBtn.textContent = "Generate Code";
             genBtn.addEventListener("click", () => {
                 popupSeed = Math.max(1, Number(seedInput?.value) || popupSeed);
-                generatedCode = encodeCustomGame({ difficulty: popupDifficulty, seed: popupSeed, modifiers: popupMods });
+                generatedCode = encodeCustomGame({ 
+                    difficulty: popupDifficulty, 
+                    seed: popupSeed, 
+                    modifiers: popupMods,
+                    regionType: popupRegionType 
+                });
                 renderPopup();
             });
             footer.appendChild(genBtn);
@@ -1241,6 +1299,7 @@ function showCustomGamePopup(onChosen) {
             playBtn.className = "popup-play-btn";
             playBtn.textContent = "▶ Play Now";
             playBtn.addEventListener("click", () => {
+                const { regionMap } = decodeCustomGame(generatedCode);
                 closePopup();
                 onChosen({
                     type: "custom",
@@ -1251,6 +1310,8 @@ function showCustomGamePopup(onChosen) {
                     seed: popupSeed,
                     modifiers: { ...popupMods },
                     code: generatedCode,
+                    regionType: popupRegionType,
+                    regionMap
                 });
             });
 
@@ -1308,6 +1369,8 @@ function buildCustomGameInput(onChosen) {
                 seed: spec.seed,
                 modifiers: spec.modifiers,
                 code,
+                regionType: spec.regionType,
+                regionMap: spec.regionMap
             });
             input.value = "";
         } catch (e) {
@@ -1396,6 +1459,11 @@ function buildSettingsPanel(sidebar, onBack) {
             key:     "autoCandidateStart",
             label:   "Start with Auto Candidates",
             desc:    "Enable auto-candidate mode automatically when a new puzzle loads.",
+        },
+        {
+            key:     "colorRegions",
+            label:   "Color Regions",
+            desc:    "Give each 3x3 box or irregular group a unique background colour.",
         },
     ];
 

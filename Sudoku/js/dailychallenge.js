@@ -24,6 +24,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { MODIFIER_MAP } from "./modifiers.js";
+import { REGION_SETS, generateRandomRegionMap } from "./state.js";
+import { PRNG } from "./generator.js";
 
 // ── Curated modifier pool ─────────────────────────────────────────────────────
 // Keys that are fair to apply to any randomly-chosen difficulty.
@@ -128,23 +130,47 @@ export function getDailyChallengeMeta(dateStr) {
     }
 
     // ── Build label + description ─────────────────────────────────────────────
-    const diffLabel = { veryeasy: "Very Easy", easy: "Easy", medium: "Medium", hard: "Hard", veryhard: "Very Hard" };
+    const diffLabels = { veryeasy: "Very Easy", easy: "Easy", medium: "Medium", hard: "Hard", veryhard: "Very Hard" };
+
+    // ── Region selection (Added V2) ───────────────────────────────────────────
+    // 80% Classic, 20% Chaos
+    const regionRoll = rand();
+    let regionType = "classic";
+    if (regionRoll > 0.80) regionType = "chaos";
+
+    // Enforce incompatibility: Living is Classic-only
+    if (regionType !== "classic" && modifiers["living"]) {
+        delete modifiers["living"];
+    }
+
+    let regionMap = REGION_SETS[regionType];
+    if (regionType === "chaos" || !regionMap) {
+        regionMap = generateRandomRegionMap(new PRNG(seed));
+    }
+
     const modKeys   = Object.keys(modifiers);
     const modLabels = modKeys.map(k => MODIFIER_MAP[k]?.label ?? k);
 
+    const layoutLabel = {
+        classic: "",
+        chaos: "Chaos"
+    }[regionType];
+
     const description = modKeys.length === 0
-        ? `A clean ${diffLabel[difficulty].toLowerCase()} puzzle.`
-        : `${diffLabel[difficulty]} · ${modLabels.join(" + ")}`;
+        ? `A clean ${layoutLabel ? layoutLabel + " " : ""}${diffLabels[difficulty].toLowerCase()} puzzle.`
+        : `${layoutLabel ? layoutLabel + " · " : ""}${diffLabels[difficulty]} · ${modLabels.join(" + ")}`;
 
     return {
         type:             "daily-challenge",
         key:              date,                          // storage key per day
         label:            "Daily Challenge",
         difficulty,
-        difficulty_label: diffLabel[difficulty],
+        difficulty_label: diffLabels[difficulty],
         seed,                                            // board seed = date hash
         modifiers:        modKeys.length > 0 ? modifiers : null,
         description,
         date,
+        regionType,
+        regionMap
     };
 }

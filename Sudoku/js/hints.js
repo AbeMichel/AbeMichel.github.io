@@ -22,6 +22,7 @@
 
 import { solve }           from "./generator.js";
 import { isModifierActive, getModifierValue } from "./modifiers.js";
+import { getRegionIndex, DEFAULT_REGION_MAP } from "./state.js";
 
 // ── Board helpers ─────────────────────────────────────────────────────────────
 
@@ -46,39 +47,48 @@ function flatBoard(state) {
     return state.board.map(row => row.map(cell => cell.value));
 }
 
-function isValidPlacement(board, r, c, v) {
+function isValidPlacement(board, r, c, v, regionMap = DEFAULT_REGION_MAP) {
     for (let i = 0; i < 9; i++) {
         if (i !== c && board[r][i] === v) return false;
         if (i !== r && board[i][c] === v) return false;
     }
-    const br = Math.floor(r / 3) * 3, bc = Math.floor(c / 3) * 3;
-    for (let dr = 0; dr < 3; dr++)
-        for (let dc = 0; dc < 3; dc++)
-            if ((br+dr !== r || bc+dc !== c) && board[br+dr][bc+dc] === v) return false;
+    const regionId = getRegionIndex(r, c, regionMap);
+    for (let rr = 0; rr < 9; rr++) {
+        for (let cc = 0; cc < 9; cc++) {
+            if ((rr !== r || cc !== c) && getRegionIndex(rr, cc, regionMap) === regionId) {
+                if (board[rr][cc] === v) return false;
+            }
+        }
+    }
     return true;
 }
 
-function buildCandidates(board) {
+function buildCandidates(board, regionMap = DEFAULT_REGION_MAP) {
     return Array.from({ length: 9 }, (_, r) =>
         Array.from({ length: 9 }, (_, c) => {
             if (board[r][c] !== 0) return new Set();
             const s = new Set();
             for (let v = 1; v <= 9; v++)
-                if (isValidPlacement(board, r, c, v)) s.add(v);
+                if (isValidPlacement(board, r, c, v, regionMap)) s.add(v);
             return s;
         })
     );
 }
 
-function getHouses() {
+function getHouses(regionMap = DEFAULT_REGION_MAP) {
     const houses = [];
     for (let i = 0; i < 9; i++) {
         houses.push(Array.from({ length: 9 }, (_, j) => [i, j]));
         houses.push(Array.from({ length: 9 }, (_, j) => [j, i]));
-        const br = Math.floor(i / 3) * 3, bc = (i % 3) * 3;
-        const box = [];
-        for (let dr = 0; dr < 3; dr++) for (let dc = 0; dc < 3; dc++) box.push([br+dr, bc+dc]);
-        houses.push(box);
+    }
+    
+    const regionCells = Array.from({length: 9}, () => []);
+    for (let i = 0; i < 81; i++) {
+        const r = (i / 9) | 0, c = i % 9;
+        regionCells[regionMap[i]].push([r, c]);
+    }
+    for (let i = 0; i < 9; i++) {
+        houses.push(regionCells[i]);
     }
     return houses;
 }
@@ -95,8 +105,8 @@ function detectNakedSingle(board, cands) {
     return null;
 }
 
-function detectHiddenSingle(board, cands) {
-    for (const house of getHouses()) {
+function detectHiddenSingle(board, cands, regionMap = DEFAULT_REGION_MAP) {
+    for (const house of getHouses(regionMap)) {
         for (let v = 1; v <= 9; v++) {
             const cells = house.filter(([r, c]) => board[r][c] === 0 && cands[r][c].has(v));
             if (cells.length === 1) {
@@ -108,8 +118,8 @@ function detectHiddenSingle(board, cands) {
     return null;
 }
 
-function detectNakedPair(board, cands) {
-    for (const house of getHouses()) {
+function detectNakedPair(board, cands, regionMap = DEFAULT_REGION_MAP) {
+    for (const house of getHouses(regionMap)) {
         const bivalue = house.filter(([r, c]) => board[r][c] === 0 && cands[r][c].size === 2);
         for (let i = 0; i < bivalue.length; i++) {
             for (let j = i + 1; j < bivalue.length; j++) {
@@ -129,33 +139,32 @@ function detectNakedPair(board, cands) {
     return null;
 }
 
-function detectInteraction(board, cands) {
-    for (let br = 0; br < 3; br++) {
-        for (let bc = 0; bc < 3; bc++) {
-            for (let v = 1; v <= 9; v++) {
-                const cells = [];
-                for (let dr = 0; dr < 3; dr++)
-                    for (let dc = 0; dc < 3; dc++) {
-                        const r = br*3+dr, c = bc*3+dc;
-                        if (board[r][c] === 0 && cands[r][c].has(v)) cells.push([r, c]);
-                    }
-                if (cells.length < 2) continue;
-                const rows = [...new Set(cells.map(([r]) => r))];
-                const cols = [...new Set(cells.map(([, c]) => c))];
-                if (rows.length === 1) {
-                    const row = rows[0];
-                    const inBox = new Set(cells.map(([, c]) => c));
-                    for (let c = 0; c < 9; c++)
-                        if (!inBox.has(c) && board[row][c] === 0 && cands[row][c].has(v))
-                            return { row: cells[0][0], col: cells[0][1] };
+function detectInteraction(board, cands, regionMap = DEFAULT_REGION_MAP) {
+    for (let regionId = 0; regionId < 9; regionId++) {
+        for (let v = 1; v <= 9; v++) {
+            const cells = [];
+            for (let i = 0; i < 81; i++) {
+                if (regionMap[i] === regionId) {
+                    const r = (i / 9) | 0, c = i % 9;
+                    if (board[r][c] === 0 && cands[r][c].has(v)) cells.push([r, c]);
                 }
-                if (cols.length === 1) {
-                    const col = cols[0];
-                    const inBox = new Set(cells.map(([r]) => r));
-                    for (let r = 0; r < 9; r++)
-                        if (!inBox.has(r) && board[r][col] === 0 && cands[r][col].has(v))
-                            return { row: cells[0][0], col: cells[0][1] };
-                }
+            }
+            if (cells.length < 2) continue;
+            const rows = [...new Set(cells.map(([r]) => r))];
+            const cols = [...new Set(cells.map(([, c]) => c))];
+            if (rows.length === 1) {
+                const row = rows[0];
+                const inRegion = new Set(cells.map(([, c]) => c));
+                for (let c = 0; c < 9; c++)
+                    if (!inRegion.has(c) && board[row][c] === 0 && cands[row][c].has(v))
+                        return { row: cells[0][0], col: cells[0][1] };
+            }
+            if (cols.length === 1) {
+                const col = cols[0];
+                const inRegion = new Set(cells.map(([r]) => r));
+                for (let r = 0; r < 9; r++)
+                    if (!inRegion.has(r) && board[r][col] === 0 && cands[r][col].has(v))
+                        return { row: cells[0][0], col: cells[0][1] };
             }
         }
     }
@@ -198,17 +207,17 @@ const TECHNIQUE_PROBES = [
     {
         label:  "Hidden Single",
         desc:   "A digit can only go in one cell within a row, column, or box.",
-        detect: detectHiddenSingle,
+        detect: (b, c, rm) => detectHiddenSingle(b, c, rm),
     },
     {
         label:  "Box/Line Reduction",
         desc:   "A candidate in a box is confined to one line — eliminate it from the rest of that line.",
-        detect: detectInteraction,
+        detect: (b, c, rm) => detectInteraction(b, c, rm),
     },
     {
         label:  "Naked Pair",
         desc:   "Two cells in a house share the same two candidates — eliminate those values from other cells in the house.",
-        detect: detectNakedPair,
+        detect: (b, c, rm) => detectNakedPair(b, c, rm),
     },
     {
         label:  "X-Wing",
@@ -232,17 +241,18 @@ function mostConstrainedCell(board, cands) {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-function getHouseCells(type, idx) {
+function getHouseCells(type, idx, regionMap = DEFAULT_REGION_MAP) {
     const cells = [];
     if (type === "row") {
         for (let c = 0; c < 9; c++) cells.push({ r: idx, c });
     } else if (type === "col") {
         for (let r = 0; r < 9; r++) cells.push({ r, c: idx });
     } else {
-        const br = Math.floor(idx / 3) * 3, bc = (idx % 3) * 3;
-        for (let dr = 0; dr < 3; dr++)
-            for (let dc = 0; dc < 3; dc++)
-                cells.push({ r: br + dr, c: bc + dc });
+        for (let i = 0; i < 81; i++) {
+            if (regionMap[i] === idx) {
+                cells.push({ r: (i / 9) | 0, c: i % 9 });
+            }
+        }
     }
     return cells;
 }
@@ -259,7 +269,8 @@ function getHouseCells(type, idx) {
  */
 export function getNextNumber(state, mods = {}) {
     const board = flatBoard(state);
-    const cands = buildCandidates(board);
+    const regionMap = state.regionMap || DEFAULT_REGION_MAP;
+    const cands = buildCandidates(board, regionMap);
     const required = getRequiredDigit(board, mods);
     const dir = getModifierValue(mods, "ordered") ?? "asc";
     const ascending = dir !== "desc";
@@ -278,7 +289,7 @@ export function getNextNumber(state, mods = {}) {
         description: `Place ${ns.value} — it's the only candidate remaining in this cell.`,
     };
 
-    const hs = detectHiddenSingle(board, cands);
+    const hs = detectHiddenSingle(board, cands, regionMap);
     if (hs && isAllowed(hs.value)) return {
         type:        "number",
         cells:       [{ row: hs.row, col: hs.col }],
@@ -292,11 +303,11 @@ export function getNextNumber(state, mods = {}) {
         const houses = [
             ...Array.from({length: 9}, (_, i) => ({ type: "row", idx: i })),
             ...Array.from({length: 9}, (_, i) => ({ type: "col", idx: i })),
-            ...Array.from({length: 9}, (_, i) => ({ type: "box", idx: i })),
+            ...Array.from({length: 9}, (_, i) => ({ type: "region", idx: i })),
         ];
 
         for (const house of houses) {
-            const cells = getHouseCells(house.type, house.idx);
+            const cells = getHouseCells(house.type, house.idx, regionMap);
             const possible = cells.filter(({r, c}) => board[r][c] === 0 && cands[r][c].has(required));
             if (possible.length === 1) {
                 const { r, c } = possible[0];
@@ -315,7 +326,7 @@ export function getNextNumber(state, mods = {}) {
     const cell = mostConstrainedCell(board, cands);
     if (!cell) return null;
 
-    const solved = solve(board);
+    const solved = solve(board, regionMap);
     if (!solved) return null;
 
     const val = solved[cell.row][cell.col];
@@ -356,7 +367,8 @@ export function getNextNumber(state, mods = {}) {
  */
 export function getNextCell(state, mods = {}) {
     const board = flatBoard(state);
-    const cands = buildCandidates(board);
+    const regionMap = state.regionMap || DEFAULT_REGION_MAP;
+    const cands = buildCandidates(board, regionMap);
     const blackoutActive = isModifierActive(mods, "blackout");
 
     // Only skip a cell if it's a filled given under blackout —
@@ -369,17 +381,17 @@ export function getNextCell(state, mods = {}) {
 
     const candidateProbes = [
         { detect: detectNakedSingle,  desc: "This cell has only one remaining candidate — examine what's already placed in its row, column, and box." },
-        { detect: detectHiddenSingle, desc: "In one of this cell's houses, no other cell can hold a particular digit." },
+        { detect: (b, c, rm) => detectHiddenSingle(b, c, rm), desc: "In one of this cell's houses, no other cell can hold a particular digit." },
     ];
 
     for (const { detect, desc } of candidateProbes) {
-        const found = detect(board, cands);
+        const found = detect(board, cands, regionMap);
         if (found && !skip(found.row, found.col)) {
             return {
                 type:        "cell",
                 cells:       [{ row: found.row, col: found.col }],
                 value:       null,
-                label:       "Next Cell",
+                label: "Next Cell",
                 description: desc,
             };
         }
@@ -406,10 +418,11 @@ export function getNextCell(state, mods = {}) {
  */
 export function getNextTechnique(state, mods = {}) {
     const board = flatBoard(state);
-    const cands = buildCandidates(board);
+    const regionMap = state.regionMap || DEFAULT_REGION_MAP;
+    const cands = buildCandidates(board, regionMap);
 
     for (const probe of TECHNIQUE_PROBES) {
-        if (probe.detect(board, cands) !== null) {
+        if (probe.detect(board, cands, regionMap) !== null) {
             return {
                 type:        "technique",
                 cells:       [],

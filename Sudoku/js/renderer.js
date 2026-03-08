@@ -67,7 +67,7 @@ function renderUtilityBar(state, settings = {}) {
 }
 
 function renderBoard(state, mods, settings = {}, hint = null) {
-    const conflicts = getConflicts(state.board);
+    const conflicts = getConflicts(state.board, state.regionMap);
     const board = document.createElement("section");
     board.className = "board";
     board.id = "board";
@@ -122,9 +122,8 @@ function renderBoard(state, mods, settings = {}, hint = null) {
             case "row":  return row === selRow;
             case "col":  return col === selCol;
             case "box": {
-                const br = Math.floor(selRow / 3) * 3;
-                const bc = Math.floor(selCol / 3) * 3;
-                return row >= br && row < br + 3 && col >= bc && col < bc + 3;
+                const regionId = state.regionMap[selRow * 9 + selCol];
+                return state.regionMap[row * 9 + col] === regionId;
             }
             default: return row === selRow && col === selCol;
         }
@@ -140,6 +139,23 @@ function renderBoard(state, mods, settings = {}, hint = null) {
 
             const isSelected = row === state.selected.row && col === state.selected.col;
             if (isSelected) cell.classList.add("selected");
+
+            // ── Dynamic Region Borders ─────────────────────────────────────────
+            const regionId = state.regionMap[row * 9 + col];
+            // Right border if next cell is in a different region
+            if (col < 8 && state.regionMap[row * 9 + (col + 1)] !== regionId) {
+                cell.classList.add("thick-border-right");
+            }
+            // Bottom border if cell below is in a different region
+            if (row < 8 && state.regionMap[(row + 1) * 9 + col] !== regionId) {
+                cell.classList.add("thick-border-bottom");
+            }
+
+            // ── Region Coloring ───────────────────────────────────────────────
+            if (settings.colorRegions) {
+                cell.classList.add("cell--region-colored");
+                cell.dataset.region = regionId;
+            }
 
             if (cellData.fixed) {
                 cell.classList.add("fixed");

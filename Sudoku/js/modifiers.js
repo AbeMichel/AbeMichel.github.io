@@ -75,6 +75,7 @@ export const MODIFIERS = [
         description:  "The board shifts every few seconds — rows, columns, or orientation swap while staying valid.",
         color:        "violet",
         incompatible: [],
+        classicOnly:  true,
         configurable: true,
         defaultValue: 10,
         minValue:     5,
