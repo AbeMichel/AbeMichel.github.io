@@ -104,6 +104,7 @@ function setState(newState) {
             }
             stopTimer();
             boardArea.classList.add("puzzle-complete");
+            updateHeaderStreak();
             handleWin(activeMeta, totalMs);
             return;
         }
@@ -573,6 +574,10 @@ function showPuzzleActionOverlay(meta, completed, onView, onContinue, onNewGame,
 // ─── Sidebar callbacks ────────────────────────────────────────────────────────
 function onPuzzleSelectRequested() {
     stopTimer();
+    // Clear the URL if it contains a shared puzzle code
+    if (window.location.search) {
+        history.replaceState(null, "", window.location.pathname);
+    }
     const existing = document.getElementById("board-overlay");
     if (!existing?.querySelector(".overlay-select-icon")) {
         showBoardOverlay("select");
@@ -582,6 +587,10 @@ function onPuzzleSelectRequested() {
 
 function onPuzzleChosen(meta) {
     stopTimer();
+    // Clear the URL if it contains a shared puzzle code
+    if (window.location.search) {
+        history.replaceState(null, "", window.location.pathname);
+    }
 
     // Resolve stable seed for random puzzles so isCompleted/loadState work correctly
     if (meta.type === "random") {
@@ -621,8 +630,32 @@ function onPuzzleChosen(meta) {
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
-showBoardOverlay("select");
-showPuzzleSelect(sidebarEl, onPuzzleChosen);
+const urlParams = new URLSearchParams(window.location.search);
+const puzzleCode = urlParams.get("puzzle");
+
+if (puzzleCode) {
+    try {
+        const { decodeCustomGame } = await import("./customgame.js");
+        const spec = decodeCustomGame(puzzleCode);
+        const meta = {
+            type: "custom",
+            key: "shared",
+            label: "Shared Puzzle",
+            difficulty: spec.difficulty,
+            difficulty_label: spec.difficulty.charAt(0).toUpperCase() + spec.difficulty.slice(1),
+            seed: spec.seed,
+            modifiers: spec.modifiers,
+        };
+        loadPuzzle(meta);
+    } catch (e) {
+        console.error("Failed to load shared puzzle:", e);
+        showBoardOverlay("select");
+        showPuzzleSelect(sidebarEl, onPuzzleChosen);
+    }
+} else {
+    showBoardOverlay("select");
+    showPuzzleSelect(sidebarEl, onPuzzleChosen);
+}
 /**
  * Called by the controller after every successful value placement.
  * Stamps _placedAt on the cell for the Decaying modifier.
@@ -643,3 +676,38 @@ function onValuePlaced(newState, number) {
 }
 
 attachController(boardArea, getState, setState, rerender, getMods, onValuePlaced);
+
+// ─── Header Streak & Achievements ─────────────────────────────────────────────
+import { getGlobalStats } from "./storage.js";
+
+import { showStatsPopup } from "./sidebar.js";
+
+function updateHeaderStreak() {
+    const el = document.getElementById("header-streak");
+    if (!el) return;
+    const { streak } = getGlobalStats();
+    if (streak.current > 0) {
+        el.textContent = streak.current;
+        el.classList.add("streak-active");
+    } else {
+        el.textContent = "0";
+        el.classList.remove("streak-active");
+    }
+    
+    // Make it clickable to show stats
+    if (!el.dataset.hasListener) {
+        el.addEventListener("click", () => showStatsPopup());
+        el.dataset.hasListener = "true";
+    }
+}
+
+window.addEventListener("sudoku:achievement", (e) => {
+    const newlyUnlocked = e.detail;
+    newlyUnlocked.forEach((ach, i) => {
+        setTimeout(() => {
+            showEventBanner(`🏆 Achievement: ${ach.label}!`, "achievement", 3000);
+        }, i * 3500);
+    });
+});
+
+updateHeaderStreak(); // Initial update on boot

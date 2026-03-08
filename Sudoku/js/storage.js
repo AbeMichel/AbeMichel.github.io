@@ -36,6 +36,122 @@ export function markCompleted(meta, elapsedMs) {
     const completed = getCompleted();
     completed[key] = { elapsed: elapsedMs ?? 0 };
     localStorage.setItem("sudoku:completed", JSON.stringify(completed));
+
+    // ── Update Stats ──────────────────────────────────────────────────────────
+    updateStats(meta, elapsedMs);
+
+    // ── Update Streak ─────────────────────────────────────────────────────────
+    updateStreak();
+}
+
+// ── Stats, Streaks & Achievements ─────────────────────────────────────────────
+
+function getStats() {
+    try {
+        return JSON.parse(localStorage.getItem("sudoku:stats") ?? "{}");
+    } catch {
+        return {};
+    }
+}
+
+function saveStats(stats) {
+    localStorage.setItem("sudoku:stats", JSON.stringify(stats));
+}
+
+function updateStats(meta, elapsedMs) {
+    const stats = getStats();
+    const diff = meta.difficulty || "unknown";
+
+    if (!stats.solveCounts) stats.solveCounts = {};
+    stats.solveCounts[diff] = (stats.solveCounts[diff] || 0) + 1;
+
+    if (!stats.fastestTimes) stats.fastestTimes = {};
+    if (!stats.fastestTimes[diff] || elapsedMs < stats.fastestTimes[diff]) {
+        stats.fastestTimes[diff] = elapsedMs;
+    }
+
+    if (!stats.totalSolves) stats.totalSolves = 0;
+    stats.totalSolves++;
+
+    saveStats(stats);
+    checkAchievements(stats, meta);
+}
+
+export function getGlobalStats() {
+    const stats = getStats();
+    const streak = getStreak();
+    return { ...stats, streak };
+}
+
+function getStreak() {
+    try {
+        return JSON.parse(localStorage.getItem("sudoku:streak") || "{\"current\": 0, \"lastDate\": null, \"best\": 0}");
+    } catch {
+        return { current: 0, lastDate: null, best: 0 };
+    }
+}
+
+function updateStreak() {
+    const streak = getStreak();
+    const today = TODAY;
+    const last = streak.lastDate;
+
+    if (last === today) return; // already updated today
+
+    if (last) {
+        const lastDate = new Date(last + "T12:00:00");
+        const todayDate = new Date(today + "T12:00:00");
+        const diffDays = Math.round((todayDate - lastDate) / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 1) {
+            streak.current++;
+        } else if (diffDays > 1) {
+            streak.current = 1;
+        }
+    } else {
+        streak.current = 1;
+    }
+
+    streak.lastDate = today;
+    if (streak.current > (streak.best || 0)) {
+        streak.best = streak.current;
+    }
+
+    localStorage.setItem("sudoku:streak", JSON.stringify(streak));
+}
+
+// ── Achievements ──────────────────────────────────────────────────────────────
+
+const ACHIEVEMENT_DEFS = [
+    { id: "first-solve", label: "First Steps", desc: "Complete your first puzzle", check: (s) => s.totalSolves >= 1 },
+    { id: "streak-3", label: "Reliable", desc: "Maintain a 3-day streak", check: (s, m, streak) => streak.current >= 3 },
+    { id: "streak-7", label: "Dedicated", desc: "Maintain a 7-day streak", check: (s, m, streak) => streak.current >= 7 },
+    { id: "master-extreme", label: "Grandmaster", desc: "Solve an Extreme puzzle", check: (s, m) => s.solveCounts?.extreme >= 1 },
+    { id: "speed-demon", label: "Speed Demon", desc: "Solve any puzzle in under 2 minutes", check: (s) => Object.values(s.fastestTimes || {}).some(t => t < 120000) },
+];
+
+function checkAchievements(stats, meta) {
+    const streak = getStreak();
+    const unlocked = JSON.parse(localStorage.getItem("sudoku:achievements") || "[]");
+    const newlyUnlocked = [];
+
+    for (const ach of ACHIEVEMENT_DEFS) {
+        if (!unlocked.includes(ach.id) && ach.check(stats, meta, streak)) {
+            unlocked.push(ach.id);
+            newlyUnlocked.push(ach);
+        }
+    }
+
+    if (newlyUnlocked.length > 0) {
+        localStorage.setItem("sudoku:achievements", JSON.stringify(unlocked));
+        // We'll broadcast this via a custom event so app.js can show a banner
+        window.dispatchEvent(new CustomEvent("sudoku:achievement", { detail: newlyUnlocked }));
+    }
+}
+
+export function getUnlockedAchievements() {
+    const unlockedIds = JSON.parse(localStorage.getItem("sudoku:achievements") || "[]");
+    return ACHIEVEMENT_DEFS.map(a => ({ ...a, unlocked: unlockedIds.includes(a.id) }));
 }
 
 export function isCompleted(meta) {

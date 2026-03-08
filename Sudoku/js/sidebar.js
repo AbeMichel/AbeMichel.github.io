@@ -1,5 +1,5 @@
 import { DAILY_DIFFICULTIES, CHALLENGES } from "./puzzles.js";
-import { isCompleted, loadState, getCompletionTime, getPersistedRandomSeed } from "./storage.js";
+import { isCompleted, loadState, getCompletionTime, getPersistedRandomSeed, getGlobalStats, getUnlockedAchievements } from "./storage.js";
 import { formatElapsed, getSettings, updateSettings, requestHint, clearHint, getActiveHint } from "./app.js";
 import { MODIFIERS, MODIFIER_MAP, isModifierActive, getModifierValue, getModifierMultiValue, toggleModifier, setModifierValue, setModifierSymbol } from "./modifiers.js";
 import { encodeCustomGame, decodeCustomGame, validateCode } from "./customgame.js";
@@ -58,6 +58,52 @@ function buildPuzzleInfo(meta, onSelectRequested, getMods, updateMods, modsLocke
     backBtn.innerHTML = `‹ puzzle select`;
     backBtn.addEventListener("click", onSelectRequested);
 
+    const navActions = document.createElement("div");
+    navActions.className = "puzzle-info-nav-actions";
+
+    const shareBtn = document.createElement("button");
+    shareBtn.className = "share-btn";
+    shareBtn.title = "Share this puzzle";
+    shareBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`;
+    shareBtn.addEventListener("click", async () => {
+        let seed = meta.seed;
+        if (meta.type === "daily") {
+            const d = new Date();
+            const dateStr = [
+                d.getFullYear(),
+                String(d.getMonth() + 1).padStart(2, "0"),
+                String(d.getDate()).padStart(2, "0")
+            ].join("-");
+            const str = dateStr + meta.key;
+            let hash = 0;
+            for (const char of str) hash = (Math.imul(31, hash) + char.charCodeAt(0)) | 0;
+            seed = hash;
+        }
+
+        const spec = {
+            difficulty: meta.difficulty,
+            seed: seed,
+            modifiers: getMods()
+        };
+        const code = encodeCustomGame(spec);
+        const url = new URL(window.location.origin + window.location.pathname);
+        url.searchParams.set("puzzle", code);
+
+        try {
+            await navigator.clipboard.writeText(url.toString());
+            shareBtn.classList.add("share-btn--success");
+            setTimeout(() => shareBtn.classList.remove("share-btn--success"), 1500);
+        } catch (err) {
+            console.error("Failed to copy URL:", err);
+        }
+    });
+
+    const printBtn = document.createElement("button");
+    printBtn.className = "share-btn";
+    printBtn.title = "Print puzzle";
+    printBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>`;
+    printBtn.addEventListener("click", () => window.print());
+
     const settingsBtn = document.createElement("button");
     settingsBtn.className = "select-settings-btn";
     settingsBtn.title = "Settings";
@@ -71,7 +117,10 @@ function buildPuzzleInfo(meta, onSelectRequested, getMods, updateMods, modsLocke
     });
 
     navRow.appendChild(backBtn);
-    navRow.appendChild(settingsBtn);
+    navActions.appendChild(shareBtn);
+    navActions.appendChild(printBtn);
+    navActions.appendChild(settingsBtn);
+    navRow.appendChild(navActions);
     el.appendChild(navRow);
 
     const titleBlock = document.createElement("div");
@@ -581,13 +630,22 @@ function buildPuzzleSelect(onChosen) {
     const el = document.createElement("div");
     el.className = "sidebar-panel";
 
-    // Heading row — title left, settings gear right
+    // Heading row — title left, actions right
     const headingRow = document.createElement("div");
     headingRow.className = "select-heading-row";
 
     const heading = document.createElement("div");
     heading.className = "select-heading";
     heading.textContent = "Puzzle Select";
+
+    const headActions = document.createElement("div");
+    headActions.className = "select-heading-actions";
+
+    const statsBtn = document.createElement("button");
+    statsBtn.className = "select-settings-btn";
+    statsBtn.title = "View Stats & Achievements";
+    statsBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>`;
+    statsBtn.addEventListener("click", () => showStatsPopup());
 
     const settingsBtn = document.createElement("button");
     settingsBtn.className = "select-settings-btn";
@@ -598,8 +656,10 @@ function buildPuzzleSelect(onChosen) {
         showSettingsPanel(sidebar, () => showPuzzleSelect(sidebar, onChosen));
     });
 
+    headActions.appendChild(statsBtn);
+    headActions.appendChild(settingsBtn);
     headingRow.appendChild(heading);
-    headingRow.appendChild(settingsBtn);
+    headingRow.appendChild(headActions);
     el.appendChild(headingRow);
 
     el.appendChild(buildSectionHeading("Daily Challenge"));
@@ -610,7 +670,7 @@ function buildPuzzleSelect(onChosen) {
         type: "daily", key: diff.key, label: diff.label,
         difficulty: diff.key, difficulty_label: diff.label,
     }));
-    el.appendChild(buildCyclicPuzzleSelector(dailyPuzzles, "daily", onChosen));
+    el.appendChild(buildPuzzleGrid(dailyPuzzles, onChosen));
 
     el.appendChild(buildSectionHeading("Challenges"));
     const challengePuzzles = CHALLENGES.map(ch => ({
@@ -621,7 +681,7 @@ function buildPuzzleSelect(onChosen) {
         description: ch.description,
         modifiers: ch.modifiers ?? null,
     }));
-    el.appendChild(buildCyclicPuzzleSelector(challengePuzzles, "challenge", onChosen));
+    el.appendChild(buildPuzzleGrid(challengePuzzles, onChosen, 4));
 
     el.appendChild(buildSectionHeading("Random Puzzles"));
     const randomPuzzles = DAILY_DIFFICULTIES.map(diff => ({
@@ -629,7 +689,7 @@ function buildPuzzleSelect(onChosen) {
         difficulty: diff.key, difficulty_label: diff.label,
         seed: 0,
     }));
-    el.appendChild(buildCyclicPuzzleSelector(randomPuzzles, "random", onChosen));
+    el.appendChild(buildPuzzleGrid(randomPuzzles, onChosen));
 
     // Custom game sections
     el.appendChild(buildCustomGameCreator(onChosen));
@@ -705,13 +765,18 @@ function buildDailyChallengeCard(onChosen) {
     if (modEntries.length > 0) {
         const strip = document.createElement("div");
         strip.className = "pb-mod-strip";
+        strip.style.flexWrap = "wrap";
+        strip.style.marginTop = "4px";
         for (const key of modEntries) {
             const mod = MODIFIER_MAP[key];
             if (!mod) continue;
             const pill = document.createElement("span");
-            pill.className = `pb-mod-icon pb-mod-icon--${mod.color}`;
-            pill.textContent = mod.icon;
+            pill.className = `pb-mod-pill pb-mod-icon--${mod.color}`;
             pill.dataset.tooltip = mod.description;
+            pill.innerHTML = `
+                <span class="pb-mod-icon-only">${mod.icon}</span>
+                <span class="pb-mod-name">${mod.label || key}</span>
+            `;
             strip.appendChild(pill);
         }
         btn.appendChild(strip);
@@ -742,164 +807,211 @@ function buildDailyChallengeCard(onChosen) {
 // ─────────────────────────────────────────────────────────────────────────────
 // PUZZLE BUTTON with status, time display
 // ─────────────────────────────────────────────────────────────────────────────
-function buildPuzzleButton(meta, label, description, onChosen) {
-    const btn = document.createElement("button");
-    btn.className = description ? "puzzle-btn puzzle-btn--challenge" : "puzzle-btn";
+function buildPuzzleGrid(puzzles, onChosen, limit = 0) {
+    const container = document.createDocumentFragment();
+    const grid = document.createElement("div");
+    grid.className = "puzzle-grid";
+    container.appendChild(grid);
 
-    // Resolve stable seed for random puzzles so storage lookups are accurate
-    const resolvedMeta = (meta.type === "random")
-        ? { ...meta, seed: getPersistedRandomSeed(meta.key) ?? 0 }
-        : meta;
+    const showAll = limit <= 0 || puzzles.length <= limit;
+    const initialCount = showAll ? puzzles.length : limit;
 
-    const completed   = isCompleted(resolvedMeta);
-    const savedState  = !completed ? loadState(resolvedMeta) : null;
-    const inProgress  = !!savedState;
-    const completionMs = completed ? getCompletionTime(resolvedMeta) : null;
-    const progressMs   = inProgress ? (savedState.elapsed ?? 0) : null;
+    const renderCard = (puzzle) => {
+        const resolvedMeta = (puzzle.type === "random")
+            ? { ...puzzle, seed: getPersistedRandomSeed(puzzle.key) ?? 0 }
+            : puzzle;
 
-    // Label row
-    const labelRow = document.createElement("div");
-    labelRow.className = "pb-label-row";
+        const completed = isCompleted(resolvedMeta);
+        const savedState = !completed ? loadState(resolvedMeta) : null;
+        const inProgress = !!savedState;
+        const completionMs = completed ? getCompletionTime(resolvedMeta) : null;
+        const progressMs = inProgress ? (savedState.elapsed ?? 0) : null;
 
-    const labelSpan = document.createElement("span");
-    labelSpan.className = "pb-label";
-    labelSpan.textContent = label;
-    labelRow.appendChild(labelSpan);
+        const card = document.createElement("div");
+        card.className = "puzzle-card";
+        if (completed) card.classList.add("puzzle-card--completed");
+        else if (inProgress) card.classList.add("puzzle-card--in-progress");
 
-    if (completed) {
-        const badge = document.createElement("span");
-        badge.className = "pb-badge pb-badge--done";
-        badge.textContent = "✓ Done";
-        labelRow.appendChild(badge);
-    } else if (inProgress) {
-        const badge = document.createElement("span");
-        badge.className = "pb-badge pb-badge--progress";
-        badge.textContent = "In progress";
-        labelRow.appendChild(badge);
-    }
+        const label = document.createElement("div");
+        label.className = "puzzle-card-label";
+        label.textContent = puzzle.label;
 
-    btn.appendChild(labelRow);
+        const status = document.createElement("div");
+        status.className = "puzzle-card-status";
+        status.textContent = completed ? "✓ Done" : (inProgress ? "In Progress" : (puzzle.difficulty_label || ""));
 
-    // Difficulty label
-    if (meta.difficulty_label) {
-        const diffEl = document.createElement("div");
-        diffEl.className = "pb-difficulty";
-        diffEl.textContent = meta.difficulty_label;
-        btn.appendChild(diffEl);
-    }
+        card.appendChild(label);
+        card.appendChild(status);
 
-    // Modifier icon strip — shown when the puzzle has locked modifiers
-    const modEntries = meta.modifiers ? Object.keys(meta.modifiers) : [];
-    if (modEntries.length > 0) {
-        const strip = document.createElement("div");
-        strip.className = "pb-mod-strip";
-        for (const key of modEntries) {
-            const mod = MODIFIER_MAP[key];
-            if (!mod) continue;
-            const pill = document.createElement("span");
-            pill.className = `pb-mod-icon pb-mod-icon--${mod.color}`;
-            pill.textContent = mod.icon;
-            pill.dataset.tooltip = mod.description;
-            strip.appendChild(pill);
-        }
-        btn.appendChild(strip);
-    }
-
-    // Time row
-    if (completionMs != null || progressMs != null) {
-        const timeRow = document.createElement("div");
-        timeRow.className = "pb-time-row";
+        const metaCont = document.createElement("div");
+        metaCont.className = "puzzle-card-meta";
 
         if (completionMs != null) {
-            timeRow.innerHTML = `<span class="pb-time-icon">⏱</span><span class="pb-time">${formatElapsed(completionMs)}</span>`;
+            const time = document.createElement("div");
+            time.className = "puzzle-card-time";
+            time.innerHTML = `⏱ ${formatElapsed(completionMs)}`;
+            metaCont.appendChild(time);
         } else if (progressMs > 0) {
-            timeRow.innerHTML = `<span class="pb-time-icon">⏱</span><span class="pb-time pb-time--progress">${formatElapsed(progressMs)}</span>`;
+            const time = document.createElement("div");
+            time.className = "puzzle-card-time puzzle-card-time--progress";
+            time.innerHTML = `⏱ ${formatElapsed(progressMs)}`;
+            metaCont.appendChild(time);
         }
 
-        btn.appendChild(timeRow);
-    }
+        const modEntries = puzzle.modifiers ? Object.keys(puzzle.modifiers) : [];
+        if (modEntries.length > 0) {
+            const strip = document.createElement("div");
+            strip.className = "pb-mod-strip";
+            strip.style.marginTop = "4px";
+            strip.style.flexWrap = "wrap";
+            for (const key of modEntries) {
+                const mod = MODIFIER_MAP[key];
+                if (!mod) continue;
+                const pill = document.createElement("span");
+                pill.className = `pb-mod-pill pb-mod-icon--${mod.color}`;
+                pill.dataset.tooltip = mod.description;
+                pill.innerHTML = `
+                    <span class="pb-mod-icon-only">${mod.icon}</span>
+                    <span class="pb-mod-name">${mod.label || key}</span>
+                `;
+                strip.appendChild(pill);
+            }
+            metaCont.appendChild(strip);
+        }
 
-    if (description) {
-        const descSpan = document.createElement("span");
-        descSpan.className = "pb-desc";
-        descSpan.textContent = description;
-        btn.appendChild(descSpan);
-    }
+        if (metaCont.hasChildNodes()) {
+            card.appendChild(metaCont);
+        }
 
-    if (completed) btn.classList.add("puzzle-btn--completed");
-
-    btn.addEventListener("click", () => onChosen(meta));
-    return btn;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CYCLIC PUZZLE SELECTOR
-// ─────────────────────────────────────────────────────────────────────────────
-function buildCyclicPuzzleSelector(puzzles, type, onChosen) {
-    const wrapper = document.createElement("div");
-    wrapper.className = "cyclic-selector-wrapper";
-
-    let currentIndex = 0;
-
-    const renderSelector = () => {
-        wrapper.innerHTML = ''; // Clear previous content
-
-        if (puzzles.length === 0) return;
-
-        const currentMeta = puzzles[currentIndex];
-        const prevMeta = puzzles[(currentIndex - 1 + puzzles.length) % puzzles.length];
-        const nextMeta = puzzles[(currentIndex + 1) % puzzles.length];
-
-        // Main puzzle button
-        const puzzleButton = buildPuzzleButton(
-            currentMeta,
-            currentMeta.label,
-            currentMeta.description, // Challenges have descriptions
-            onChosen
-        );
-        wrapper.appendChild(puzzleButton);
-
-        // Navigation controls
-        const navControls = document.createElement("div");
-        navControls.className = "cyclic-nav-controls";
-
-        // Previous button
-        const prevBtn = document.createElement("button");
-        prevBtn.className = "nav-arrow nav-arrow--prev";
-        prevBtn.innerHTML = `&lsaquo;`;
-        prevBtn.addEventListener("click", () => {
-            currentIndex = (currentIndex - 1 + puzzles.length) % puzzles.length;
-            renderSelector();
-        });
-        navControls.appendChild(prevBtn);
-
-        // Previous puzzle label
-        const prevLabel = document.createElement("span");
-        prevLabel.className = "nav-label nav-label--prev";
-        prevLabel.textContent = prevMeta.label;
-        navControls.appendChild(prevLabel);
-
-        // Next puzzle label
-        const nextLabel = document.createElement("span");
-        nextLabel.className = "nav-label nav-label--next";
-        nextLabel.textContent = nextMeta.label;
-        navControls.appendChild(nextLabel);
-
-        // Next button
-        const nextBtn = document.createElement("button");
-        nextBtn.className = "nav-arrow nav-arrow--next";
-        nextBtn.innerHTML = `&rsaquo;`;
-        nextBtn.addEventListener("click", () => {
-            currentIndex = (currentIndex + 1) % puzzles.length;
-            renderSelector();
-        });
-        navControls.appendChild(nextBtn);
-
-        wrapper.appendChild(navControls);
+        card.addEventListener("click", () => onChosen(puzzle));
+        return card;
     };
 
-    renderSelector();
-    return wrapper;
+    // Render initial
+    for (let i = 0; i < initialCount; i++) {
+        grid.appendChild(renderCard(puzzles[i]));
+    }
+
+    if (!showAll) {
+        const moreBtn = document.createElement("button");
+        moreBtn.className = "show-more-btn";
+        moreBtn.textContent = `Show ${puzzles.length - limit} more challenges…`;
+        moreBtn.addEventListener("click", () => {
+            for (let i = limit; i < puzzles.length; i++) {
+                grid.appendChild(renderCard(puzzles[i]));
+            }
+            moreBtn.remove();
+        });
+        container.appendChild(moreBtn);
+    }
+
+    return container;
+}
+
+export function showStatsPopup() {
+    document.getElementById("stats-popup")?.remove();
+    document.getElementById("stats-backdrop")?.remove();
+
+    const stats = getGlobalStats();
+    const achievements = getUnlockedAchievements();
+
+    const backdrop = document.createElement("div");
+    backdrop.id = "stats-backdrop";
+    backdrop.className = "popup-backdrop";
+
+    const popup = document.createElement("div");
+    popup.id = "stats-popup";
+    popup.className = "custom-game-popup";
+
+    const closePopup = () => {
+        popup.remove();
+        backdrop.remove();
+    };
+    backdrop.addEventListener("click", closePopup);
+
+    const header = document.createElement("div");
+    header.className = "popup-header";
+    header.innerHTML = `<span class="popup-title">Stats & Achievements</span>`;
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "popup-close-btn";
+    closeBtn.textContent = "✕";
+    closeBtn.addEventListener("click", closePopup);
+    header.appendChild(closeBtn);
+    popup.appendChild(header);
+
+    const body = document.createElement("div");
+    body.className = "popup-body";
+
+    const statsContainer = document.createElement("div");
+    statsContainer.className = "stats-container";
+
+    // Summary Grid
+    const grid = document.createElement("div");
+    grid.className = "stats-grid";
+
+    const createStat = (label, value) => {
+        const item = document.createElement("div");
+        item.className = "stat-item";
+        item.innerHTML = `
+            <span class="stat-label">${label}</span>
+            <span class="stat-value">${value}</span>
+        `;
+        return item;
+    };
+
+    grid.appendChild(createStat("Current Streak", stats.streak?.current || 0));
+    grid.appendChild(createStat("Best Streak", stats.streak?.best || 0));
+    grid.appendChild(createStat("Total Solved", stats.totalSolves || 0));
+    statsContainer.appendChild(grid);
+
+    // Difficulty Breakdown
+    const diffTitle = document.createElement("div");
+    diffTitle.className = "popup-field-label";
+    diffTitle.style.marginTop = "1rem";
+    diffTitle.textContent = "Solves by Difficulty";
+    statsContainer.appendChild(diffTitle);
+
+    const diffList = document.createElement("div");
+    diffList.className = "stats-difficulty-list";
+    const D_ORDER = ["veryeasy", "easy", "medium", "hard", "veryhard", "extreme"];
+    const D_LABELS = { veryeasy: "Very Easy", easy: "Easy", medium: "Medium", hard: "Hard", veryhard: "Very Hard", extreme: "Extreme" };
+
+    for (const dKey of D_ORDER) {
+        const count = stats.solveCounts?.[dKey] || 0;
+        const row = document.createElement("div");
+        row.className = "stats-difficulty-row";
+        row.innerHTML = `
+            <span class="stats-difficulty-label">${D_LABELS[dKey]}</span>
+            <span class="stats-difficulty-count">${count}</span>
+        `;
+        diffList.appendChild(row);
+    }
+    statsContainer.appendChild(diffList);
+
+    // Achievements
+    const achTitle = document.createElement("div");
+    achTitle.className = "popup-field-label";
+    achTitle.style.marginTop = "1rem";
+    achTitle.textContent = "Achievements";
+    statsContainer.appendChild(achTitle);
+
+    const achList = document.createElement("div");
+    achList.className = "achievements-list";
+
+    for (const ach of achievements) {
+        const pill = document.createElement("span");
+        pill.className = `achievement-pill ${ach.unlocked ? "achievement-pill--unlocked" : ""}`;
+        pill.textContent = ach.label;
+        pill.dataset.tooltip = ach.desc;
+        achList.appendChild(pill);
+    }
+
+    statsContainer.appendChild(achList);
+    body.appendChild(statsContainer);
+    popup.appendChild(body);
+
+    document.body.appendChild(backdrop);
+    document.body.appendChild(popup);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
