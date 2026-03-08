@@ -29,5 +29,14 @@
         document.getElementById('header-date').textContent =
             d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     </script>
+    <script src="https://storage.ko-fi.com/cdn/scripts/overlay-widget.js"></script>
+    <script>
+        kofiWidgetOverlay.draw('abemichel', {
+            'type': 'floating-chat',
+            'floating-chat.donateButton.text': 'Leave a tip!',
+            'floating-chat.donateButton.background-color': '#323842',
+            'floating-chat.donateButton.text-color': '#fff'
+        });
+    </script>
 </body>
 </html>
