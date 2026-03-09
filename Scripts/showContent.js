@@ -29,23 +29,15 @@ function blurFadeTransition(button) {
 
 async function loadContent(section) {
     content.scrollTop = 0;
-    
-    // const filePath = `${contentPath}${section}.html?cacheBust=${Date.now()}`;  // TODO: Remove this for production
     const filePath = `${contentPath}${section}.html`;
     try {
-        // Show loading state
         content.innerHTML = '<p>Loading...</p>';
-        
-        // Fetch the HTML file
         const response = await fetch(filePath);
-        
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
         const html = await response.text();
         content.innerHTML = html;
-        
     } catch (error) {
         console.error('Error loading content:', error);
         content.innerHTML = `
@@ -55,47 +47,95 @@ async function loadContent(section) {
     }
 }
 
+function openSection(button) {
+    if (isTransitioning) return;
+
+    if (isContentOpen) {
+        if (lastButton !== button) {
+            blurFadeTransition(button);
+        }
+    } else {
+        loadContent(button.dataset.section);
+        contentContainer.classList.add("shown");
+        overlay.classList.add("active");
+        logo.classList.add("hidden");
+        isContentOpen = true;
+    }
+    
+    lastButton?.classList.remove("selected");
+    button.classList.add("selected");
+    lastButton = button;
+}
+
+function closeContent() {
+    if (isTransitioning || !isContentOpen) return;
+    
+    if (lastButton) {
+        lastButton.classList.remove("selected");
+    }
+    contentContainer.classList.remove("shown");
+    overlay.classList.remove("active");
+    logo.classList.remove("hidden");
+    lastButton = null;
+    isContentOpen = false;
+}
+
+function handleHashChange() {
+    const hash = window.location.hash.substring(1);
+    if (hash) {
+        const button = Array.from(buttons).find(b => b.dataset.section === hash);
+        if (button) {
+            openSection(button);
+        } else {
+            closeContent();
+        }
+    } else {
+        closeContent();
+    }
+}
+
 buttons.forEach(button => {
-    // Use both click and touch events for better mobile support
-    const handleInteraction = () => {
+    button.addEventListener('click', () => {
         if (isTransitioning) return;
         
-        const same = lastButton === button;
-
-        if (same) {
-            button.classList.remove("selected");
-            contentContainer.classList.remove("shown");
-            overlay.classList.remove("active");
-            logo.classList.remove("hidden");
-            lastButton = null;
-            isContentOpen = false;
+        const section = button.dataset.section;
+        if (window.location.hash === '#' + section) {
+            // Remove hash and add to history
+            history.pushState("", document.title, window.location.pathname + window.location.search);
+            handleHashChange();
         } else {
-            if (isContentOpen) {
-                blurFadeTransition(button);
-            } else {
-                loadContent(button.dataset.section);
-                contentContainer.classList.add("shown");
-                overlay.classList.add("active");
-                logo.classList.add("hidden");
-                isContentOpen = true;
-            }
-            lastButton?.classList.remove("selected");
-            button.classList.add("selected");
-            lastButton = button;
+            window.location.hash = section;
         }
-    };
-    
-    button.addEventListener('click', handleInteraction);
+    });
 });
+
+// Close content when clicking outside
+document.addEventListener('click', (event) => {
+    if (isContentOpen && !isTransitioning) {
+        const isClickInsideContent = contentContainer.contains(event.target);
+        const isClickOnButton = Array.from(buttons).some(button => button.contains(event.target));
+        const sidebar = document.querySelector('.sidebar');
+        const isClickOnSidebar = sidebar && sidebar.contains(event.target);
+        
+        if (!isClickInsideContent && !isClickOnButton && !isClickOnSidebar) {
+            // Remove hash and add to history
+            history.pushState("", document.title, window.location.pathname + window.location.search);
+            handleHashChange();
+        }
+    }
+});
+
+// Initialize and listen for changes
+window.addEventListener('hashchange', handleHashChange);
+window.addEventListener('popstate', handleHashChange);
+window.addEventListener('load', handleHashChange);
 
 // Handle viewport resize
 let resizeTimer;
 window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-        // Adjust content container if it's open
         if (isContentOpen) {
-            // Force a reflow to ensure proper sizing
             contentContainer.style.display = 'none';
             contentContainer.offsetHeight; // Trigger reflow
             contentContainer.style.display = '';

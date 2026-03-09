@@ -62,6 +62,7 @@ h1, h2, h3
     width: 60px;
     height: 100vh;
     pointer-events: none;
+    z-index: 10; /* Ensure it's above content-container (1) and centered-container (2) */
 }
 
 .sidebar {
@@ -473,6 +474,23 @@ a:hover {
 
 /* Tablets portrait and large phones (600px - 768px) */
 @media screen and (max-width: 768px) {
+    .vcenter-container {
+        top: auto;
+        bottom: 0;
+        width: 100%;
+        height: auto;
+        padding-bottom: 10px;
+    }
+
+    .sidebar {
+        flex-direction: row;
+        justify-content: center;
+        width: auto;
+        margin-right: 0;
+        gap: 20px;
+        padding: 10px 20px;
+    }
+
     :root {
         font-size: 14px;
         --nav-font-size: 1.2rem;
@@ -506,14 +524,16 @@ a:hover {
 
     .content-container {
         width: 85vw;
+        bottom: 0;
     }
 
     .content-container.shown {
-        height: 80vh;
+        height: 85vh;
     }
 
     .content {
         padding: 15px;
+        padding-bottom: 80px; /* Space for floating footer */
     }
 
     .content-header-wrapper {
@@ -566,14 +586,16 @@ a:hover {
     .content-container {
         width: 95vw;
         left: 50%;
+        bottom: 0;
     }
 
     .content-container.shown {
-        height: 75vh;
+        height: 80vh;
     }
 
     .content {
         padding: 12px;
+        padding-bottom: 80px; /* Space for floating footer */
     }
 
     .content-header {
@@ -605,8 +627,18 @@ a:hover {
         max-height: 120px;
     }
 
+    .content-container {
+        width: 95vw;
+        bottom: 0;
+    }
+
+    .content-container.shown {
+        height: 80vh;
+    }
+
     .content {
         padding: 10px;
+        padding-bottom: 80px; /* Space for floating footer */
     }
 
     .content-header-wrapper {
