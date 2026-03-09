@@ -98,7 +98,6 @@ h1, h2, h3
 }
 
 .associated-link-icon:hover {
-    background-color: var(--faded-text-color);
     cursor: pointer;
 }
 
@@ -143,7 +142,13 @@ body.night-mode .day-time-mode-switcher { transform: rotate(-360deg); }
     transition: background-color 0.2s ease;
 }
 
-.day-mode-icon:hover {
+.sidebar .associated-link-icon.highlighted,
+.sidebar .icon.highlighted .day-mode-icon {
+    background-color: var(--text-color);
+}
+
+.sidebar .associated-link-icon.not-highlighted,
+.sidebar .icon.not-highlighted .day-mode-icon {
     background-color: var(--faded-text-color);
 }
 

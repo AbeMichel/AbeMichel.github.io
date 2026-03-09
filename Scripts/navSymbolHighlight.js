@@ -1,26 +1,30 @@
 document.addEventListener("DOMContentLoaded", () => {
-    const navHighlightedClass = "highlighted";
-    const navNotHighlightedClass = "not-highlighted";
-    const navOptions = document.querySelectorAll(".nav-btn");
+    const setupHighlightGroup = (selector) => {
+        const highlightedClass = "highlighted";
+        const notHighlightedClass = "not-highlighted";
+        const options = document.querySelectorAll(selector);
 
-    navOptions.forEach((btn) => {
-        btn.addEventListener("mouseenter", () => {
-            navOptions.forEach((otherBtn) => {
-                const isActive = otherBtn === btn;
-                if (isActive){
-                    otherBtn.classList.add(navHighlightedClass);
-                    otherBtn.classList.remove(navNotHighlightedClass);
-                } else {
-                    otherBtn.classList.remove(navHighlightedClass);
-                    otherBtn.classList.add(navNotHighlightedClass);
-                }
+        options.forEach((el) => {
+            el.addEventListener("mouseenter", () => {
+                options.forEach((otherEl) => {
+                    if (otherEl === el) {
+                        otherEl.classList.add(highlightedClass);
+                        otherEl.classList.remove(notHighlightedClass);
+                    } else {
+                        otherEl.classList.remove(highlightedClass);
+                        otherEl.classList.add(notHighlightedClass);
+                    }
+                });
+            });
+            el.addEventListener("mouseleave", () => {
+                options.forEach((otherEl) => {
+                    otherEl.classList.remove(highlightedClass);
+                    otherEl.classList.remove(notHighlightedClass);
+                });
             });
         });
-        btn.addEventListener("mouseleave", () => {
-            navOptions.forEach((otherBtn) => {
-                otherBtn.classList.remove(navHighlightedClass);
-                otherBtn.classList.remove(navNotHighlightedClass);
-            });
-        });
-    });
+    };
+
+    setupHighlightGroup(".nav-btn");
+    setupHighlightGroup(".sidebar .icon");
 });
