@@ -1,5 +1,5 @@
 import { DAILY_DIFFICULTIES, CHALLENGES } from "./puzzles.js";
-import { isCompleted, loadState, clearState, getCompletionTime, getPersistedRandomSeed, getGlobalStats, getUnlockedAchievements } from "./storage.js";
+import { isCompleted, loadState, clearState, getCompletionTime, getPersistedRandomSeed, getGlobalStats, getUnlockedAchievements, getSavedCustomGames } from "./storage.js";
 import { formatElapsed, getSettings, updateSettings, requestHint, clearHint, getActiveHint, togglePause } from "./app.js";
 import { MODIFIERS, MODIFIER_MAP, isModifierActive, getModifierValue, getModifierMultiValue, toggleModifier, setModifierValue, setModifierSymbol } from "./modifiers.js";
 import { encodeCustomGame, decodeCustomGame, validateCode } from "./customgame.js";
@@ -660,8 +660,100 @@ function buildPuzzleSelect(onChosen) {
     // Custom game sections
     el.appendChild(buildCustomGameCreator(onChosen));
     el.appendChild(buildCustomGameInput(onChosen));
+    el.appendChild(buildSavedCustomGames(onChosen));
 
     return el;
+}
+
+function buildSavedCustomGames(onChosen) {
+    const saved = getSavedCustomGames();
+    if (saved.length === 0) return document.createDocumentFragment();
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "saved-custom-puzzles";
+
+    const heading = document.createElement("div");
+    heading.className = "select-section-heading";
+    heading.textContent = "Saved Puzzles";
+    wrapper.appendChild(heading);
+
+    const list = document.createElement("div");
+    list.className = "puzzle-grid"; // reuse grid styling
+
+    const DIFFICULTY_LABELS = { veryeasy: "Very Easy", easy: "Easy", medium: "Medium", hard: "Hard", veryhard: "Very Hard" };
+
+    for (const game of saved) {
+        try {
+            const spec = decodeCustomGame(game.code);
+            const meta = {
+                type: "custom",
+                key: `custom:${game.code}`,
+                label: `Custom · ${DIFFICULTY_LABELS[spec.difficulty]}`,
+                difficulty: spec.difficulty,
+                difficulty_label: DIFFICULTY_LABELS[spec.difficulty],
+                seed: spec.seed,
+                modifiers: spec.modifiers,
+                code: game.code,
+                regionType: spec.regionType,
+                regionMap: spec.regionMap
+            };
+
+            const completed = isCompleted(meta);
+            const btn = document.createElement("button");
+            btn.className = "puzzle-btn";
+            if (completed) btn.classList.add("puzzle-btn--completed");
+
+            const labelRow = document.createElement("div");
+            labelRow.className = "pb-label-row";
+
+            const labelSpan = document.createElement("span");
+            labelSpan.className = "pb-label";
+            labelSpan.textContent = `Custom (${spec.difficulty})`;
+            labelRow.appendChild(labelSpan);
+
+            if (completed) {
+                const badge = document.createElement("span");
+                badge.className = "pb-badge pb-badge--done";
+                badge.textContent = "✓ Done";
+                labelRow.appendChild(badge);
+            } else {
+                const badge = document.createElement("span");
+                badge.className = "pb-badge pb-badge--progress";
+                badge.textContent = "In progress";
+                
+                const dismissBtn = document.createElement("button");
+                dismissBtn.className = "pb-dismiss-btn";
+                dismissBtn.title = "Clear progress";
+                dismissBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
+                dismissBtn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    if (confirm("Reset progress for this custom puzzle?")) {
+                        clearState(meta);
+                        const sidebar = btn.closest(".sidebar");
+                        if (sidebar) showPuzzleSelect(sidebar, onChosen);
+                    }
+                });
+                badge.appendChild(dismissBtn);
+                labelRow.appendChild(badge);
+            }
+
+            btn.appendChild(labelRow);
+
+            const metaRow = document.createElement("div");
+            metaRow.className = "pb-meta-row";
+            metaRow.textContent = `Seed: ${spec.seed.toString(16).toUpperCase()}`;
+            btn.appendChild(metaRow);
+
+            btn.addEventListener("click", () => onChosen(meta));
+            list.appendChild(btn);
+        } catch (e) {
+            // Invalid code in storage, skip or clear?
+            console.error("Failed to decode saved custom game:", game.code);
+        }
+    }
+
+    wrapper.appendChild(list);
+    return wrapper;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

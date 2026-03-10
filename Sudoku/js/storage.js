@@ -276,6 +276,21 @@ export function pruneStaleDaily() {
         toRemove.forEach(k => localStorage.removeItem(k));
     } catch { /* ignore */ }
 }
+
+export function getSavedCustomGames() {
+    const games = [];
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key?.startsWith("sudoku:custom:")) {
+                const code = key.replace("sudoku:custom:", "");
+                games.push({ code });
+            }
+        }
+    } catch { /* ignore */ }
+    return games;
+}
+
 // ── Random puzzle seed persistence ────────────────────────────────────────────
 export function getPersistedRandomSeed(difficultyKey) {
     try {

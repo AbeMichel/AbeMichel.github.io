@@ -856,6 +856,7 @@ body.dark-mode .mode-btn--clear:hover {
     background: var(--btn-bg);
     color: var(--btn-text);
     cursor: pointer;
+    border-radius: 5px;
 }
 
 .mode-btn.active {
@@ -875,6 +876,12 @@ body.dark-mode .mode-btn--clear:hover {
     background: var(--btn-bg);
     color: var(--btn-text);
     cursor: pointer;
+    border-radius: 5px;
+}
+
+.puzzle-controls-extra {
+    display: flex;
+    gap: 0.5rem;
 }
 
 .num-btn.exhausted {
