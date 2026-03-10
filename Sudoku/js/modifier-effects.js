@@ -17,6 +17,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { isModifierActive, getModifierValue } from "./modifiers.js";
+import { applyAutoCandidates } from "./state.js";
 
 // ── Interval handles ──────────────────────────────────────────────────────────
 let _livingInterval   = null;
@@ -38,10 +39,13 @@ export function stopModifierEffects() {
     document.querySelectorAll(".cell--decaying").forEach(el => {
         el.classList.remove("cell--decaying", "cell--decaying-warn", "cell--decaying-critical");
     });
-    // Clear rainbow colours
+    // Clear rainbow colours specifically — don't nuke user's region colors
     document.querySelectorAll("#board .cell").forEach(el => {
-        el.style.removeProperty("background-color");
         el.style.removeProperty("--cell-rainbow");
+        // Only remove if it looks like a rainbow color (HSL) or if rainbow was active
+        if (el.style.backgroundColor.includes("hsl")) {
+            el.style.removeProperty("background-color");
+        }
     });
 }
 
@@ -319,6 +323,7 @@ function startDecayingEffect(getState, setState, rerender, getMods) {
 
         if (anyExpired) {
             const newHistory = [...s.history, s.board];
+            if (s.autoCandidates) applyAutoCandidates(newBoard, s.regionMap);
             setState({ ...s, board: newBoard, history: newHistory, future: [] });
             rerender();
         }
@@ -378,9 +383,11 @@ function startRainbowEffect(getMods) {
 
     function tick(timestamp) {
         if (!isModifierActive(getMods(), "rainbow")) {
-            // Rainbow was turned off — clear all custom backgrounds
+            // Rainbow was turned off — clear only rainbow backgrounds
             document.querySelectorAll("#board .cell").forEach(el => {
-                el.style.removeProperty("background-color");
+                if (el.style.backgroundColor.includes("hsl")) {
+                    el.style.removeProperty("background-color");
+                }
             });
             _rainbowRaf = null;
             return;

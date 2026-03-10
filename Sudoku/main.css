@@ -93,17 +93,6 @@
     --success-accent-hover: #047857;
     --warning-accent: #f59e0b;
     --warning-accent-hover: #d97706;
-
-    /* Region Colors - Light Mode */
-    --region-0: #f0f9ff;
-    --region-1: #fff1f2;
-    --region-2: #f0fdf4;
-    --region-3: #fefce8;
-    --region-4: #faf5ff;
-    --region-5: #fff7ed;
-    --region-6: #ecfeff;
-    --region-7: #f5f3ff;
-    --region-8: #fdf2f8;
 }
 
 body.dark-mode {
@@ -199,17 +188,6 @@ body.dark-mode {
     --success-accent-hover: #34d399;
     --warning-accent: #fbbf24;
     --warning-accent-hover: #f59e0b;
-
-    /* Region Colors - Dark Mode */
-    --region-0: #0c4a6e;
-    --region-1: #4c0519;
-    --region-2: #064e3b;
-    --region-3: #422006;
-    --region-4: #3b0764;
-    --region-5: #431407;
-    --region-6: #083344;
-    --region-7: #1e1b4b;
-    --region-8: #500724;
 }
 
 html, body {
@@ -343,6 +321,35 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--text-muted);
+}
+
+.pb-dismiss-btn {
+    background: none;
+    border: none;
+    padding: 2px;
+    cursor: pointer;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 6px;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+    vertical-align: middle;
+}
+
+.pb-dismiss-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.pb-dismiss-btn:hover {
+    color: var(--error-text);
+    background: var(--error-bg);
+}
+
+.pb-dismiss-btn--daily {
+    margin-left: 8px;
 }
 .puzzle-card-badge--chaos {
     margin-left: 0.4rem;
@@ -676,16 +683,6 @@ body.dark-mode .puzzle-card-badge--chaos {
 }
 
 /* Region Coloring Support */
-.cell--region-colored[data-region="0"] { background-color: var(--region-0); }
-.cell--region-colored[data-region="1"] { background-color: var(--region-1); }
-.cell--region-colored[data-region="2"] { background-color: var(--region-2); }
-.cell--region-colored[data-region="3"] { background-color: var(--region-3); }
-.cell--region-colored[data-region="4"] { background-color: var(--region-4); }
-.cell--region-colored[data-region="5"] { background-color: var(--region-5); }
-.cell--region-colored[data-region="6"] { background-color: var(--region-6); }
-.cell--region-colored[data-region="7"] { background-color: var(--region-7); }
-.cell--region-colored[data-region="8"] { background-color: var(--region-8); }
-
 .cell.fixed {
     color: var(--cell-fixed);
     font-weight: 600;
@@ -722,11 +719,40 @@ body.dark-mode .puzzle-card-badge--chaos {
     z-index: 1;
 }
 
+.cell.highlight-same {
+    background-color: #fef08a !important; /* yellow-200 */
+}
+body.dark-mode .cell.highlight-same {
+    background-color: #854d0e !important; /* yellow-800 */
+}
+
+.cell.highlight-axis {
+    background-color: #f0f9ff; /* blue-50 */
+}
+body.dark-mode .cell.highlight-axis {
+    background-color: #1e293b; /* slate-800 */
+    filter: brightness(1.2);
+}
+
 .mode-btn.active {
     background: var(--brand-color);
     color: var(--white);
     border-color: var(--brand-color);
     box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.mode-btn--clear {
+    flex: 0.5;
+    background: var(--error-bg);
+    color: var(--error-text);
+    border-color: var(--error-border);
+    font-weight: 600;
+}
+.mode-btn--clear:hover {
+    background: #fee2e2;
+}
+body.dark-mode .mode-btn--clear:hover {
+    background: #7f1d1d;
 }
 
 .notes-grid {
@@ -966,6 +992,11 @@ body.dark-mode .puzzle-card-badge--chaos {
         max-height: none;
         border: 2px solid #000;
     }
+    .cell {
+        background: transparent !important;
+        outline: none !important;
+        border-color: #000 !important;
+    }
     /* Hide everything except fixed clues */
     .cell:not(.fixed) {
         color: transparent !important;
@@ -973,9 +1004,6 @@ body.dark-mode .puzzle-card-badge--chaos {
     .cell.fixed {
         color: #000 !important;
         font-weight: bold;
-    }
-    .cell {
-        border-color: #000 !important;
     }
     /* Hide notes, banners, overlays, sidebar, site header */
     .notes-grid, .event-banner, .board-overlay, .sidebar, .site-header, .board-controls {
@@ -1125,14 +1153,19 @@ body.dark-mode .puzzle-card-badge--chaos {
     position: absolute;
     inset: 0;
     background: var(--overlay-bg);
-    backdrop-filter: blur(3px);
+    backdrop-filter: blur(8px); /* more blur for pause */
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10;
+    z-index: 100;
     opacity: 0;
     transition: opacity 0.25s ease;
     pointer-events: all;
+}
+
+.board-overlay--pause {
+    background: var(--bg-color); /* solid bg to hide board */
+    backdrop-filter: blur(12px);
 }
 .board-overlay.visible { opacity: 1; }
 .board-overlay.fade-out {
@@ -2300,6 +2333,44 @@ body.dark-mode .pb-badge--chaos {
     background: var(--brand-color-hover);
 }
 
+.settings-color-input {
+    width: 36px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid var(--btn-border);
+    border-radius: 4px;
+    cursor: pointer;
+    background: none;
+    flex-shrink: 0;
+}
+.settings-color-input::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+.settings-color-input::-webkit-color-swatch {
+    border: none;
+    border-radius: 3px;
+}
+
+.settings-region-colors-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.5rem 0;
+}
+
+.settings-region-colors-grid {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+}
+
+.settings-region-colors-grid .settings-color-input {
+    width: 100%;
+    aspect-ratio: 1/1;
+    height: auto;
+}
+
 /* ── Hints section ───────────────────────────────────────────────────────────── */
 .hints-wrapper {
     margin-top: 1.25rem;
@@ -2352,11 +2423,16 @@ body.dark-mode .pb-badge--chaos {
     cursor: pointer;
     transition: background 0.15s, border-color 0.15s;
 }
-.hint-btn:hover {
+.hint-btn:hover:not(:disabled) {
     background: var(--hint-btn-hover);
     border-color: var(--text-muted);
 }
-.hint-btn:active { background: var(--info-bg); }
+.hint-btn:active:not(:disabled) { background: var(--info-bg); }
+.hint-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    filter: grayscale(1);
+}
 
 .hint-btn-icon { font-size: 1.1rem; }
 .hint-btn-label {

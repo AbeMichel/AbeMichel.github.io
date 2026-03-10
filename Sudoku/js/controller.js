@@ -13,6 +13,9 @@ import { isModifierActive, getModifierValue } from "./modifiers.js";
 export function attachController(root, getState, setState, rerender, getMods, onCellInput) {
 
     root.addEventListener("click", (e) => {
+        const state = getState();
+        if (state.paused) return;
+
         const cell = e.target.closest(".cell");
         if (cell) {
             const row = Number(cell.dataset.row);
@@ -50,6 +53,7 @@ export function attachController(root, getState, setState, rerender, getMods, on
             if (action === "undo")  { setState(undo(getState())); rerender(); }
             if (action === "redo")  { setState(redo(getState())); rerender(); }
             if (action === "reset") { setState(resetBoard(getState())); rerender(); }
+            if (action === "clear") { setState(placeNumber(getState(), 0)); rerender(); }
             if (action === "auto-candidates") {
                 if (!isModifierActive(mods, "no-candidates") && !isModifierActive(mods, "candidate-only")) {
                     setState(toggleAutoCandidates(getState())); rerender();
@@ -59,6 +63,9 @@ export function attachController(root, getState, setState, rerender, getMods, on
     });
 
     document.addEventListener("keydown", (e) => {
+        const state = getState();
+        if (state.paused) return;
+
         const mods = getMods();
 
         if ((e.ctrlKey || e.metaKey) && e.key === "z") {
@@ -76,7 +83,7 @@ export function attachController(root, getState, setState, rerender, getMods, on
 
         const arrowMap = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right" };
         if (arrowMap[e.key]) {
-            setState(moveSelection(getState(), arrowMap[e.key]));
+            setState(moveSelection(getState(), arrowMap[e.key], e.shiftKey));
             rerender();
             return;
         }

@@ -16,8 +16,14 @@ export const DEFAULT_SETTINGS = {
     highlightMistakes:  false,
     showConflicts:      true,
     autoCandidateStart: false,
+    autoSaveCustom:     true,
     darkMode:           false,
     colorRegions:       false,
+    highlightSame:      true,
+    highlightRow:       true,
+    highlightBox:       true,
+    regionColors:       ["#f0f9ff", "#fff1f2", "#f0fdf4", "#fefce8", "#faf5ff", "#fff7ed", "#ecfeff", "#f5f3ff", "#fdf2f8"],
+    darkRegionColors:   ["#0c4a6e", "#4c0519", "#064e3b", "#422006", "#3b0764", "#431407", "#083344", "#1e1b4b", "#500724"],
 };
 
 // Module-level singleton — mutated in place by updateSettings()

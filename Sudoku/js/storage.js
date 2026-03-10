@@ -20,6 +20,7 @@ export function storageKey(meta) {
     if (meta.type === "daily-challenge") return `sudoku:daily-challenge:${TODAY}`;
     if (meta.type === "challenge")       return `sudoku:challenge:${meta.key}`;
     if (meta.type === "random")          return `sudoku:random:${meta.difficulty}:${meta.seed}`;
+    if (meta.type === "custom")          return `sudoku:custom:${meta.code}`;
     return null;
 }
 

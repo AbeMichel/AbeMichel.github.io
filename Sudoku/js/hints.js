@@ -97,17 +97,21 @@ function getHouses(regionMap = DEFAULT_REGION_MAP) {
 // Each returns { row, col, value? } for the first instance found, or null.
 // They NEVER modify board or cands.
 
-function detectNakedSingle(board, cands) {
+function detectNakedSingle(board, cands, filter = null) {
     for (let r = 0; r < 9; r++)
-        for (let c = 0; c < 9; c++)
-            if (board[r][c] === 0 && cands[r][c].size === 1)
-                return { row: r, col: c, value: [...cands[r][c]][0] };
+        for (let c = 0; c < 9; c++) {
+            if (board[r][c] === 0 && cands[r][c].size === 1) {
+                const val = [...cands[r][c]][0];
+                if (!filter || filter(val)) return { row: r, col: c, value: val };
+            }
+        }
     return null;
 }
 
-function detectHiddenSingle(board, cands, regionMap = DEFAULT_REGION_MAP) {
+function detectHiddenSingle(board, cands, regionMap = DEFAULT_REGION_MAP, filter = null) {
     for (const house of getHouses(regionMap)) {
         for (let v = 1; v <= 9; v++) {
+            if (filter && !filter(v)) continue;
             const cells = house.filter(([r, c]) => board[r][c] === 0 && cands[r][c].has(v));
             if (cells.length === 1) {
                 const [r, c] = cells[0];
@@ -270,7 +274,6 @@ function getHouseCells(type, idx, regionMap = DEFAULT_REGION_MAP) {
 export function getNextNumber(state, mods = {}) {
     const board = flatBoard(state);
     const regionMap = state.regionMap || DEFAULT_REGION_MAP;
-    const cands = buildCandidates(board, regionMap);
     const required = getRequiredDigit(board, mods);
     const dir = getModifierValue(mods, "ordered") ?? "asc";
     const ascending = dir !== "desc";
@@ -280,49 +283,73 @@ export function getNextNumber(state, mods = {}) {
         return ascending ? (v <= required) : (v >= required);
     };
 
-    const ns = detectNakedSingle(board, cands);
-    if (ns && isAllowed(ns.value)) return {
-        type:        "number",
-        cells:       [{ row: ns.row, col: ns.col }],
-        value:       ns.value,
-        label:       "Next Number",
-        description: `Place ${ns.value} — it's the only candidate remaining in this cell.`,
-    };
-
-    const hs = detectHiddenSingle(board, cands, regionMap);
-    if (hs && isAllowed(hs.value)) return {
-        type:        "number",
-        cells:       [{ row: hs.row, col: hs.col }],
-        value:       hs.value,
-        label:       "Next Number",
-        description: `Place ${hs.value} — no other cell in that house can hold it.`,
-    };
-
-    // If we have a required digit and didn't find a single, look specifically for a cell that MUST hold it
+    // If Ordered Placement is active, perform an iterative solve using only
+    // Naked and Hidden singles for ANY digit to eventually find the required digit.
     if (required !== null) {
-        const houses = [
-            ...Array.from({length: 9}, (_, i) => ({ type: "row", idx: i })),
-            ...Array.from({length: 9}, (_, i) => ({ type: "col", idx: i })),
-            ...Array.from({length: 9}, (_, i) => ({ type: "region", idx: i })),
-        ];
+        let tempBoard = board.map(row => [...row]);
+        let changed = true;
+        while (changed) {
+            changed = false;
+            const tempCands = buildCandidates(tempBoard, regionMap);
+            
+            // 1. Check for Naked Single (any digit)
+            const ns = detectNakedSingle(tempBoard, tempCands);
+            if (ns) {
+                if (ns.value === required) {
+                    return {
+                        type:        "number",
+                        cells:       [{ row: ns.row, col: ns.col }],
+                        value:       ns.value,
+                        label:       "Next Number",
+                        description: `Ordered Placement: Place ${ns.value}.`,
+                    };
+                }
+                tempBoard[ns.row][ns.col] = ns.value;
+                changed = true;
+                continue;
+            }
 
-        for (const house of houses) {
-            const cells = getHouseCells(house.type, house.idx, regionMap);
-            const possible = cells.filter(({r, c}) => board[r][c] === 0 && cands[r][c].has(required));
-            if (possible.length === 1) {
-                const { r, c } = possible[0];
-                return {
-                    type:        "number",
-                    cells:       [{ row: r, col: c }],
-                    value:       required,
-                    label:       "Next Number",
-                    description: `Place ${required} — it's required by the Ordered modifier and this is its only spot in the ${house.type}.`,
-                };
+            // 2. Check for Hidden Single (any digit)
+            const hs = detectHiddenSingle(tempBoard, tempCands, regionMap);
+            if (hs) {
+                if (hs.value === required) {
+                    return {
+                        type:        "number",
+                        cells:       [{ row: hs.row, col: hs.col }],
+                        value:       hs.value,
+                        label:       "Next Number",
+                        description: `Ordered Placement: Place ${hs.value}.`,
+                    };
+                }
+                tempBoard[hs.row][hs.col] = hs.value;
+                changed = true;
+                continue;
             }
         }
+    } else {
+        // Normal mode (no Ordered modifier) — check for immediate singles
+        const cands = buildCandidates(board, regionMap);
+        const ns = detectNakedSingle(board, cands);
+        if (ns) return {
+            type:        "number",
+            cells:       [{ row: ns.row, col: ns.col }],
+            value:       ns.value,
+            label:       "Next Number",
+            description: `Place ${ns.value} — it's the only candidate remaining in this cell.`,
+        };
+
+        const hs = detectHiddenSingle(board, cands, regionMap);
+        if (hs) return {
+            type:        "number",
+            cells:       [{ row: hs.row, col: hs.col }],
+            value:       hs.value,
+            label:       "Next Number",
+            description: `Place ${hs.value} — no other cell in that house can hold it.`,
+        };
     }
 
-    // Advanced puzzle state — backtrack for the tightest cell
+    // Advanced puzzle state or logic didn't find the required digit — backtrack for the tightest cell
+    const cands = buildCandidates(board, regionMap);
     const cell = mostConstrainedCell(board, cands);
     if (!cell) return null;
 
@@ -330,22 +357,22 @@ export function getNextNumber(state, mods = {}) {
     if (!solved) return null;
 
     const val = solved[cell.row][cell.col];
-    if (!isAllowed(val)) {
-        // The most constrained cell isn't allowed yet. Search for any allowed cell.
+    if (required !== null) {
+        // In Ordered mode, search for ANY cell that must contain the required digit according to the solution
         for (let r = 0; r < 9; r++) {
             for (let c = 0; c < 9; c++) {
-                if (board[r][c] === 0 && isAllowed(solved[r][c])) {
+                if (board[r][c] === 0 && solved[r][c] === required) {
                     return {
                         type:        "number",
                         cells:       [{ row: r, col: c }],
-                        value:       solved[r][c],
+                        value:       required,
                         label:       "Next Number",
-                        description: `Place ${solved[r][c]} — it's one of the numbers allowed by the Ordered modifier.`,
+                        description: `Ordered Placement: Place ${required}.`,
                     };
                 }
             }
         }
-        return null;
+        return null; // Should not happen if puzzle is solvable
     }
 
     return {
@@ -362,7 +389,7 @@ export function getNextNumber(state, mods = {}) {
  * No digit is revealed.
  *
  * Modifier notes:
- *   blackout — skip fixed (given) cells since they may be invisible; empty
+ *   blackout — skip fixed (fixed) cells since they may be invisible; empty
  *   cells are always valid targets regardless of blackout mode.
  */
 export function getNextCell(state, mods = {}) {
@@ -370,6 +397,7 @@ export function getNextCell(state, mods = {}) {
     const regionMap = state.regionMap || DEFAULT_REGION_MAP;
     const cands = buildCandidates(board, regionMap);
     const blackoutActive = isModifierActive(mods, "blackout");
+    const required = getRequiredDigit(board, mods);
 
     // Only skip a cell if it's a filled given under blackout —
     // empty cells are what we actually want to point at.
@@ -377,6 +405,20 @@ export function getNextCell(state, mods = {}) {
         if (board[r][c] !== 0) return true;         // already filled
         if (blackoutActive && state.board[r][c].fixed) return true;
         return false;
+    }
+
+    if (required !== null) {
+        // In Ordered mode, Next Cell should point to a cell for the required digit if possible
+        const hint = getNextNumber(state, mods);
+        if (hint && hint.cells.length > 0) {
+            return {
+                type:        "cell",
+                cells:       hint.cells,
+                value:       null,
+                label:       "Next Cell",
+                description: "This cell can be resolved using the current required digit.",
+            };
+        }
     }
 
     const candidateProbes = [
@@ -417,6 +459,9 @@ export function getNextCell(state, mods = {}) {
  * No cell is highlighted; the description guides the player on what to look for.
  */
 export function getNextTechnique(state, mods = {}) {
+    // Ordered Placement disables technique hints per user request
+    if (isModifierActive(mods, "ordered")) return null;
+
     const board = flatBoard(state);
     const regionMap = state.regionMap || DEFAULT_REGION_MAP;
     const cands = buildCandidates(board, regionMap);
@@ -441,6 +486,7 @@ export function getNextTechnique(state, mods = {}) {
         description: "The next step requires an advanced technique — try X-Wing, XY-Wing, Swordfish, or Forcing Chains. See the Techniques panel for details.",
     };
 }
+
 
 /** Main dispatcher. */
 export function computeHint(type, state, mods = {}) {

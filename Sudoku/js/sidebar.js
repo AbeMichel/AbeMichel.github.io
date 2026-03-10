@@ -1,6 +1,6 @@
 import { DAILY_DIFFICULTIES, CHALLENGES } from "./puzzles.js";
-import { isCompleted, loadState, getCompletionTime, getPersistedRandomSeed, getGlobalStats, getUnlockedAchievements } from "./storage.js";
-import { formatElapsed, getSettings, updateSettings, requestHint, clearHint, getActiveHint } from "./app.js";
+import { isCompleted, loadState, clearState, getCompletionTime, getPersistedRandomSeed, getGlobalStats, getUnlockedAchievements } from "./storage.js";
+import { formatElapsed, getSettings, updateSettings, requestHint, clearHint, getActiveHint, togglePause } from "./app.js";
 import { MODIFIERS, MODIFIER_MAP, isModifierActive, getModifierValue, getModifierMultiValue, toggleModifier, setModifierValue, setModifierSymbol } from "./modifiers.js";
 import { encodeCustomGame, decodeCustomGame, validateCode } from "./customgame.js";
 import { getDailyChallengeMeta } from "./dailychallenge.js";
@@ -64,38 +64,7 @@ function buildPuzzleInfo(meta, onSelectRequested, getMods, updateMods, modsLocke
     shareBtn.className = "share-btn";
     shareBtn.title = "Share this puzzle";
     shareBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`;
-    shareBtn.addEventListener("click", async () => {
-        let seed = meta.seed;
-        if (meta.type === "daily") {
-            const d = new Date();
-            const dateStr = [
-                d.getFullYear(),
-                String(d.getMonth() + 1).padStart(2, "0"),
-                String(d.getDate()).padStart(2, "0")
-            ].join("-");
-            const str = dateStr + meta.key;
-            let hash = 0;
-            for (const char of str) hash = (Math.imul(31, hash) + char.charCodeAt(0)) | 0;
-            seed = hash;
-        }
-
-        const spec = {
-            difficulty: meta.difficulty,
-            seed: seed,
-            modifiers: getMods()
-        };
-        const code = encodeCustomGame(spec);
-        const url = new URL(window.location.origin + window.location.pathname);
-        url.searchParams.set("puzzle", code);
-
-        try {
-            await navigator.clipboard.writeText(url.toString());
-            shareBtn.classList.add("share-btn--success");
-            setTimeout(() => shareBtn.classList.remove("share-btn--success"), 1500);
-        } catch (err) {
-            console.error("Failed to copy URL:", err);
-        }
-    });
+    shareBtn.addEventListener("click", () => showSharePopup(meta));
 
     const printBtn = document.createElement("button");
     printBtn.className = "share-btn";
@@ -107,13 +76,7 @@ function buildPuzzleInfo(meta, onSelectRequested, getMods, updateMods, modsLocke
     settingsBtn.className = "select-settings-btn";
     settingsBtn.title = "Settings";
     settingsBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
-    settingsBtn.addEventListener("click", () => {
-        const sidebar = el.closest(".sidebar") ?? el.parentElement;
-        // Return from settings lands back on this puzzle's info panel
-        showSettingsPanel(sidebar, () => {
-            showPuzzleInfo(sidebar, meta, onSelectRequested, getMods, updateMods, modsLocked);
-        });
-    });
+    settingsBtn.addEventListener("click", () => showSettingsPopup());
 
     navRow.appendChild(backBtn);
     navActions.appendChild(shareBtn);
@@ -152,7 +115,7 @@ function buildPuzzleInfo(meta, onSelectRequested, getMods, updateMods, modsLocke
         el.appendChild(buildTechniquesDropdown(techniques));
     }
 
-    el.appendChild(buildHintsSection());
+    el.appendChild(buildHintsSection(getMods));
 
     return el;
 }
@@ -402,7 +365,7 @@ function buildModifierConfig(mod, getMods, updateMods, grid, section) {
 // ─────────────────────────────────────────────────────────────────────────────
 // HINTS SECTION
 // ─────────────────────────────────────────────────────────────────────────────
-function buildHintsSection() {
+function buildHintsSection(getMods) {
     const wrapper = document.createElement("div");
     wrapper.className = "hints-wrapper";
 
@@ -450,6 +413,12 @@ function buildHintsSection() {
         btn.className = "hint-btn";
         btn.innerHTML = `<span class="hint-btn-icon">${icon}</span><span class="hint-btn-label">${label}</span>`;
         btn.title = label;
+
+        // Visual and functional disabling for Next Technique in Ordered mode
+        if (type === "technique" && getMods && isModifierActive(getMods(), "ordered")) {
+            btn.disabled = true;
+            btn.title = "Technique hints disabled during Ordered Placement";
+        }
 
         btn.addEventListener("click", () => {
             const hint = requestHint(type);
@@ -650,10 +619,7 @@ function buildPuzzleSelect(onChosen) {
     settingsBtn.className = "select-settings-btn";
     settingsBtn.title = "Settings";
     settingsBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
-    settingsBtn.addEventListener("click", () => {
-        const sidebar = el.closest(".sidebar") ?? el.parentElement;
-        showSettingsPanel(sidebar, () => showPuzzleSelect(sidebar, onChosen));
-    });
+    settingsBtn.addEventListener("click", () => showSettingsPopup());
 
     headActions.appendChild(statsBtn);
     headActions.appendChild(settingsBtn);
@@ -732,6 +698,20 @@ function buildDailyChallengeCard(onChosen) {
         const badge = document.createElement("span");
         badge.className = "pb-badge pb-badge--progress";
         badge.textContent = "In progress";
+        
+        const dismissBtn = document.createElement("button");
+        dismissBtn.className = "pb-dismiss-btn pb-dismiss-btn--daily";
+        dismissBtn.title = "Clear progress";
+        dismissBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
+        dismissBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (confirm("Reset progress for the Daily Challenge?")) {
+                clearState(meta);
+                const sidebar = btn.closest(".sidebar");
+                if (sidebar) showPuzzleSelect(sidebar, onChosen);
+            }
+        });
+        badge.appendChild(dismissBtn);
         labelRow.appendChild(badge);
     }
 
@@ -846,7 +826,28 @@ function buildPuzzleGrid(puzzles, onChosen, limit = 0) {
 
         const status = document.createElement("div");
         status.className = "puzzle-card-status";
-        status.textContent = completed ? "✓ Done" : (inProgress ? "In Progress" : (puzzle.difficulty_label || ""));
+        
+        if (completed) {
+            status.textContent = "✓ Done";
+        } else if (inProgress) {
+            status.textContent = "In Progress";
+            
+            const dismissBtn = document.createElement("button");
+            dismissBtn.className = "pb-dismiss-btn";
+            dismissBtn.title = "Clear progress";
+            dismissBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
+            dismissBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                if (confirm("Reset progress for this puzzle?")) {
+                    clearState(resolvedMeta);
+                    const sidebar = card.closest(".sidebar");
+                    if (sidebar) showPuzzleSelect(sidebar, onChosen);
+                }
+            });
+            status.appendChild(dismissBtn);
+        } else {
+            status.textContent = puzzle.difficulty_label || "";
+        }
 
         if (puzzle.regionType === "chaos") {
             const chaosBadge = document.createElement("span");
@@ -1408,75 +1409,53 @@ function difficultyLabel(key) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SETTINGS PANEL
+// SETTINGS POPUP
 // ─────────────────────────────────────────────────────────────────────────────
-export function showSettingsPanel(sidebar, onBack) {
-    transitionPanel(sidebar, buildSettingsPanel(sidebar, onBack));
-}
 
-function buildSettingsPanel(sidebar, onBack) {
-    const el = document.createElement("div");
-    el.className = "sidebar-panel";
 
-    const backBtn = document.createElement("button");
-    backBtn.className = "back-btn";
-    backBtn.textContent = "‹ back";
-    backBtn.addEventListener("click", () => onBack());
-    el.appendChild(backBtn);
+export function buildRegionColorPickers(def) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "settings-region-colors-wrapper";
 
-    const titleBlock = document.createElement("div");
-    titleBlock.className = "puzzle-title-block";
-    const mainTitle = document.createElement("div");
-    mainTitle.className = "puzzle-main-title";
-    mainTitle.textContent = "Settings";
-    titleBlock.appendChild(mainTitle);
-    el.appendChild(titleBlock);
+    const label = document.createElement("div");
+    label.className = "settings-row-label";
+    label.textContent = def.label;
+    wrapper.appendChild(label);
 
-    const list = document.createElement("div");
-    list.className = "settings-list";
+    const desc = document.createElement("div");
+    desc.className = "settings-row-desc";
+    desc.textContent = def.desc;
+    wrapper.appendChild(desc);
 
-    const SETTING_DEFS = [
-        {
-            key:     "darkMode",
-            label:   "Dark Mode",
-            desc:    "Use a dark theme for everything.",
-        },
-        {
-            key:     "timerVisible",
-            label:   "Show Timer",
-            desc:    "Display the elapsed time while solving.",
-        },
-        {
-            key:     "highlightMistakes",
-            label:   "Highlight Mistakes",
-            desc:    "Immediately flag cells whose value conflicts with the solution.",
-        },
-        {
-            key:     "showConflicts",
-            label:   "Show Conflicts",
-            desc:    "Highlight duplicate digits in the same row, column, or box.",
-        },
-        {
-            key:     "autoCandidateStart",
-            label:   "Start with Auto Candidates",
-            desc:    "Enable auto-candidate mode automatically when a new puzzle loads.",
-        },
-        {
-            key:     "colorRegions",
-            label:   "Color Regions",
-            desc:    "Give each 3x3 box or irregular group a unique background colour.",
-        },
-    ];
+    const grid = document.createElement("div");
+    grid.className = "settings-region-colors-grid";
 
-    for (const def of SETTING_DEFS) {
-        list.appendChild(buildSettingRow(def));
+    const settings = getSettings();
+    const isDark = settings.darkMode;
+    const colors = isDark ? settings.darkRegionColors : settings.regionColors;
+    const key = isDark ? "darkRegionColors" : "regionColors";
+
+    for (let i = 0; i < 9; i++) {
+        const input = document.createElement("input");
+        input.type = "color";
+        input.className = "settings-color-input";
+        input.value = colors[i];
+        input.title = `Color for Region ${i + 1}`;
+
+        input.addEventListener("change", () => {
+            const nextColors = [...colors];
+            nextColors[i] = input.value;
+            updateSettings({ [key]: nextColors });
+        });
+
+        grid.appendChild(input);
     }
 
-    el.appendChild(list);
-    return el;
+    wrapper.appendChild(grid);
+    return wrapper;
 }
 
-function buildSettingRow(def) {
+export function buildSettingRow(def) {
     const row = document.createElement("div");
     row.className = "settings-row";
 
@@ -1530,4 +1509,178 @@ function transitionPanel(sidebar, newPanel) {
         sidebar.appendChild(newPanel);
         requestAnimationFrame(() => newPanel.classList.add("panel-visible"));
     }
+}
+
+export function showSharePopup(meta) {
+    document.getElementById("share-popup")?.remove();
+    document.getElementById("share-backdrop")?.remove();
+
+    let seed = meta.seed;
+    if (meta.type === "daily") {
+        const d = new Date();
+        const dateStr = [
+            d.getFullYear(),
+            String(d.getMonth() + 1).padStart(2, "0"),
+            String(d.getDate()).padStart(2, "0")
+        ].join("-");
+        const str = dateStr + meta.key;
+        let hash = 0;
+        for (const char of str) hash = (Math.imul(31, hash) + char.charCodeAt(0)) | 0;
+        seed = hash;
+    }
+
+    const spec = {
+        difficulty: meta.difficulty,
+        seed: seed,
+        modifiers: meta.modifiers || {}
+    };
+
+    const code = meta.code || encodeCustomGame(spec);
+    const url = new URL(window.location.origin + window.location.pathname);
+    url.searchParams.set("puzzle", code);
+    const fullUrl = url.toString();
+
+    const backdrop = document.createElement("div");
+    backdrop.id = "share-backdrop";
+    backdrop.className = "popup-backdrop";
+
+    const popup = document.createElement("div");
+    popup.id = "share-popup";
+    popup.className = "custom-game-popup"; // reuse styling
+
+    const closePopup = () => {
+        popup.remove();
+        backdrop.remove();
+    };
+    backdrop.addEventListener("click", closePopup);
+
+    const header = document.createElement("div");
+    header.className = "popup-header";
+    header.innerHTML = `<span class="popup-title">Share Puzzle</span>`;
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "popup-close-btn";
+    closeBtn.textContent = "✕";
+    closeBtn.addEventListener("click", closePopup);
+    header.appendChild(closeBtn);
+    popup.appendChild(header);
+
+    const body = document.createElement("div");
+    body.className = "popup-body";
+
+    // URL Section
+    const urlField = document.createElement("div");
+    urlField.className = "popup-field";
+    urlField.innerHTML = `<div class="popup-field-label">Share URL</div>`;
+    
+    const urlRow = document.createElement("div");
+    urlRow.className = "popup-code-block"; // reuse styling
+    const urlText = document.createElement("span");
+    urlText.className = "popup-code-text";
+    urlText.textContent = fullUrl;
+    const copyUrlBtn = document.createElement("button");
+    copyUrlBtn.className = "popup-copy-btn";
+    copyUrlBtn.textContent = "Copy";
+    copyUrlBtn.addEventListener("click", () => {
+        navigator.clipboard.writeText(fullUrl).then(() => {
+            copyUrlBtn.textContent = "Copied!";
+            setTimeout(() => copyUrlBtn.textContent = "Copy", 1500);
+        });
+    });
+    urlRow.appendChild(urlText);
+    urlRow.appendChild(copyUrlBtn);
+    urlField.appendChild(urlRow);
+    body.appendChild(urlField);
+
+    // Code Section
+    const codeField = document.createElement("div");
+    codeField.className = "popup-field";
+    codeField.innerHTML = `<div class="popup-field-label">Game Code</div>`;
+    
+    const codeRow = document.createElement("div");
+    codeRow.className = "popup-code-block";
+    const codeText = document.createElement("span");
+    codeText.className = "popup-code-text";
+    codeText.textContent = code;
+    const copyCodeBtn = document.createElement("button");
+    copyCodeBtn.className = "popup-copy-btn";
+    copyCodeBtn.textContent = "Copy";
+    copyCodeBtn.addEventListener("click", () => {
+        navigator.clipboard.writeText(code).then(() => {
+            copyCodeBtn.textContent = "Copied!";
+            setTimeout(() => copyCodeBtn.textContent = "Copy", 1500);
+        });
+    });
+    codeRow.appendChild(codeText);
+    codeRow.appendChild(copyCodeBtn);
+    codeField.appendChild(codeRow);
+    body.appendChild(codeField);
+
+    popup.appendChild(body);
+    document.body.appendChild(backdrop);
+    document.body.appendChild(popup);
+}
+
+export function showSettingsPopup() {
+    document.getElementById("settings-popup")?.remove();
+    document.getElementById("settings-backdrop")?.remove();
+
+    togglePause(true);
+
+    const backdrop = document.createElement("div");
+    backdrop.id = "settings-backdrop";
+    backdrop.className = "popup-backdrop";
+
+    const popup = document.createElement("div");
+    popup.id = "settings-popup";
+    popup.className = "custom-game-popup";
+
+    const closePopup = () => {
+        popup.remove();
+        backdrop.remove();
+        togglePause(false);
+    };
+    backdrop.addEventListener("click", closePopup);
+
+    const header = document.createElement("div");
+    header.className = "popup-header";
+    header.innerHTML = `<span class="popup-title">Settings</span>`;
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "popup-close-btn";
+    closeBtn.textContent = "✕";
+    closeBtn.addEventListener("click", closePopup);
+    header.appendChild(closeBtn);
+    popup.appendChild(header);
+
+    const body = document.createElement("div");
+    body.className = "popup-body";
+
+    const list = document.createElement("div");
+    list.className = "settings-list";
+
+    const SETTING_DEFS = [
+        { key: "darkMode", label: "Dark Mode", desc: "Use a dark theme for everything." },
+        { key: "timerVisible", label: "Show Timer", desc: "Display the elapsed time while solving." },
+        { key: "highlightMistakes", label: "Highlight Mistakes", desc: "Immediately flag cells whose value conflicts with the solution." },
+        { key: "showConflicts", label: "Show Conflicts", desc: "Highlight duplicate digits in the same row, column, or box." },
+        { key: "autoCandidateStart", label: "Start with Auto Candidates", desc: "Enable auto-candidate mode automatically when a new puzzle loads." },
+        { key: "autoSaveCustom", label: "Auto-save Custom Games", desc: "Automatically save your progress for shared and created custom puzzles." },
+        { key: "colorRegions", label: "Color Regions", desc: "Give each 3x3 box or irregular group a unique background colour." },
+        { key: "regionColors", label: "Region Colors", desc: "Customize each region's color.", type: "regionColors" },
+        { key: "highlightSame", label: "Highlight Same Numbers", desc: "Highlight all cells with the same value as the selection." },
+        { key: "highlightRow", label: "Highlight Row", desc: "Highlight the row and column of the current selection." },
+        { key: "highlightBox", label: "Highlight Box", desc: "Highlight the 3x3 box or irregular region of the selection." },
+    ];
+
+    for (const def of SETTING_DEFS) {
+        if (def.type === "regionColors") {
+            list.appendChild(buildRegionColorPickers(def));
+        } else {
+            list.appendChild(buildSettingRow(def));
+        }
+    }
+
+    body.appendChild(list);
+    popup.appendChild(body);
+    document.body.appendChild(backdrop);
+    document.body.appendChild(popup);
 }

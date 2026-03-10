@@ -1,11 +1,12 @@
 import {
     createInitialState, isSolved, toggleAutoCandidates, resetBoard, getConflicts,
-    selectCell, placeNumber, REGION_SETS, DEFAULT_REGION_MAP, generateRandomRegionMap
+    selectCell, placeNumber, REGION_SETS, DEFAULT_REGION_MAP, generateRandomRegionMap,
+    setPaused
 } from "./state.js";
 import { render } from "./renderer.js";
 import { attachController } from "./controller.js";
 import { generate, solve, PRNG } from "./generator.js";
-import { showPuzzleSelect, showPuzzleInfo, showWinPanel } from "./sidebar.js";
+import { showPuzzleSelect, showPuzzleInfo, showWinPanel, showSettingsPopup, showSharePopup } from "./sidebar.js";
 import {
     startModifierEffects, stopModifierEffects, restartLivingEffect
 } from "./modifier-effects.js";
@@ -19,6 +20,7 @@ import {
     toggleModifier, setModifierValue
 } from "./modifiers.js";
 import { loadSettings, getSettings, updateSettings as _updateSettings } from "./settings.js";
+import { DAILY_DIFFICULTIES } from "./puzzles.js";
 import { computeHint } from "./hints.js";
 
 function applyTheme() {
@@ -49,6 +51,7 @@ export { getSettings };
 export function updateSettings(patch) {
     const res = _updateSettings(patch);
     if ("darkMode" in patch) applyTheme();
+    rerender();
     return res;
 }
 
@@ -91,7 +94,7 @@ export function clearHint()      { activeHint = null; rerender(); }
  * return the result so the sidebar can display the description.
  */
 export function requestHint(type) {
-    if (!state) return null;
+    if (!state || state.paused) return null;
     const hint = computeHint(type, state, activeMods);
     if (!hint) return null;
 
@@ -125,11 +128,21 @@ export function requestHint(type) {
 function getState() { return state; }
 
 function setState(newState) {
+    const wasPaused = state?.paused;
     state = newState;
     activeHint = null;   // any board change dismisses the current hint
 
+    if (state.paused !== wasPaused) {
+        if (state.paused) stopTimer();
+        else if (state.startTime) startTimer(state.startTime);
+    }
+
     if (activeMeta && state?.startTime) {
-        saveState(activeMeta, state);
+        const isCustom = activeMeta.type === "custom";
+        if (!isCustom || getSettings().autoSaveCustom) {
+            saveState(activeMeta, state);
+        }
+
         if (isSolved(state) && !_wonThisLoad) {
             _wonThisLoad = true;
             const totalMs = Date.now() - state.startTime + (state._priorElapsed ?? 0);
@@ -158,7 +171,7 @@ let _timeoutInterval = null;
 
 export function startTimer(startTime) {
     stopTimer();
-    if (!startTime) return;
+    if (!startTime || state?.paused) return;
     _timerInterval = setInterval(() => {
         // Always compute elapsed from current state to avoid stale-closure drift
         const s = state;
@@ -200,6 +213,29 @@ export function stopTimer() {
     if (_timerInterval) { clearInterval(_timerInterval); _timerInterval = null; }
     stopModifierEffects();
 }
+
+export function togglePause(force) {
+    if (!state || (!state.startTime && !state.paused)) return;
+    const nextPaused = (force !== undefined) ? force : !state.paused;
+    if (nextPaused === state.paused) return;
+
+    if (nextPaused) {
+        // Pausing: record elapsed time so far into _priorElapsed
+        const elapsed = state.startTime ? (Date.now() - state.startTime) : 0;
+        setState({ ...state, paused: true, _priorElapsed: (state._priorElapsed ?? 0) + elapsed, startTime: null });
+    } else {
+        // Resuming: start a fresh startTime
+        setState({ ...state, paused: false, startTime: Date.now() });
+    }
+    rerender();
+}
+
+// ─── Visibility API: Pause on tab switch ──────────────────────────────────────
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden" && state && !state.paused && state.startTime) {
+        togglePause(true);
+    }
+});
 
 // ─── Event banner ─────────────────────────────────────────────────────────────
 // A non-blocking slide-down banner anchored to the top of boardArea.
@@ -702,16 +738,18 @@ if (puzzleCode) {
     try {
         const { decodeCustomGame } = await import("./customgame.js");
         const spec = decodeCustomGame(puzzleCode);
+        const diffInfo = DAILY_DIFFICULTIES.find(d => d.key === spec.difficulty) || { label: spec.difficulty };
         const meta = {
             type: "custom",
             key: "shared",
-            label: "Shared Puzzle",
+            label: "Shared Game",
             difficulty: spec.difficulty,
-            difficulty_label: spec.difficulty.charAt(0).toUpperCase() + spec.difficulty.slice(1),
+            difficulty_label: diffInfo.label,
             seed: spec.seed,
             modifiers: spec.modifiers,
             regionType: spec.regionType,
-            regionMap: spec.regionMap
+            regionMap: spec.regionMap,
+            code: puzzleCode
         };
         await loadPuzzle(meta);
     } catch (e) {

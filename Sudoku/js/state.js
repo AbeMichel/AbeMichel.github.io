@@ -197,8 +197,13 @@ export function createInitialState(puzzle = null, solution = null, startTime = D
         autoCandidates: false,
         history: [],
         future: [],
-        startTime
+        startTime,
+        paused: false
     };
+}
+
+export function setPaused(state, paused) {
+    return { ...state, paused };
 }
 
 export function resetBoard(state) {
@@ -229,7 +234,7 @@ function createEmptyBoard() {
     );
 }
 
-function applyAutoCandidates(board, regionMap = DEFAULT_REGION_MAP) {
+export function applyAutoCandidates(board, regionMap = DEFAULT_REGION_MAP) {
     for (let r = 0; r < 9; r++) {
         for (let c = 0; c < 9; c++) {
             const cell = board[r][c];
@@ -323,13 +328,26 @@ export function placeNumber(state, number) {
     return { ...state, board: newBoard, history: newHistory, future: [] };
 }
 
-export function moveSelection(state, direction) {
+export function moveSelection(state, direction, jump = false) {
     let { row, col } = state.selected;
+    const step = jump ? 3 : 1;
 
-    if (direction === "up" && row > 0) row--;
-    if (direction === "down" && row < 8) row++;
-    if (direction === "left" && col > 0) col--;
-    if (direction === "right" && col < 8) col++;
+    if (direction === "up") {
+        row -= step;
+        if (row < 0) row = (row + 9) % 9;
+    }
+    if (direction === "down") {
+        row += step;
+        if (row > 8) row = row % 9;
+    }
+    if (direction === "left") {
+        col -= step;
+        if (col < 0) col = (col + 9) % 9;
+    }
+    if (direction === "right") {
+        col += step;
+        if (col > 8) col = col % 9;
+    }
 
     return { ...state, selected: { row, col } };
 }

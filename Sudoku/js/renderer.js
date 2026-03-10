@@ -1,15 +1,17 @@
 import { getConflicts } from "./state.js";
-import { formatElapsed } from "./app.js";
+import { formatElapsed, togglePause } from "./app.js";
 import { isModifierActive, getModifierValue, getModifierMultiValue } from "./modifiers.js";
 
 export function render(state, root, mods = {}, settings = {}, hint = null) {
     // Preserve the overlay if present — don't nuke it with innerHTML=""
     const overlay = document.getElementById("board-overlay");
+    const actionOverlay = document.getElementById("puzzle-action-overlay");
 
     root.innerHTML = "";
 
-    // Re-attach overlay so it isn't lost
+    // Re-attach overlays so they aren't lost
     if (overlay) root.appendChild(overlay);
+    if (actionOverlay) root.appendChild(actionOverlay);
 
     root.appendChild(renderUtilityBar(state, settings));
     root.appendChild(renderBoard(state, mods, settings, hint));
@@ -60,6 +62,19 @@ function renderUtilityBar(state, settings = {}) {
 
     actions.appendChild(undoBtn);
     actions.appendChild(redoBtn);
+
+    // Pause button (only if game is active or already paused)
+    if (state.startTime || state.paused) {
+        const pauseBtn = document.createElement("button");
+        pauseBtn.className = "util-btn util-btn--pause";
+        pauseBtn.title = state.paused ? "Resume" : "Pause";
+        pauseBtn.innerHTML = state.paused
+            ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>Resume`
+            : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>Pause`;
+        pauseBtn.addEventListener("click", () => togglePause());
+        actions.appendChild(pauseBtn);
+    }
+
     actions.appendChild(resetBtn);
     bar.appendChild(actions);
 
@@ -78,15 +93,40 @@ function renderBoard(state, mods, settings = {}, hint = null) {
     const blackoutMode  = blackout ? (getModifierValue(mods, "blackout") ?? "cell") : null;
     const selRow = state.selected.row;
     const selCol = state.selected.col;
+    const selValue = state.board[selRow][selCol].value;
+    const selRegion = state.regionMap[selRow * 9 + selCol];
 
     // Settings flags — default to permissive when settings not passed
     const showConflicts      = settings.showConflicts      !== false;
     const highlightMistakes  = settings.highlightMistakes  === true;
+    const highlightSame      = settings.highlightSame      !== false;
+    const highlightRow       = settings.highlightRow       !== false;
+    const highlightBox       = settings.highlightBox       !== false;
+    
+    // Default to light mode colors if not specified
+    const regionColors       = settings.darkMode 
+        ? (settings.darkRegionColors || ["#0c4a6e", "#4c0519", "#064e3b", "#422006", "#3b0764", "#431407", "#083344", "#1e1b4b", "#500724"]) 
+        : (settings.regionColors     || ["#f0f9ff", "#fff1f2", "#f0fdf4", "#fefce8", "#faf5ff", "#fff7ed", "#ecfeff", "#f5f3ff", "#fdf2f8"]);
 
     // Build a fast lookup set of hinted cell coordinates
     const hintCells = new Set(
         (hint?.cells ?? []).map(({ row, col }) => `${row},${col}`)
     );
+
+    // ── Pause Overlay ─────────────────────────────────────────────────────────
+    if (state.paused) {
+        const pauseOverlay = document.createElement("div");
+        pauseOverlay.className = "board-overlay board-overlay--pause visible";
+        pauseOverlay.innerHTML = `
+            <div class="overlay-content">
+                <div class="overlay-title">Game Paused</div>
+                <button class="action-btn action-btn--primary" id="resume-btn">Resume</button>
+            </div>
+        `;
+        pauseOverlay.querySelector("#resume-btn").addEventListener("click", () => togglePause(false));
+        board.appendChild(pauseOverlay);
+        return board;
+    }
 
     // ── Symbols modifier ──────────────────────────────────────────────────────
     // symMap maps digit 1–9 to its display character.
@@ -111,6 +151,8 @@ function renderBoard(state, mods, settings = {}, hint = null) {
                 notepadTotal += s.size;
             }
     }
+
+    let renderedNotes = 0;
 
     // ── Rainbow: applied via JS rAF loop in modifier-effects — nothing to do here ──
 
@@ -140,6 +182,19 @@ function renderBoard(state, mods, settings = {}, hint = null) {
             const isSelected = row === state.selected.row && col === state.selected.col;
             if (isSelected) cell.classList.add("selected");
 
+            // ── Highlights ────────────────────────────────────────────────────
+            if (!isSelected) {
+                if (highlightSame && selValue !== 0 && cellData.value === selValue) {
+                    cell.classList.add("highlight-same");
+                }
+                if (highlightRow && (row === selRow || col === selCol)) {
+                    cell.classList.add("highlight-axis");
+                }
+                if (highlightBox && state.regionMap[row * 9 + col] === selRegion) {
+                    cell.classList.add("highlight-axis");
+                }
+            }
+
             // ── Dynamic Region Borders ─────────────────────────────────────────
             const regionId = state.regionMap[row * 9 + col];
             // Right border if next cell is in a different region
@@ -155,6 +210,11 @@ function renderBoard(state, mods, settings = {}, hint = null) {
             if (settings.colorRegions) {
                 cell.classList.add("cell--region-colored");
                 cell.dataset.region = regionId;
+
+                const color = regionColors?.[regionId];
+                if (color) {
+                    cell.style.backgroundColor = color;
+                }
             }
 
             if (cellData.fixed) {
@@ -197,7 +257,12 @@ function renderBoard(state, mods, settings = {}, hint = null) {
                     for (let i = 1; i <= 9; i++) {
                         const note = document.createElement("div");
                         note.className = "note";
-                        if (notes.has(i)) note.textContent = symFor(i);
+                        if (notes.has(i)) {
+                            if (renderedNotes < notepadLimit) {
+                                note.textContent = symFor(i);
+                                renderedNotes++;
+                            }
+                        }
                         notesGrid.appendChild(note);
                     }
                     cell.appendChild(notesGrid);
@@ -214,7 +279,12 @@ function renderBoard(state, mods, settings = {}, hint = null) {
                     for (let i = 1; i <= 9; i++) {
                         const note = document.createElement("div");
                         note.className = "note";
-                        if (notes.has(i)) note.textContent = symFor(i);
+                        if (notes.has(i)) {
+                            if (renderedNotes < notepadLimit) {
+                                note.textContent = symFor(i);
+                                renderedNotes++;
+                            }
+                        }
                         notesGrid.appendChild(note);
                     }
                     cell.appendChild(notesGrid);
@@ -283,6 +353,13 @@ function renderControls(state, mods) {
 
     container.appendChild(toggle);
     container.appendChild(autoBtn);
+
+    const clearBtn = document.createElement("button");
+    clearBtn.className = "mode-btn mode-btn--clear";
+    clearBtn.dataset.action = "clear";
+    clearBtn.title = "Clear current cell (Backspace/Delete)";
+    clearBtn.innerHTML = `<span class="clear-icon">⌫</span> Clear`;
+    container.appendChild(clearBtn);
 
     const pad = document.createElement("div");
     pad.className = "number-pad";
