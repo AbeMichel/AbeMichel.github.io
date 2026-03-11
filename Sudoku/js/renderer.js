@@ -1,6 +1,6 @@
 import { isModifierActive, getModifierMultiValue } from "./modifiers.js";
 import { getSettings } from "./settings.js";
-import { getConflicts } from "./state.js";
+import { getConflicts, isSolved } from "./state.js";
 
 export function render(state, root, mods, settings, activeHint) {
     if (!root) return;
@@ -72,7 +72,19 @@ function renderHeader(state, settings) {
     if (!settings.timerVisible) timer.style.visibility = "hidden";
     header.appendChild(timer);
 
-    // 2. Header Actions (Right)
+    // 2. Mistake Counter (Center)
+    const mistakes = document.createElement("div");
+    mistakes.className = "mistake-counter";
+    mistakes.textContent = `Mistakes: ${state.mistakes || 0}`;
+    
+    // Hide if no active game is running and it's not a completed puzzle
+    const isIdle = !state.startTime && !state.paused && !isSolved(state);
+    if (!settings.mistakeCounterVisible || isIdle) {
+        mistakes.style.visibility = "hidden";
+    }
+    header.appendChild(mistakes);
+
+    // 3. Header Actions (Right)
     const actions = document.createElement("div");
     actions.className = "board-header-actions";
 

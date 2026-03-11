@@ -1869,6 +1869,7 @@ export function showSettingsPopup() {
     const SETTING_DEFS = [
         { key: "darkMode", label: "Dark Mode", desc: "Use a dark theme for everything." },
         { key: "timerVisible", label: "Show Timer", desc: "Display the elapsed time while solving." },
+        { key: "mistakeCounterVisible", label: "Show Mistake Counter", desc: "Keep track of how many incorrect values you have placed." },
         { key: "highlightMistakes", label: "Highlight Mistakes", desc: "Immediately flag cells whose value conflicts with the solution." },
         { key: "showConflicts", label: "Show Conflicts", desc: "Highlight duplicate digits in the same row, column, or box." },
         { key: "autoCandidateStart", label: "Start with Auto Candidates", desc: "Enable auto-candidate mode automatically when a new puzzle loads." },

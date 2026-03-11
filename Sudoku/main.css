@@ -2750,6 +2750,18 @@ body.dark-mode .settings-reset-btn {
     margin-bottom: 4px;
 }
 
+.mistake-counter {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    background: var(--surface-2);
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--btn-border);
+    margin-bottom: 4px;
+    letter-spacing: 0.02em;
+}
+
 .board-header-actions {
     display: flex;
     gap: 0.3rem;

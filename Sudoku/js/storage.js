@@ -213,8 +213,9 @@ function serialiseState(state) {
         selected:       state.selected,
         mode:           state.mode,
         autoCandidates: state.autoCandidates,
+        mistakes:       state.mistakes || 0,
         // Snapshot elapsed ms at time of save
-        elapsed:        state.startTime ? Date.now() - state.startTime : (state.elapsed ?? 0),
+        elapsed:        state.startTime ? (Date.now() - state.startTime + (state._priorElapsed || 0)) : (state._priorElapsed ?? 0),
     };
 }
 
@@ -226,7 +227,8 @@ function deserialiseState(raw) {
         selected:       raw.selected ?? { row: 0, col: 0 },
         mode:           raw.mode ?? "value",
         autoCandidates: raw.autoCandidates ?? false,
-        elapsed:        raw.elapsed ?? 0,
+        mistakes:       raw.mistakes || 0,
+        _priorElapsed:  raw.elapsed ?? 0,
         history:        [],
         future:         [],
         startTime:      null,

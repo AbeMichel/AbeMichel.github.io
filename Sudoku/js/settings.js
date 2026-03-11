@@ -14,6 +14,7 @@ const STORAGE_KEY = "sudoku:settings";
 export const DEFAULT_SETTINGS = {
     timerVisible:       true,
     highlightMistakes:  false,
+    mistakeCounterVisible: false,
     showConflicts:      true,
     autoCandidateStart: false,
     autoSaveCustom:     true,

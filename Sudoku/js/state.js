@@ -198,7 +198,8 @@ export function createInitialState(puzzle = null, solution = null, startTime = D
         history: [],
         future: [],
         startTime,
-        paused: false
+        paused: false,
+        mistakes: 0
     };
 }
 
@@ -298,8 +299,13 @@ export function placeNumber(state, number) {
 
     const newBoard = structuredClone(state.board);
     const newCell = newBoard[row][col];
+    let newMistakes = state.mistakes;
 
     if (state.mode === "value") {
+        // Only count mistake if value actually changes to a wrong (non-zero) value
+        if (number !== 0 && number !== cell.value && state.solution && number !== state.solution[row][col]) {
+            newMistakes++;
+        }
         newCell.value = number;
         newCell.manualNotes = new Set();
         newCell.autoNotes = new Set();
@@ -325,7 +331,7 @@ export function placeNumber(state, number) {
 
     // Push current board onto history, clear future
     const newHistory = [...state.history, state.board];
-    return { ...state, board: newBoard, history: newHistory, future: [] };
+    return { ...state, board: newBoard, history: newHistory, future: [], mistakes: newMistakes };
 }
 
 export function moveSelection(state, direction, jump = false) {
@@ -369,7 +375,7 @@ export function redo(state) {
     const next = state.future[0];
     const newFuture = state.future.slice(1);
     const newHistory = [...state.history, state.board];
-    return { ...state, board: next, history: newHistory, future: newHistory };
+    return { ...state, board: next, history: newHistory, future: newFuture };
 }
 
 export function toggleAutoCandidates(state) {

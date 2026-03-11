@@ -177,13 +177,14 @@ let _timerInterval = null;
 let _timeoutInterval = null;
 
 export function startTimer(startTime) {
-    stopTimer();
+    if (_timerInterval) { clearInterval(_timerInterval); _timerInterval = null; }
     if (!startTime || state?.paused) return;
+
+    // Use a fresh interval to compute elapsed time
     _timerInterval = setInterval(() => {
-        // Always compute elapsed from current state to avoid stale-closure drift
         const s = state;
-        if (!s?.startTime) return;
-        const elapsed = Date.now() - s.startTime + (s._priorElapsed ?? 0);
+        if (!s || !s.startTime) return;
+        const elapsed = (Date.now() - s.startTime) + (s._priorElapsed ?? 0);
 
         const el = document.getElementById("puzzle-timer");
         if (el) {
@@ -203,7 +204,7 @@ export function startTimer(startTime) {
                 flashTimeoutOverlay();
                 setTimeout(() => {
                     if (state) {
-                        state = softResetBoard(state);
+                        state = resetBoard(state); // use resetBoard for clean restart
                         rerender();
                         startTimer(state.startTime);
                     }
@@ -212,13 +213,22 @@ export function startTimer(startTime) {
         }
     }, 500);
 
-    // Start any modifier-driven interval effects (Living, Decaying)
     startModifierEffects(getState, setState, rerender, getMods, showEventBanner);
 }
 
+/** Stop the interval and effects, but don't modify the global state. */
 export function stopTimer() {
     if (_timerInterval) { clearInterval(_timerInterval); _timerInterval = null; }
     stopModifierEffects();
+}
+
+/** Stop the timer AND clear the state's startTime. Use when navigating away. */
+export function terminateTimer() {
+    stopTimer();
+    if (state && state.startTime) {
+        const elapsed = Date.now() - state.startTime;
+        setState({ ...state, _priorElapsed: (state._priorElapsed ?? 0) + elapsed, startTime: null });
+    }
 }
 
 export function togglePause(force) {
@@ -227,12 +237,13 @@ export function togglePause(force) {
     if (nextPaused === state.paused) return;
 
     if (nextPaused) {
-        // Pausing: record elapsed time so far into _priorElapsed
         const elapsed = state.startTime ? (Date.now() - state.startTime) : 0;
         setState({ ...state, paused: true, _priorElapsed: (state._priorElapsed ?? 0) + elapsed, startTime: null });
+        stopTimer();
     } else {
-        // Resuming: start a fresh startTime
-        setState({ ...state, paused: false, startTime: Date.now() });
+        const now = Date.now();
+        setState({ ...state, paused: false, startTime: now });
+        startTimer(now);
     }
     rerender();
 }
@@ -340,7 +351,7 @@ function getTodaysSeed(difficultyKey) {
 
 // ─── Puzzle loading ───────────────────────────────────────────────────────────
 export async function loadPuzzle(meta, options = {}) {
-    stopTimer();
+    terminateTimer();
     boardArea.classList.remove("puzzle-complete");
     _wonThisLoad = false;
     activeHint = null;   // clear any hint from the previous puzzle
@@ -456,7 +467,7 @@ export async function loadPuzzle(meta, options = {}) {
         });
         render(state, boardArea, activeMods, getSettings(), null);
         showBoardOverlay("countdown", () => {
-            state = { ...state, startTime: Date.now(), _priorElapsed: saved.elapsed ?? 0 };
+            state = { ...state, startTime: Date.now() };
             render(state, boardArea, activeMods, getSettings(), null);
             startTimer(state.startTime);
         });
@@ -681,7 +692,7 @@ function showPuzzleActionOverlay(meta, completed, onView, onContinue, onNewGame,
 
 // ─── Sidebar callbacks ────────────────────────────────────────────────────────
 function onPuzzleSelectRequested() {
-    stopTimer();
+    terminateTimer();
     // Clear the URL if it contains a shared puzzle code
     if (window.location.search) {
         history.replaceState(null, "", window.location.pathname);
@@ -694,7 +705,7 @@ function onPuzzleSelectRequested() {
 }
 
 async function onPuzzleChosen(meta) {
-    stopTimer();
+    terminateTimer();
     // Clear the URL if it contains a shared puzzle code
     if (window.location.search) {
         history.replaceState(null, "", window.location.pathname);
