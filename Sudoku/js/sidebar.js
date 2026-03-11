@@ -1,9 +1,10 @@
 import { DAILY_DIFFICULTIES, CHALLENGES } from "./puzzles.js";
 import { isCompleted, loadState, clearState, getCompletionTime, getPersistedRandomSeed, getGlobalStats, getUnlockedAchievements, getSavedCustomGames } from "./storage.js";
-import { formatElapsed, getSettings, updateSettings, requestHint, clearHint, getActiveHint, togglePause } from "./app.js";
+import { formatElapsed, getSettings, updateSettings, requestHint, clearHint, getActiveHint, togglePause, resetActivePuzzle, getState, DEFAULT_SETTINGS } from "./app.js";
 import { MODIFIERS, MODIFIER_MAP, isModifierActive, getModifierValue, getModifierMultiValue, toggleModifier, setModifierValue, setModifierSymbol } from "./modifiers.js";
 import { encodeCustomGame, decodeCustomGame, validateCode } from "./customgame.js";
 import { getDailyChallengeMeta } from "./dailychallenge.js";
+import { getRequiredTechniques } from "./hints.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TECHNIQUE DEFINITIONS
@@ -110,14 +111,107 @@ function buildPuzzleInfo(meta, onSelectRequested, getMods, updateMods, modsLocke
     }
 
     // Techniques dropdown
-    const techniques = TECHNIQUES_BY_DIFFICULTY[meta.difficulty] ?? [];
-    if (techniques.length > 0) {
-        el.appendChild(buildTechniquesDropdown(techniques));
+    // Removed per user request to move hints to popup
+    return el;
+}
+
+export function showHintsPopup(getMods) {
+    const state = getState();
+    if (!state) return;
+
+    document.getElementById("hints-popup")?.remove();
+    document.getElementById("hints-backdrop")?.remove();
+
+    const backdrop = document.createElement("div");
+    backdrop.id = "hints-backdrop";
+    backdrop.className = "popup-backdrop";
+
+    const popup = document.createElement("div");
+    popup.id = "hints-popup";
+    popup.className = "custom-game-popup hints-popup";
+
+    const closePopup = () => {
+        popup.remove();
+        backdrop.remove();
+    };
+    backdrop.addEventListener("click", closePopup);
+
+    const header = document.createElement("div");
+    header.className = "popup-header";
+    header.innerHTML = `<span class="popup-title">Hints</span>`;
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "popup-close-btn";
+    closeBtn.textContent = "✕";
+    closeBtn.addEventListener("click", closePopup);
+    header.appendChild(closeBtn);
+    popup.appendChild(header);
+
+    const body = document.createElement("div");
+    body.className = "popup-body";
+
+    // 1. Next Number & Next Cell
+    const mainBtns = document.createElement("div");
+    mainBtns.className = "hints-main-btns";
+
+    const HINT_TYPES = [
+        { type: "number", label: "Next Number", icon: "🔢", desc: "Reveal the digit for one cell." },
+        { type: "cell",   label: "Next Cell",   icon: "🎯", desc: "Highlight a cell you can solve." },
+    ];
+
+    HINT_TYPES.forEach(({ type, label, icon, desc }) => {
+        const btn = document.createElement("button");
+        btn.className = "hint-action-btn";
+        btn.innerHTML = `
+            <div class="hint-action-icon">${icon}</div>
+            <div class="hint-action-text">
+                <span class="hint-action-label">${label}</span>
+                <span class="hint-action-desc">${desc}</span>
+            </div>
+        `;
+        btn.addEventListener("click", () => {
+            requestHint(type);
+            closePopup();
+        });
+        mainBtns.appendChild(btn);
+    });
+    body.appendChild(mainBtns);
+
+    // 2. Required Techniques
+    const techTitle = document.createElement("div");
+    techTitle.className = "popup-field-label";
+    techTitle.style.marginTop = "1.5rem";
+    techTitle.textContent = "Applicable Techniques";
+    body.appendChild(techTitle);
+
+    const techList = document.createElement("div");
+    techList.className = "hints-techniques-list";
+
+    const activeMods = getMods();
+    const requiredKeys = getRequiredTechniques(state, activeMods);
+
+    if (requiredKeys.length === 0) {
+        const none = document.createElement("div");
+        none.className = "hints-none-label";
+        none.textContent = "No standard techniques found — look for advanced steps.";
+        techList.appendChild(none);
+    } else {
+        for (const key of requiredKeys) {
+            const info = TECHNIQUE_INFO[key];
+            if (!info) continue;
+            const item = document.createElement("div");
+            item.className = "hint-tech-item";
+            item.innerHTML = `
+                <div class="hint-tech-label">${info.label}</div>
+                <div class="hint-tech-desc">${info.desc}</div>
+            `;
+            techList.appendChild(item);
+        }
     }
 
-    el.appendChild(buildHintsSection(getMods));
-
-    return el;
+    body.appendChild(techList);
+    popup.appendChild(body);
+    document.body.appendChild(backdrop);
+    document.body.appendChild(popup);
 }
 
 /**
@@ -1509,10 +1603,23 @@ export function buildRegionColorPickers(def) {
     const wrapper = document.createElement("div");
     wrapper.className = "settings-region-colors-wrapper";
 
+    const labelRow = document.createElement("div");
+    labelRow.style.display = "flex";
+    labelRow.style.justifyContent = "space-between";
+    labelRow.style.alignItems = "center";
+
     const label = document.createElement("div");
     label.className = "settings-row-label";
     label.textContent = def.label;
-    wrapper.appendChild(label);
+    labelRow.appendChild(label);
+
+    const resetBtn = document.createElement("button");
+    resetBtn.className = "settings-reset-btn";
+    resetBtn.title = "Reset to Defaults";
+    resetBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> Reset`;
+    labelRow.appendChild(resetBtn);
+
+    wrapper.appendChild(labelRow);
 
     const desc = document.createElement("div");
     desc.className = "settings-row-desc";
@@ -1527,6 +1634,7 @@ export function buildRegionColorPickers(def) {
     const colors = isDark ? settings.darkRegionColors : settings.regionColors;
     const key = isDark ? "darkRegionColors" : "regionColors";
 
+    const inputs = [];
     for (let i = 0; i < 9; i++) {
         const input = document.createElement("input");
         input.type = "color";
@@ -1535,13 +1643,22 @@ export function buildRegionColorPickers(def) {
         input.title = `Color for Region ${i + 1}`;
 
         input.addEventListener("change", () => {
-            const nextColors = [...colors];
+            const currentSettings = getSettings();
+            const nextColors = [...currentSettings[key]];
             nextColors[i] = input.value;
             updateSettings({ [key]: nextColors });
         });
-
+        inputs.push(input);
         grid.appendChild(input);
     }
+
+    resetBtn.addEventListener("click", () => {
+        const defaultColors = isDark ? DEFAULT_SETTINGS.darkRegionColors : DEFAULT_SETTINGS.regionColors;
+        updateSettings({ [key]: [...defaultColors] });
+        inputs.forEach((input, i) => {
+            input.value = defaultColors[i];
+        });
+    });
 
     wrapper.appendChild(grid);
     return wrapper;

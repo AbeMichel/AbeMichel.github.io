@@ -6,7 +6,7 @@ import {
 import { render } from "./renderer.js";
 import { attachController } from "./controller.js";
 import { generate, solve, PRNG } from "./generator.js";
-import { showPuzzleSelect, showPuzzleInfo, showWinPanel, showSettingsPopup, showSharePopup } from "./sidebar.js";
+import { showPuzzleSelect, showPuzzleInfo, showWinPanel, showSettingsPopup, showSharePopup, showHintsPopup } from "./sidebar.js";
 import {
     startModifierEffects, stopModifierEffects, restartLivingEffect
 } from "./modifier-effects.js";
@@ -19,7 +19,7 @@ import {
     loadModifiers, saveModifiers, isModifierActive, getModifierValue,
     toggleModifier, setModifierValue
 } from "./modifiers.js";
-import { loadSettings, getSettings, updateSettings as _updateSettings } from "./settings.js";
+import { loadSettings, getSettings, updateSettings as _updateSettings, DEFAULT_SETTINGS } from "./settings.js";
 import { DAILY_DIFFICULTIES } from "./puzzles.js";
 import { computeHint } from "./hints.js";
 
@@ -47,7 +47,7 @@ let activeMods = loadModifiers();
 export function getMods() { return activeMods; }
 
 // Re-export settings accessors so sidebar and other modules import from one place
-export { getSettings };
+export { getSettings, DEFAULT_SETTINGS };
 export function updateSettings(patch) {
     const res = _updateSettings(patch);
     if ("darkMode" in patch) applyTheme();
@@ -89,6 +89,13 @@ let activeHint = null;
 export function getActiveHint()  { return activeHint; }
 export function clearHint()      { activeHint = null; rerender(); }
 
+export function resetActivePuzzle() {
+    if (!state) return;
+    state = resetBoard(state);
+    activeHint = null;
+    rerender();
+}
+
 /**
  * Request a hint of the given type, store it, re-render with highlight, and
  * return the result so the sidebar can display the description.
@@ -125,7 +132,7 @@ export function requestHint(type) {
     return hint;
 }
 
-function getState() { return state; }
+export function getState() { return state; }
 
 function setState(newState) {
     const wasPaused = state?.paused;
@@ -796,7 +803,11 @@ function onCellInput(newState, number) {
     }
 }
 
-attachController(boardArea, getState, setState, rerender, getMods, onCellInput);
+attachController(boardArea, getState, setState, rerender, getMods, onCellInput, () => {
+    showHintsPopup(getMods);
+}, () => {
+    togglePause();
+});
 
 // ─── Header Streak & Achievements ─────────────────────────────────────────────
 import { getGlobalStats } from "./storage.js";

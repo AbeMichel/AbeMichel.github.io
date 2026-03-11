@@ -10,11 +10,21 @@ import {
 } from "./state.js";
 import { isModifierActive, getModifierValue } from "./modifiers.js";
 
-export function attachController(root, getState, setState, rerender, getMods, onCellInput) {
+export function attachController(root, getState, setState, rerender, getMods, onCellInput, onHints, onTogglePause) {
 
     root.addEventListener("click", (e) => {
         const state = getState();
-        if (state.paused) return;
+        const actionBtn = e.target.closest("[data-action]");
+        const action = actionBtn?.dataset.action;
+
+        // Special case: allow resume when paused
+        if (state.paused) {
+            if (action === "resume") {
+                onTogglePause?.(false);
+                rerender();
+            }
+            return;
+        }
 
         const cell = e.target.closest(".cell");
         if (cell) {
@@ -47,12 +57,17 @@ export function attachController(root, getState, setState, rerender, getMods, on
             return;
         }
 
-        const actionBtn = e.target.closest("[data-action]");
         if (actionBtn) {
-            const action = actionBtn.dataset.action;
             if (action === "undo")  { setState(undo(getState())); rerender(); }
             if (action === "redo")  { setState(redo(getState())); rerender(); }
-            if (action === "reset") { setState(resetBoard(getState())); rerender(); }
+            if (action === "reset") { 
+                if (confirm("Reset all progress for this puzzle?")) {
+                    setState(resetBoard(getState())); rerender(); 
+                }
+            }
+            if (action === "hints-popup") {
+                onHints?.();
+            }
             if (action === "clear") { setState(placeNumber(getState(), 0)); rerender(); }
             if (action === "auto-candidates") {
                 if (!isModifierActive(mods, "no-candidates") && !isModifierActive(mods, "candidate-only")) {
