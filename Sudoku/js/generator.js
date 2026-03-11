@@ -337,6 +337,40 @@ class HumanSolver {
     return { solved, difficulty: diffStr };
   }
 
+  getTechniques(sourceBoard) {
+    this.board.copyFrom(sourceBoard);
+    for (let i = 0; i < 81; i++) {
+      if (this.board.grid[i] === 0) {
+        this.cands[i] = this.board.getCandidatesMask((i/9)|0, i%9);
+      } else {
+        this.cands[i] = 0;
+      }
+    }
+
+    const techniques = new Set();
+    let changed = true;
+
+    while (changed) {
+      changed = false;
+      if (this.nakedSingle())      { techniques.add("nakedSingle");      changed = true; continue; }
+      if (this.hiddenSingle())     { techniques.add("hiddenSingle");     changed = true; continue; }
+      if (this.pointingClaiming()) { techniques.add("interaction");      changed = true; continue; }
+      if (this.subsets(2))         { techniques.add("nakedPair");        changed = true; continue; }
+      if (this.hiddenSubsets(2))   { techniques.add("hiddenPair");       changed = true; continue; }
+      if (this.subsets(3))         { techniques.add("nakedTriple");      changed = true; continue; }
+      if (this.hiddenSubsets(3))   { techniques.add("hiddenTriple");     changed = true; continue; }
+      if (this.subsets(4))         { techniques.add("nakedFoursome");    changed = true; continue; }
+      if (this.hiddenSubsets(4))   { techniques.add("hiddenFoursome");   changed = true; continue; }
+      if (this.fish(2))            { techniques.add("xWing");            changed = true; continue; }
+      if (this.fish(3))            { techniques.add("swordfish");        changed = true; continue; }
+      if (this.fish(4))            { techniques.add("jellyfish");        changed = true; continue; }
+      if (this.xyWing())           { techniques.add("xyWing");           changed = true; continue; }
+      if (this.xyzWing())          { techniques.add("xyzWing");          changed = true; continue; }
+    }
+
+    return Array.from(techniques);
+  }
+
   placeDigit(cell, digit) {
     this.board.setDigit((cell/9)|0, cell%9, digit);
     this.cands[cell] = 0;
@@ -703,6 +737,24 @@ class HumanSolver {
     }
     return digits;
   }
+}
+
+export function getRequiredTechniquesForPuzzle(board, regionMap = DEFAULT_REGION_MAP) {
+  const solver = new HumanSolver(regionMap);
+  const bb = new BitmaskBoard(regionMap);
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      const val = board[r][c];
+      if (val !== 0) {
+        bb.grid[r * 9 + c] = val;
+        const mask = 1 << val;
+        bb.rowM[r] |= mask;
+        bb.colM[c] |= mask;
+        bb.regionM[getRegionIndex(r, c, regionMap)] |= mask;
+      }
+    }
+  }
+  return solver.getTechniques(bb);
 }
 
 const TIER_MAP = { "veryeasy": 0, "easy": 1, "medium": 2, "hard": 3, "veryhard": 4 };

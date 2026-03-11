@@ -6,7 +6,7 @@
 // Returns a HintResult or null.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { solve }           from "./generator.js";
+import { solve, getRequiredTechniquesForPuzzle } from "./generator.js";
 import { isModifierActive, getModifierValue } from "./modifiers.js";
 import { getRegionIndex, DEFAULT_REGION_MAP } from "./state.js";
 
@@ -204,12 +204,12 @@ function sees(r1, c1, r2, c2, regionMap) {
 }
 
 const TECHNIQUE_PROBES = [
-    { key: "nakedSingle",      label: "Naked Single",       detect: detectNakedSingle },
-    { key: "hiddenSingle",     label: "Hidden Single",      detect: detectHiddenSingle },
-    { key: "interaction",      label: "Box/Line Reduction", detect: detectPointingClaiming },
-    { key: "nakedPair",        label: "Naked Pair",         detect: detectNakedPair },
-    { key: "xWing",            label: "X-Wing",             detect: detectXWing },
-    { key: "xyWing",           label: "XY-Wing",            detect: detectXYWing },
+    { key: "nakedSingle",  tier: 1, label: "Naked Single",       detect: detectNakedSingle },
+    { key: "hiddenSingle", tier: 2, label: "Hidden Single",      detect: detectHiddenSingle },
+    { key: "interaction",  tier: 3, label: "Box/Line Reduction", detect: detectPointingClaiming },
+    { key: "nakedPair",    tier: 4, label: "Naked Pair",         detect: detectNakedPair },
+    { key: "xWing",        tier: 5, label: "X-Wing",             detect: detectXWing },
+    { key: "xyWing",       tier: 6, label: "XY-Wing",            detect: detectXYWing },
 ];
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -218,12 +218,7 @@ export function getRequiredTechniques(state, mods = {}) {
     if (isModifierActive(mods, "ordered")) return [];
     const board = flatBoard(state);
     const regionMap = state.regionMap || DEFAULT_REGION_MAP;
-    const cands = buildCandidates(board, regionMap);
-    const found = [];
-    for (const probe of TECHNIQUE_PROBES) {
-        if (probe.detect(board, cands, regionMap)) found.push(probe.key);
-    }
-    return found;
+    return getRequiredTechniquesForPuzzle(board, regionMap);
 }
 
 export function getNextNumber(state, mods = {}) {

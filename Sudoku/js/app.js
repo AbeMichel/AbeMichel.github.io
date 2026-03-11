@@ -22,6 +22,8 @@ import {
 import { loadSettings, getSettings, updateSettings as _updateSettings, DEFAULT_SETTINGS } from "./settings.js";
 import { DAILY_DIFFICULTIES } from "./puzzles.js";
 import { computeHint } from "./hints.js";
+import { evaluateAchievements, ACHIEVEMENT_EVENTS } from "./achievements.js";
+import { getRequiredTechniquesForPuzzle } from "./generator.js";
 
 function applyTheme() {
     const s = getSettings();
@@ -80,6 +82,9 @@ export function getModsRef() { return activeMods; }
 // ─── Game state ───────────────────────────────────────────────────────────────
 let state = null;
 let _wonThisLoad = false; // prevents double-firing win within a single load
+let _hintsUsedInSession = 0;
+let _totalPauseMs = 0;
+let _pauseStartTime = null;
 
 // ─── Hint state ───────────────────────────────────────────────────────────────
 // Cleared automatically whenever the board changes (setState) or a new puzzle
@@ -93,6 +98,7 @@ export function resetActivePuzzle() {
     if (!state) return;
     state = resetBoard(state);
     activeHint = null;
+    _hintsUsedInSession = 0;
     rerender();
 }
 
@@ -100,12 +106,29 @@ export function resetActivePuzzle() {
  * Request a hint of the given type, store it, re-render with highlight, and
  * return the result so the sidebar can display the description.
  */
+function getEventContext(extra = {}) {
+    if (!activeMeta || !state) return extra;
+    const elapsed = (state.startTime ? (Date.now() - state.startTime) : 0) + (state._priorElapsed || 0);
+    return {
+        puzzle: activeMeta,
+        solveTime: elapsed,
+        mistakes: state.mistakes || 0,
+        hintsUsed: _hintsUsedInSession,
+        modifiers: activeMods,
+        difficulty: activeMeta.difficulty,
+        isChaos: activeMeta.regionType === "chaos",
+        ...extra
+    };
+}
+
 export function requestHint(type) {
     if (!state || state.paused) return null;
     const hint = computeHint(type, state, activeMods);
     if (!hint) return null;
 
     activeHint = hint;
+    _hintsUsedInSession++;
+    evaluateAchievements(ACHIEVEMENT_EVENTS.HINT_USED, getEventContext());
 
     // Direct board hints (Cell/Number) should select the target
     if (hint.cells && hint.cells.length > 0) {
@@ -153,6 +176,18 @@ function setState(newState) {
         if (isSolved(state) && !_wonThisLoad) {
             _wonThisLoad = true;
             const totalMs = Date.now() - state.startTime + (state._priorElapsed ?? 0);
+            
+            // Calculate techniques used to solve this puzzle for achievements
+            const techniques = getRequiredTechniquesForPuzzle(state.original, state.regionMap);
+
+            evaluateAchievements(ACHIEVEMENT_EVENTS.PUZZLE_COMPLETED, getEventContext({ 
+                solveTime: totalMs,
+                totalPauseMs: _totalPauseMs,
+                techniques,
+                settings: getSettings(),
+                hintsUsedInSession: _hintsUsedInSession
+            }));
+
             if (!isCompleted(activeMeta)) {
                 markCompleted(activeMeta, totalMs);
                 clearState(activeMeta);
@@ -239,12 +274,18 @@ export function togglePause(force) {
     if (nextPaused) {
         const elapsed = state.startTime ? (Date.now() - state.startTime) : 0;
         setState({ ...state, paused: true, _priorElapsed: (state._priorElapsed ?? 0) + elapsed, startTime: null });
+        _pauseStartTime = Date.now();
         stopTimer();
     } else {
         const now = Date.now();
+        if (_pauseStartTime) {
+            _totalPauseMs += (now - _pauseStartTime);
+            _pauseStartTime = null;
+        }
         setState({ ...state, paused: false, startTime: now });
         startTimer(now);
     }
+    evaluateAchievements(ACHIEVEMENT_EVENTS.PAUSE_TOGGLED, getEventContext({ paused: nextPaused }));
     rerender();
 }
 
@@ -355,6 +396,19 @@ export async function loadPuzzle(meta, options = {}) {
     boardArea.classList.remove("puzzle-complete");
     _wonThisLoad = false;
     activeHint = null;   // clear any hint from the previous puzzle
+    _hintsUsedInSession = 0;
+    _totalPauseMs = 0;
+    _pauseStartTime = null;
+
+    evaluateAchievements(ACHIEVEMENT_EVENTS.PUZZLE_STARTED, { 
+        puzzle: meta,
+        solveTime: 0,
+        mistakes: 0,
+        hintsUsed: 0,
+        modifiers: meta.modifiers || {},
+        difficulty: meta.difficulty,
+        isChaos: (meta.regionType === "chaos")
+    });
 
     // Resolve the canonical seed for random puzzles so storage keys are stable
     if (meta.type === "random") {
@@ -785,6 +839,19 @@ if (puzzleCode) {
 function onCellInput(newState, number) {
     if (number === 0) return; // ignore erases for decay/fragile triggers
 
+    if (newState.mode === "notes") {
+        evaluateAchievements(ACHIEVEMENT_EVENTS.CANDIDATE_ADDED, getEventContext());
+    }
+
+    const { row, col } = newState.selected;
+    const cell = newState.board?.[row]?.[col];
+
+    if (newState.mode === "value" && cell && !cell.fixed && cell.value !== 0 && newState.solution) {
+        if (cell.value !== newState.solution[row][col]) {
+            evaluateAchievements(ACHIEVEMENT_EVENTS.MISTAKE_MADE, getEventContext());
+        }
+    }
+
     // ── Fragile modifier: reset on first wrong value ────────────────────
     if (isModifierActive(activeMods, "fragile") && newState.mode === "value") {
         const { row, col } = newState.selected;
@@ -848,9 +915,37 @@ window.addEventListener("sudoku:achievement", (e) => {
     const newlyUnlocked = e.detail;
     newlyUnlocked.forEach((ach, i) => {
         setTimeout(() => {
-            showEventBanner(`🏆 Achievement: ${ach.label}!`, "achievement", 3000);
-        }, i * 3500);
+            showAchievementNotification(ach);
+        }, i * 4000);
     });
 });
+
+function showAchievementNotification(ach) {
+    const existing = document.querySelector(".achievement-notification");
+    if (existing) existing.remove();
+
+    const el = document.createElement("div");
+    el.className = "achievement-notification";
+    el.innerHTML = `
+        <div class="achievement-notification-icon">🏆</div>
+        <div class="achievement-notification-content">
+            <div class="achievement-notification-title">Achievement Unlocked!</div>
+            <div class="achievement-notification-name">${ach.label}</div>
+            <div class="achievement-notification-desc">${ach.desc}</div>
+        </div>
+    `;
+    document.body.appendChild(el);
+
+    // Animate in
+    requestAnimationFrame(() => {
+        el.classList.add("visible");
+    });
+
+    // Auto-remove
+    setTimeout(() => {
+        el.classList.remove("visible");
+        setTimeout(() => el.remove(), 600);
+    }, 3500);
+}
 
 updateHeaderStreak(); // Initial update on boot

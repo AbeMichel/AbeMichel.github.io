@@ -5,6 +5,7 @@ import { MODIFIERS, MODIFIER_MAP, isModifierActive, getModifierValue, getModifie
 import { encodeCustomGame, decodeCustomGame, validateCode } from "./customgame.js";
 import { getDailyChallengeMeta } from "./dailychallenge.js";
 import { getRequiredTechniques } from "./hints.js";
+import { evaluateAchievements, ACHIEVEMENT_EVENTS, getAchievementStats, getAllAchievements } from "./achievements.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TECHNIQUE DEFINITIONS
@@ -1114,8 +1115,8 @@ export function showStatsPopup() {
     document.getElementById("stats-popup")?.remove();
     document.getElementById("stats-backdrop")?.remove();
 
-    const stats = getGlobalStats();
-    const achievements = getUnlockedAchievements();
+    const stats = getAchievementStats();
+    const achievements = getAllAchievements();
 
     const backdrop = document.createElement("div");
     backdrop.id = "stats-backdrop";
@@ -1161,57 +1162,132 @@ export function showStatsPopup() {
         return item;
     };
 
-    grid.appendChild(createStat("Current Streak", stats.streak?.current || 0));
-    grid.appendChild(createStat("Best Streak", stats.streak?.best || 0));
-    grid.appendChild(createStat("Total Solved", stats.totalSolves || 0));
+    grid.appendChild(createStat("Current Streak", stats.dailyStreak || 0));
+    grid.appendChild(createStat("Best Streak", stats.maxDailyStreak || 0));
+    grid.appendChild(createStat("Total Solved", stats.puzzlesSolved || 0));
     statsContainer.appendChild(grid);
 
-    // Difficulty Breakdown
-    const diffTitle = document.createElement("div");
-    diffTitle.className = "popup-field-label";
-    diffTitle.style.marginTop = "1rem";
-    diffTitle.textContent = "Solves by Difficulty";
-    statsContainer.appendChild(diffTitle);
-
-    const diffList = document.createElement("div");
-    diffList.className = "stats-difficulty-list";
-    const D_ORDER = ["veryeasy", "easy", "medium", "hard", "veryhard"];
-    const D_LABELS = { veryeasy: "Very Easy", easy: "Easy", medium: "Medium", hard: "Hard", veryhard: "Very Hard" };
-
-    for (const dKey of D_ORDER) {
-        const count = stats.solveCounts?.[dKey] || 0;
-        const row = document.createElement("div");
-        row.className = "stats-difficulty-row";
-        row.innerHTML = `
-            <span class="stats-difficulty-label">${D_LABELS[dKey]}</span>
-            <span class="stats-difficulty-count">${count}</span>
-        `;
-        diffList.appendChild(row);
-    }
-    statsContainer.appendChild(diffList);
-
-    // Achievements
+    // Achievement summary
     const achTitle = document.createElement("div");
     achTitle.className = "popup-field-label";
     achTitle.style.marginTop = "1rem";
-    achTitle.textContent = "Achievements";
+    achTitle.textContent = "Achievements Preview";
     statsContainer.appendChild(achTitle);
 
     const achList = document.createElement("div");
     achList.className = "achievements-list";
 
-    for (const ach of achievements) {
+    const unlockedCount = achievements.filter(a => a.unlocked).length;
+    const summaryBtn = document.createElement("button");
+    summaryBtn.className = "view-all-achievements-btn";
+    summaryBtn.innerHTML = `<span>🏆</span> View All Achievements (${unlockedCount}/${achievements.length})`;
+    summaryBtn.addEventListener("click", () => {
+        closePopup();
+        showAchievementsPopup();
+    });
+
+    // Show most recently unlocked first, then others
+    const sortedAchievements = [...achievements].sort((a, b) => {
+        if (a.unlocked && b.unlocked) return (b.timestamp || 0) - (a.timestamp || 0);
+        if (a.unlocked) return -1;
+        if (b.unlocked) return 1;
+        return 0;
+    });
+
+    for (const ach of sortedAchievements.slice(0, 8)) {
+        const isHiddenLocked = ach.hidden && !ach.unlocked;
         const pill = document.createElement("span");
         pill.className = `achievement-pill ${ach.unlocked ? "achievement-pill--unlocked" : ""}`;
-        pill.textContent = ach.label;
-        pill.dataset.tooltip = ach.desc;
+        pill.textContent = isHiddenLocked ? "???" : ach.name;
+        pill.dataset.tooltip = isHiddenLocked ? "???" : ach.description;
         achList.appendChild(pill);
     }
 
     statsContainer.appendChild(achList);
+    statsContainer.appendChild(summaryBtn);
     body.appendChild(statsContainer);
     popup.appendChild(body);
 
+    document.body.appendChild(backdrop);
+    document.body.appendChild(popup);
+}
+
+export function showAchievementsPopup() {
+    document.getElementById("achievements-popup")?.remove();
+    document.getElementById("achievements-backdrop")?.remove();
+
+    const achievements = getAllAchievements();
+
+    const backdrop = document.createElement("div");
+    backdrop.id = "achievements-backdrop";
+    backdrop.className = "popup-backdrop";
+
+    const popup = document.createElement("div");
+    popup.id = "achievements-popup";
+    popup.className = "custom-game-popup achievements-full-popup";
+
+    const closePopup = () => {
+        popup.remove();
+        backdrop.remove();
+    };
+    backdrop.addEventListener("click", closePopup);
+
+    const header = document.createElement("div");
+    header.className = "popup-header";
+    header.innerHTML = `<span class="popup-title">Achievements</span>`;
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "popup-close-btn";
+    closeBtn.textContent = "✕";
+    closeBtn.addEventListener("click", closePopup);
+    header.appendChild(closeBtn);
+    popup.appendChild(header);
+
+    const body = document.createElement("div");
+    body.className = "popup-body";
+
+    const grid = document.createElement("div");
+    grid.className = "achievements-grid-full";
+
+    for (const ach of achievements) {
+        const isHiddenLocked = ach.hidden && !ach.unlocked;
+
+        const card = document.createElement("div");
+        card.className = `achievement-card ${ach.unlocked ? "unlocked" : "locked"}`;
+        card.dataset.tooltip = isHiddenLocked ? "???" : ach.description;
+        
+        const icon = document.createElement("div");
+        icon.className = "achievement-card-icon";
+        icon.textContent = ach.unlocked ? "🏆" : "🔒";
+
+        const content = document.createElement("div");
+        content.className = "achievement-card-content";
+
+        const name = document.createElement("div");
+        name.className = "achievement-card-name";
+        name.textContent = isHiddenLocked ? "???" : ach.name;
+
+        const desc = document.createElement("div");
+        desc.className = "achievement-card-desc";
+        desc.textContent = isHiddenLocked ? "???" : ach.description;
+
+        content.appendChild(name);
+        content.appendChild(desc);
+
+        if (ach.unlocked && ach.timestamp) {
+            const time = document.createElement("div");
+            time.className = "achievement-card-time";
+            const date = new Date(ach.timestamp);
+            time.textContent = `Unlocked: ${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+            content.appendChild(time);
+        }
+
+        card.appendChild(icon);
+        card.appendChild(content);
+        grid.appendChild(card);
+    }
+
+    body.appendChild(grid);
+    popup.appendChild(body);
     document.body.appendChild(backdrop);
     document.body.appendChild(popup);
 }
@@ -1445,6 +1521,11 @@ function showCustomGamePopup(onChosen) {
             genBtn.className = "popup-generate-btn";
             genBtn.textContent = "Generate Code";
             genBtn.addEventListener("click", () => {
+                evaluateAchievements(ACHIEVEMENT_EVENTS.PUZZLE_CREATED, {
+                    difficulty: popupDifficulty,
+                    modifiers: popupMods,
+                    isChaos: (popupRegionType === "chaos")
+                });
                 popupSeed = Math.max(1, Number(seedInput?.value) || popupSeed);
                 generatedCode = encodeCustomGame({ 
                     difficulty: popupDifficulty, 
@@ -1790,6 +1871,12 @@ export function showSharePopup(meta) {
     copyUrlBtn.className = "popup-copy-btn";
     copyUrlBtn.textContent = "Copy";
     copyUrlBtn.addEventListener("click", () => {
+        evaluateAchievements(ACHIEVEMENT_EVENTS.PUZZLE_SHARED, {
+            puzzle: meta,
+            modifiers: meta.modifiers || {},
+            difficulty: meta.difficulty,
+            isChaos: (meta.regionType === "chaos")
+        });
         navigator.clipboard.writeText(fullUrl).then(() => {
             copyUrlBtn.textContent = "Copied!";
             setTimeout(() => copyUrlBtn.textContent = "Copy", 1500);
@@ -1814,6 +1901,12 @@ export function showSharePopup(meta) {
     copyCodeBtn.className = "popup-copy-btn";
     copyCodeBtn.textContent = "Copy";
     copyCodeBtn.addEventListener("click", () => {
+        evaluateAchievements(ACHIEVEMENT_EVENTS.PUZZLE_SHARED, {
+            puzzle: meta,
+            modifiers: meta.modifiers || {},
+            difficulty: meta.difficulty,
+            isChaos: (meta.regionType === "chaos")
+        });
         navigator.clipboard.writeText(code).then(() => {
             copyCodeBtn.textContent = "Copied!";
             setTimeout(() => copyCodeBtn.textContent = "Copy", 1500);
