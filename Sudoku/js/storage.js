@@ -188,22 +188,25 @@ export function pruneStaleCompletions() {
 function serialiseBoard(board) {
     return board.map(row => row.map(cell => ({
         value:           cell.value,
-        manualNotes:     [...cell.manualNotes],
-        autoNotes:       [...cell.autoNotes],
-        manuallyRemoved: [...cell.manuallyRemoved],
+        manualNotes:     Array.from(cell.manualNotes),
+        autoNotes:       Array.from(cell.autoNotes),
+        manuallyRemoved: Array.from(cell.manuallyRemoved),
         fixed:           cell.fixed,
+        pieceId:         cell.pieceId
     })));
 }
 
-function deserialiseBoard(raw) {
-    return raw.map(row => row.map(cell => ({
+function deserialiseBoard(data) {
+    return data.map(row => row.map(cell => ({
         value:           cell.value,
         manualNotes:     new Set(cell.manualNotes),
         autoNotes:       new Set(cell.autoNotes),
         manuallyRemoved: new Set(cell.manuallyRemoved),
         fixed:           cell.fixed,
+        pieceId:         cell.pieceId
     })));
 }
+
 
 function serialiseState(state) {
     return {
@@ -216,6 +219,13 @@ function serialiseState(state) {
         mistakes:       state.mistakes || 0,
         // Snapshot elapsed ms at time of save
         elapsed:        state.startTime ? (Date.now() - state.startTime + (state._priorElapsed || 0)) : (state._priorElapsed ?? 0),
+        reconstruction: state.reconstruction ? {
+            pieces: state.reconstruction.pieces,
+            dragPieceId: null, // Don't persist active drag state
+            dragScreenPos: null,
+            dragSnapPos: null,
+            dragGrabOffset: null
+        } : null
     };
 }
 
@@ -232,6 +242,13 @@ function deserialiseState(raw) {
         history:        [],
         future:         [],
         startTime:      null,
+        reconstruction: raw.reconstruction ? {
+            pieces: raw.reconstruction.pieces,
+            dragPieceId: null,
+            dragScreenPos: null,
+            dragSnapPos: null,
+            dragGrabOffset: null
+        } : null
     };
 }
 

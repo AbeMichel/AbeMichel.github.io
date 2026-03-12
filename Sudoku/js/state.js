@@ -185,7 +185,7 @@ export function getRegionIndex(r, c, regionMap = DEFAULT_REGION_MAP) {
     return regionMap[r * 9 + c];
 }
 
-export function createInitialState(puzzle = null, solution = null, startTime = Date.now(), regionMap = DEFAULT_REGION_MAP, regionType = "classic") {
+export function createInitialState(puzzle = null, solution = null, startTime = Date.now(), regionMap = DEFAULT_REGION_MAP, regionType = "classic", reconstruction = null) {
     return {
         board: puzzle ? createBoardFromPuzzle(puzzle) : createEmptyBoard(),
         regionMap,
@@ -199,7 +199,15 @@ export function createInitialState(puzzle = null, solution = null, startTime = D
         future: [],
         startTime,
         paused: false,
-        mistakes: 0
+        mistakes: 0,
+        // Reconstruction Mode
+        reconstruction: reconstruction ? {
+            pieces: reconstruction.pieces,
+            dragPieceId: null,
+            dragScreenPos: null,
+            dragSnapPos: null,
+            dragGrabOffset: null
+        } : null
     };
 }
 
@@ -208,7 +216,7 @@ export function setPaused(state, paused) {
 }
 
 export function resetBoard(state) {
-    return createInitialState(state.original, state.solution, Date.now(), state.regionMap, state.regionType);
+    return createInitialState(state.original, state.solution, Date.now(), state.regionMap, state.regionType, state.reconstruction ? { pieces: state.reconstruction.pieces.map(p => ({ ...p, placedPos: null, rotation: 0, mirrored: false })) } : null);
 }
 
 function createBoardFromPuzzle(puzzle) {
@@ -218,7 +226,8 @@ function createBoardFromPuzzle(puzzle) {
             manualNotes: new Set(),
             autoNotes: new Set(),
             manuallyRemoved: new Set(),
-            fixed: value !== 0   // givens are locked
+            fixed: value !== 0,   // givens are locked
+            pieceId: null
         }))
     );
 }
@@ -230,7 +239,8 @@ function createEmptyBoard() {
             manualNotes: new Set(),
             autoNotes: new Set(),
             manuallyRemoved: new Set(),
-            fixed: false
+            fixed: false,
+            pieceId: null
         }))
     );
 }
@@ -332,6 +342,203 @@ export function placeNumber(state, number) {
     // Push current board onto history, clear future
     const newHistory = [...state.history, state.board];
     return { ...state, board: newBoard, history: newHistory, future: [], mistakes: newMistakes };
+}
+
+export function placePiece(state, pieceId, r, c) {
+    if (!state.reconstruction) return state;
+
+    const piece = state.reconstruction.pieces.find(p => p.id === pieceId);
+    if (!piece) return state;
+
+    const transformedCells = getTransformedCells(piece);
+    if (!isValidPlacement(state, piece, r, c)) return state;
+
+    const newBoard = structuredClone(state.board);
+    const newPieces = state.reconstruction.pieces.map(p => {
+        if (p.id === pieceId) {
+            return { ...p, placedPos: { r, c } };
+        }
+        return p;
+    });
+
+    for (const cell of transformedCells) {
+        const targetR = r + cell.dr;
+        const targetC = c + cell.dc;
+        newBoard[targetR][targetC].value = cell.value;
+        newBoard[targetR][targetC].pieceId = pieceId;
+    }
+
+    const newHistory = [...state.history, state.board];
+    return {
+        ...state,
+        board: newBoard,
+        history: newHistory,
+        future: [],
+        reconstruction: { ...state.reconstruction, pieces: newPieces }
+    };
+}
+
+export function removePiece(state, pieceId) {
+    if (!state.reconstruction) return state;
+
+    const piece = state.reconstruction.pieces.find(p => p.id === pieceId);
+    if (!piece || piece.placedPos === null) return state;
+
+    const newBoard = structuredClone(state.board);
+    const newPieces = state.reconstruction.pieces.map(p => {
+        if (p.id === pieceId) {
+            return { ...p, placedPos: null };
+        }
+        return p;
+    });
+
+    const { r, c } = piece.placedPos;
+    const transformedCells = getTransformedCells(piece);
+
+    for (const cell of transformedCells) {
+        const targetR = r + cell.dr;
+        const targetC = c + cell.dc;
+        newBoard[targetR][targetC].value = 0;
+        newBoard[targetR][targetC].pieceId = null;
+    }
+
+    const newHistory = [...state.history, state.board];
+    return {
+        ...state,
+        board: newBoard,
+        history: newHistory,
+        future: [],
+        reconstruction: { ...state.reconstruction, pieces: newPieces }
+    };
+}
+
+export function rotatePiece(state, pieceId, clockwise = true) {
+    if (!state.reconstruction) return state;
+    const newPieces = state.reconstruction.pieces.map(p => {
+        if (p.id === pieceId && p.canRotate) {
+            // Do NOT % 360 here — let rotation accumulate freely (e.g. 0→90→…→360→450).
+            // CSS transitions animate between the raw numbers, so wrapping back to 0
+            // would make the piece spin backwards through a full revolution.
+            // getTransformedCells applies % 360 for the actual grid logic.
+            let nextRot = p.rotation + (clockwise ? 90 : -90);
+            return { ...p, rotation: nextRot };
+        }
+        return p;
+    });
+    return { ...state, reconstruction: { ...state.reconstruction, pieces: newPieces } };
+}
+
+export function mirrorPiece(state, pieceId) {
+    if (!state.reconstruction) return state;
+    const newPieces = state.reconstruction.pieces.map(p => {
+        if (p.id === pieceId && p.canMirror) {
+            return { ...p, mirrored: !p.mirrored };
+        }
+        return p;
+    });
+    return { ...state, reconstruction: { ...state.reconstruction, pieces: newPieces } };
+}
+
+export function getTransformedCells(piece) {
+    const cells = piece.cells.map(cell => {
+        let { dr, dc, value } = cell;
+        
+        // 1. Mirror horizontally if active
+        if (piece.mirrored) dc = -dc;
+
+        // 2. Rotate
+        let tr = dr;
+        let tc = dc;
+        const rot = (piece.rotation + 360) % 360;
+        
+        if (rot === 90) {
+            tr = dc;
+            tc = -dr;
+        } else if (rot === 180) {
+            tr = -dr;
+            tc = -dc;
+        } else if (rot === 270) {
+            tr = -dc;
+            tc = dr;
+        }
+
+        return { dr: tr, dc: tc, value };
+    });
+
+    // 3. Normalize coordinates to keep a stable top-left anchor (0,0)
+    let minDr = cells[0].dr;
+    let minDc = cells[0].dc;
+    cells.forEach(c => {
+        if (c.dr < minDr) minDr = c.dr;
+        if (c.dc < minDc) minDc = c.dc;
+    });
+
+    return cells.map(c => ({
+        ...c,
+        dr: c.dr - minDr,
+        dc: c.dc - minDc
+    }));
+}
+
+export function isValidPlacement(state, piece, r, c) {
+    const transformedCells = getTransformedCells(piece);
+
+    for (const cell of transformedCells) {
+        const targetR = r + cell.dr;
+        const targetC = c + cell.dc;
+
+        // 1. Bounds check
+        if (targetR < 0 || targetR >= 9 || targetC < 0 || targetC >= 9) return false;
+
+        // 2. Overlap check
+        const targetCell = state.board[targetR][targetC];
+        if (targetCell.pieceId !== null && targetCell.pieceId !== piece.id) return false;
+
+        // 3. Sudoku rules
+        const val = cell.value;
+        
+        // Row check
+        for (let cc = 0; cc < 9; cc++) {
+            const checkCell = state.board[targetR][cc];
+            if (cc !== targetC && checkCell.value === val && checkCell.pieceId !== piece.id) return false;
+        }
+
+        // Col check
+        for (let rr = 0; rr < 9; rr++) {
+            const checkCell = state.board[rr][targetC];
+            if (rr !== targetR && checkCell.value === val && checkCell.pieceId !== piece.id) return false;
+        }
+
+        // Region check
+        const regionId = getRegionIndex(targetR, targetC, state.regionMap);
+        for (let rr = 0; rr < 9; rr++) {
+            for (let cc = 0; cc < 9; cc++) {
+                if ((rr !== targetR || cc !== targetC) && getRegionIndex(rr, cc, state.regionMap) === regionId) {
+                    const checkCell = state.board[rr][cc];
+                    if (checkCell.value === val && checkCell.pieceId !== piece.id) return false;
+                }
+            }
+        }
+    }
+
+    // New check: make sure the piece itself doesn't have duplicate values in the same row/col/region 
+    // (This can happen if rotated/mirrored onto a different grid layout than originally designed, 
+    // but usually solved grids are safe. Let's be thorough.)
+    for (let i = 0; i < transformedCells.length; i++) {
+        for (let j = i + 1; j < transformedCells.length; j++) {
+            const a = transformedCells[i];
+            const b = transformedCells[j];
+            if (a.value === b.value) {
+                const ra = r + a.dr, ca = c + a.dc;
+                const rb = r + b.dr, cb = c + b.dc;
+                if (ra === rb || ca === cb || getRegionIndex(ra, ca, state.regionMap) === getRegionIndex(rb, cb, state.regionMap)) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    return true;
 }
 
 export function moveSelection(state, direction, jump = false) {
@@ -439,6 +646,19 @@ export function getConflicts(board, regionMap = DEFAULT_REGION_MAP) {
 }
 export function isSolved(state) {
     if (!state?.board) return false;
+
+    if (state.reconstruction) {
+        // Every cell must have a pieceId
+        for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+                if (state.board[r][c].pieceId === null) return false;
+            }
+        }
+        // If all pieces are placed using placePiece, they should already be valid.
+        // But for safety, we can check conflicts.
+        return getConflicts(state.board, state.regionMap).size === 0;
+    }
+
     // Every cell must have a non-zero value and no conflicts
     for (let r = 0; r < 9; r++)
         for (let c = 0; c < 9; c++)

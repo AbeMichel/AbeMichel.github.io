@@ -5,7 +5,7 @@ import {
 } from "./state.js";
 import { render } from "./renderer.js";
 import { attachController } from "./controller.js";
-import { generate, solve, PRNG } from "./generator.js";
+import { generate, solve, PRNG, partitionSolvedGrid, generateSolvedGrid } from "./generator.js";
 import { showPuzzleSelect, showPuzzleInfo, showWinPanel, showSettingsPopup, showSharePopup, showHintsPopup } from "./sidebar.js";
 import {
     startModifierEffects, stopModifierEffects, restartLivingEffect
@@ -38,7 +38,8 @@ applyTheme();   // apply persisted dark mode preference on boot
 
 // ─── DOM roots ────────────────────────────────────────────────────────────────
 const boardArea = document.querySelector(".board-area");
-const sidebarEl = document.querySelector(".sidebar");
+const puzzleSelectArea = document.getElementById("puzzle-select-area");
+const gameArea = document.getElementById("game-area");
 
 // ─── Active puzzle meta ───────────────────────────────────────────────────────
 let activeMeta = null;
@@ -159,6 +160,7 @@ export function getState() { return state; }
 function setState(newState) {
     const wasPaused = state?.paused;
     state = newState;
+    if (activeMeta && !state.meta) state.meta = activeMeta;
     activeHint = null;   // any board change dismisses the current hint
 
     if (state.paused !== wasPaused) {
@@ -395,6 +397,10 @@ export async function loadPuzzle(meta, options = {}) {
     _totalPauseMs = 0;
     _pauseStartTime = null;
 
+    // Switch view
+    puzzleSelectArea.style.display = "none";
+    gameArea.style.display = "block";
+
     evaluateAchievements(ACHIEVEMENT_EVENTS.PUZZLE_STARTED, { 
         meta,
         elapsedMs: 0,
@@ -421,6 +427,7 @@ export async function loadPuzzle(meta, options = {}) {
 
     activeMeta = {
         ...meta,
+        mode:       meta.mode || "standard",
         regionType: meta.regionType || "classic",
         regionMap:  meta.regionMap  || (meta.regionType ? REGION_SETS[meta.regionType] : DEFAULT_REGION_MAP)
     };
@@ -502,15 +509,22 @@ export async function loadPuzzle(meta, options = {}) {
         render(state, boardArea, {}, getSettings(), null); // no mods — show everything
         showBoardOverlay("none");
         boardArea.classList.add("puzzle-complete");
-        showWinPanel(sidebarEl, meta, completionMs, onPuzzleChosen, onPuzzleSelectRequested);
-        
-    } else if (saved) {
+        showWinPanel(boardArea, meta, completionMs, onPuzzleChosen, onPuzzleSelectRequested);
+
+        } else if (saved) {
+
         state = applyModsToState({ 
             ...saved, 
+            mode:       saved.reconstruction ? "reconstruction" : (saved.mode || activeMeta.mode),
             regionType: saved.regionType || activeMeta.regionType,
             regionMap:  saved.regionMap  || activeMeta.regionMap
         });
+        
         render(state, boardArea, activeMods, getSettings(), null);
+        
+        // Ensure controller is attached after first state is set
+        attachGameController();
+
         showBoardOverlay("countdown", () => {
             state = { ...state, startTime: Date.now() };
             render(state, boardArea, activeMods, getSettings(), null);
@@ -528,10 +542,44 @@ export async function loadPuzzle(meta, options = {}) {
             seed = meta.seed;
         }
 
-        const puzzle = await generate({ difficulty: meta.difficulty, seed, regionMap: activeMeta.regionMap, onProgress: onGenerateProgress });
-        const solution = solve(puzzle.map(row => [...row]), activeMeta.regionMap);
-        state = applyModsToState({ ...createInitialState(puzzle, solution, null, activeMeta.regionMap, activeMeta.regionType), startTime: null, _priorElapsed: 0 });
+        if (meta.mode === "reconstruction") {
+            const prng = new PRNG(seed);
+            const solvedBoard = generateSolvedGrid(activeMeta.regionMap, prng);
+            const grid = solvedBoard.toArray();
+
+            // Difficulty-based piece sizes
+            const diff = meta.difficulty;
+            let minSize = 2, maxSize = 6;
+            if (diff === "veryeasy") { minSize = 4; maxSize = 9; }
+            else if (diff === "easy") { minSize = 3; maxSize = 8; }
+            else if (diff === "hard") { minSize = 3; maxSize = 6; }
+            else if (diff === "veryhard") { minSize = 2; maxSize = 5; }
+
+            const pieces = partitionSolvedGrid(grid, prng, minSize, maxSize);
+            
+            // Difficulty-based capabilities
+            const canRotate = diff !== "veryeasy" && diff !== "easy";
+            const canMirror = diff === "hard" || diff === "veryhard";
+
+            const reconstructionData = { 
+                pieces: pieces.map(p => ({ ...p, canRotate, canMirror }))
+            };
+
+            state = {
+                ...createInitialState(null, grid, null, activeMeta.regionMap, activeMeta.regionType, reconstructionData),
+                mode: "reconstruction"
+            };
+        } else {
+            const puzzle = await generate({ difficulty: meta.difficulty, seed, regionMap: activeMeta.regionMap, onProgress: onGenerateProgress });
+            const solution = solve(puzzle.map(row => [...row]), activeMeta.regionMap);
+            state = applyModsToState({ ...createInitialState(puzzle, solution, null, activeMeta.regionMap, activeMeta.regionType), startTime: null, _priorElapsed: 0 });
+        }
+
         render(state, boardArea, activeMods, getSettings(), null);
+        
+        // Ensure controller is attached after first state is set
+        attachGameController();
+
         showBoardOverlay("countdown", () => {
             state = { ...state, startTime: Date.now() };
             render(state, boardArea, activeMods, getSettings(), null);
@@ -540,10 +588,24 @@ export async function loadPuzzle(meta, options = {}) {
         });
     }
 
-    if (!options.viewCompleted) {
-        const modsLocked = (meta.type === "challenge" || meta.type === "custom" || meta.type === "daily-challenge") && !!meta.modifiers;
-        showPuzzleInfo(sidebarEl, meta, onPuzzleSelectRequested, getMods, updateMods, modsLocked);
+    if (state) {
+        let s = state;
+        if (!s.meta) s.meta = activeMeta;
+        state = s;
     }
+}
+
+let controllerAttached = false;
+function attachGameController() {
+    if (controllerAttached) return;
+    
+    attachController(boardArea, getState, setState, rerender, getMods, onCellInput, () => {
+        showHintsPopup(getMods);
+    }, () => {
+        togglePause();
+    });
+    
+    controllerAttached = true;
 }
 
 // ─── Win handler ──────────────────────────────────────────────────────────────
@@ -552,7 +614,7 @@ function handleWin(meta, totalMs) {
     if (state) render(state, boardArea, {}, getSettings(), null);
     launchConfetti();
     setTimeout(() => {
-        showWinPanel(sidebarEl, meta, totalMs, onPuzzleChosen, onPuzzleSelectRequested);
+        showWinPanel(boardArea, meta, totalMs, onPuzzleChosen, onPuzzleSelectRequested);
     }, 800);
 }
 
@@ -742,11 +804,10 @@ function onPuzzleSelectRequested() {
     if (window.location.search) {
         history.replaceState(null, "", window.location.pathname);
     }
-    const existing = document.getElementById("board-overlay");
-    if (!existing?.querySelector(".overlay-select-icon")) {
-        showBoardOverlay("select");
-    }
-    showPuzzleSelect(sidebarEl, onPuzzleChosen);
+    
+    gameArea.style.display = "none";
+    puzzleSelectArea.style.display = "block";
+    showPuzzleSelect(puzzleSelectArea, onPuzzleChosen);
 }
 
 async function onPuzzleChosen(meta) {
@@ -817,12 +878,10 @@ if (puzzleCode) {
         await loadPuzzle(meta);
     } catch (e) {
         console.error("Failed to load shared puzzle:", e);
-        showBoardOverlay("select");
-        showPuzzleSelect(sidebarEl, onPuzzleChosen);
+        onPuzzleSelectRequested();
     }
 } else {
-    showBoardOverlay("select");
-    showPuzzleSelect(sidebarEl, onPuzzleChosen);
+    onPuzzleSelectRequested();
 }
 /**
  * Called by the controller after every successful cell input (value or note).
@@ -871,12 +930,6 @@ function onCellInput(newState, number) {
         }
     }
 }
-
-attachController(boardArea, getState, setState, rerender, getMods, onCellInput, () => {
-    showHintsPopup(getMods);
-}, () => {
-    togglePause();
-});
 
 // ─── Header Streak & Achievements ─────────────────────────────────────────────
 import { getGlobalStats } from "./storage.js";
@@ -939,4 +992,26 @@ function showAchievementNotification(ach) {
     }, 3500);
 }
 
-updateHeaderStreak(); // Initial update on boot
+// ─── Header Action Delegation ────────────────────────────────────────────────
+document.getElementById("game-header").addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn || !btn.dataset.action) return;
+
+    const action = btn.dataset.action;
+    switch (action) {
+        case "puzzle-select":
+            onPuzzleSelectRequested();
+            break;
+        case "print":
+            window.print();
+            break;
+        case "share":
+            if (activeMeta) showSharePopup(activeMeta);
+            break;
+        case "settings":
+            showSettingsPopup();
+            break;
+    }
+    // Note: undo, redo, hints-popup, and reset are handled by the controller
+    // which has a listener on the parent boardArea.
+});

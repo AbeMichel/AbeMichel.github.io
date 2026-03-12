@@ -908,7 +908,118 @@ export function solve(board, regionMap = DEFAULT_REGION_MAP) {
 
     [empties[k], empties[best]] = [empties[best], empties[k]];
     return false;
-  }
+    }
 
-  return solveMini() ? board : null;
-}
+    return solveMini() ? board : null;
+    }
+
+    /**
+    * Reconstruction Mode: Partitions a solved grid into polyomino pieces.
+    * @param {number[][]} grid - 9x9 solved Sudoku grid
+    * @param {PRNG} prng
+    * @param {number} minSize - Minimum cells per piece
+    * @param {number} maxSize - Maximum cells per piece
+    * @returns {Array} Array of piece objects
+    */
+    export function partitionSolvedGrid(grid, prng, minSize = 2, maxSize = 6) {
+    const unassigned = new Set();
+    for (let i = 0; i < 81; i++) unassigned.add(i);
+
+    const pieceIndices = []; // Array of arrays of cell indices
+
+    while (unassigned.size > 0) {
+        const cells = Array.from(unassigned);
+        const seed = cells[prng.nextInt(0, cells.length)];
+        unassigned.delete(seed);
+
+        const currentPiece = [seed];
+        const targetSize = prng.nextInt(minSize, maxSize + 1);
+
+        for (let i = 1; i < targetSize && unassigned.size > 0; i++) {
+            const neighbors = new Set();
+            for (const cellIdx of currentPiece) {
+                const r = (cellIdx / 9) | 0;
+                const c = cellIdx % 9;
+                const adj = [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]];
+                for (const [nr, nc] of adj) {
+                    if (nr >= 0 && nr < 9 && nc >= 0 && nc < 9) {
+                        const nIdx = nr * 9 + nc;
+                        if (unassigned.has(nIdx)) neighbors.add(nIdx);
+                    }
+                }
+            }
+
+            if (neighbors.size === 0) break;
+
+            const neighborList = Array.from(neighbors);
+            const chosen = neighborList[prng.nextInt(0, neighborList.length)];
+            currentPiece.push(chosen);
+            unassigned.delete(chosen);
+        }
+        pieceIndices.push(currentPiece);
+    }
+
+    // Post-processing: Merge tiny pieces into neighbors
+    // We iterate backwards because the last pieces generated are most likely to be isolated singletons
+    for (let i = pieceIndices.length - 1; i >= 0; i--) {
+        if (pieceIndices[i].length < minSize) {
+            const smallPiece = pieceIndices[i];
+
+            // Find all unique adjacent pieces
+            const neighborPieceIndices = new Set();
+            for (const cellIdx of smallPiece) {
+                const r = (cellIdx / 9) | 0;
+                const c = cellIdx % 9;
+                const adj = [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]];
+                for (const [nr, nc] of adj) {
+                    if (nr >= 0 && nr < 9 && nc >= 0 && nc < 9) {
+                        const nIdx = nr * 9 + nc;
+                        // Find which piece this neighbor belongs to
+                        for (let j = 0; j < pieceIndices.length; j++) {
+                            if (i !== j && pieceIndices[j].indexOf(nIdx) !== -1) {
+                                neighborPieceIndices.add(j);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (neighborPieceIndices.size > 0) {
+                // Merge into the neighbor that currently has the fewest cells to keep things balanced
+                const neighbors = Array.from(neighborPieceIndices);
+                neighbors.sort((a, b) => pieceIndices[a].length - pieceIndices[b].length);
+
+                const targetPieceIdx = neighbors[0];
+                pieceIndices[targetPieceIdx].push(...smallPiece);
+                pieceIndices.splice(i, 1);
+            }
+        }
+    }
+
+    // Convert to final objects
+    let nextPieceId = 1;
+    const pieces = pieceIndices.map(cells => {
+        const rootIdx = cells[0];
+        const rootR = (rootIdx / 9) | 0;
+        const rootC = rootIdx % 9;
+
+        return {
+            id: nextPieceId++,
+            cells: cells.map(idx => {
+                const r = (idx / 9) | 0;
+                const c = idx % 9;
+                return {
+                    dr: r - rootR,
+                    dc: c - rootC,
+                    value: grid[r][c]
+                };
+            }),
+            placedPos: null,
+            rotation: 0,
+            mirrored: false
+        };
+    });
+
+    return pieces;
+    }

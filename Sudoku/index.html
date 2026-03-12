@@ -18,11 +18,17 @@
     </header>
     <div class="layout">
         <main class="board-area">
-            <section id="board" class="board"></section>
-            <section id="controls" class="board-controls"></section>
+            <div id="puzzle-select-area" class="puzzle-select-area" style="display: none;"></div>
+            <div id="game-area" class="game-area">
+                <header id="game-header" class="game-header"></header>
+                <div class="game-main">
+                    <div class="board-wrapper">
+                        <div id="board-container"></div>
+                    </div>
+                    <section id="controls" class="board-controls"></section>
+                </div>
+            </div>
         </main>
-
-        <aside class="sidebar"></aside>
     </div>
 
     <script type="module" src="./js/app.js"></script>
@@ -35,7 +41,7 @@
     <script>
         kofiWidgetOverlay.draw('abemichel', {
             'type': 'floating-chat',
-            'floating-chat.donateButton.text': 'Leave a tip!',
+            'floating-chat.donateButton.text': 'Tip Me',
             'floating-chat.donateButton.background-color': '#323842',
             'floating-chat.donateButton.text-color': '#fff'
         });

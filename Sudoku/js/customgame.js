@@ -17,7 +17,7 @@ import { MODIFIERS } from "./modifiers.js";
 import { REGION_SETS, generateRandomRegionMap } from "./state.js";
 import { PRNG } from "./generator.js";
 
-const VERSION = 2;
+const VERSION = 3;
 
 const DIFFICULTY_KEYS = ["veryeasy", "easy", "medium", "hard", "veryhard"];
 const DIFFICULTY_IDX  = Object.fromEntries(DIFFICULTY_KEYS.map((k, i) => [k, i]));
@@ -25,10 +25,13 @@ const DIFFICULTY_IDX  = Object.fromEntries(DIFFICULTY_KEYS.map((k, i) => [k, i])
 const REGION_KEYS = ["classic", "_unused_1", "_unused_2", "chaos"];
 const REGION_IDX  = Object.fromEntries(REGION_KEYS.map((k, i) => [k, i]));
 
+const MODE_KEYS = ["normal", "reconstruction"];
+const MODE_IDX  = Object.fromEntries(MODE_KEYS.map((k, i) => [k, i]));
+
 // ── Encoding ─────────────────────────────────────────────────────────────────
 
 export function encodeCustomGame(spec) {
-    // spec: { difficulty, seed, modifiers, regionType }
+    // spec: { difficulty, seed, modifiers, regionType, mode }
     // modifiers: { [key]: true | { value: string|number } }
     const bytes = [];
 
@@ -44,6 +47,9 @@ export function encodeCustomGame(spec) {
 
     // regionType (added in V2)
     bytes.push(REGION_IDX[spec.regionType] ?? 0);
+
+    // mode (added in V3)
+    bytes.push(MODE_IDX[spec.mode] ?? 0);
 
     const activeMods = Object.entries(spec.modifiers ?? {});
     bytes.push(activeMods.length & 0xff);
@@ -96,6 +102,12 @@ export function decodeCustomGame(code) {
         regionType = REGION_KEYS[rIdx] ?? "classic";
     }
 
+    let mode = "normal";
+    if (version >= 3) {
+        const mIdx = read();
+        mode = MODE_KEYS[mIdx] ?? "normal";
+    }
+
     const modCount = read();
     const modifiers = {};
     for (let m = 0; m < modCount; m++) {
@@ -121,7 +133,7 @@ export function decodeCustomGame(code) {
         regionMap = generateRandomRegionMap(new PRNG(seed));
     }
 
-    return { difficulty, seed, modifiers, regionType, regionMap };
+    return { difficulty, seed, modifiers, regionType, regionMap, mode };
 }
 
 export function validateCode(code) {

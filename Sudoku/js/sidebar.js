@@ -585,13 +585,39 @@ function buildTechniquesDropdown(techniques) {
 // ─────────────────────────────────────────────────────────────────────────────
 // WIN PANEL
 // ─────────────────────────────────────────────────────────────────────────────
-export function showWinPanel(sidebar, meta, totalMs, onPlayAnother, onPuzzleSelect) {
-    transitionPanel(sidebar, buildWinPanel(meta, totalMs, onPlayAnother, onPuzzleSelect));
+export function showWinPanel(root, meta, totalMs, onPlayAnother, onPuzzleSelect) {
+    document.getElementById("win-overlay")?.remove();
+    document.getElementById("win-backdrop")?.remove();
+
+    const backdrop = document.createElement("div");
+    backdrop.id = "win-backdrop";
+    backdrop.className = "popup-backdrop";
+
+    const overlay = document.createElement("div");
+    overlay.id = "win-overlay";
+    overlay.className = "custom-game-popup win-panel-popup";
+
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "popup-close-btn";
+    closeBtn.textContent = "✕";
+    const closePopup = () => {
+        overlay.remove();
+        backdrop.remove();
+    };
+    closeBtn.addEventListener("click", closePopup);
+    backdrop.addEventListener("click", closePopup);
+
+    const content = buildWinPanel(meta, totalMs, onPlayAnother, onPuzzleSelect);
+    overlay.appendChild(closeBtn);
+    overlay.appendChild(content);
+
+    document.body.appendChild(backdrop);
+    document.body.appendChild(overlay);
 }
 
 function buildWinPanel(meta, totalMs, onPlayAnother, onPuzzleSelect) {
     const el = document.createElement("div");
-    el.className = "sidebar-panel win-panel";
+    el.className = "win-panel-content";
 
     const trophy = document.createElement("div");
     trophy.className = "win-trophy";
@@ -624,7 +650,11 @@ function buildWinPanel(meta, totalMs, onPlayAnother, onPuzzleSelect) {
     const playAnotherBtn = document.createElement("button");
     playAnotherBtn.className = "win-btn win-btn--primary";
     playAnotherBtn.textContent = "Play another puzzle";
-    playAnotherBtn.addEventListener("click", onPuzzleSelect);
+    playAnotherBtn.addEventListener("click", () => {
+        document.getElementById("win-overlay")?.remove();
+        document.getElementById("win-backdrop")?.remove();
+        onPuzzleSelect();
+    });
 
     // Find the next puzzle in sequence to suggest
     const nextMeta = getNextPuzzleMeta(meta);
@@ -632,7 +662,11 @@ function buildWinPanel(meta, totalMs, onPlayAnother, onPuzzleSelect) {
         const nextBtn = document.createElement("button");
         nextBtn.className = "win-btn win-btn--secondary";
         nextBtn.textContent = `Try: ${nextMeta.type === "daily" ? "Daily " + nextMeta.label : nextMeta.label}`;
-        nextBtn.addEventListener("click", () => onPlayAnother(nextMeta));
+        nextBtn.addEventListener("click", () => {
+            document.getElementById("win-overlay")?.remove();
+            document.getElementById("win-backdrop")?.remove();
+            onPlayAnother(nextMeta);
+        });
         actions.appendChild(nextBtn);
     }
 
@@ -685,13 +719,14 @@ function getNextPuzzleMeta(currentMeta) {
 // ─────────────────────────────────────────────────────────────────────────────
 // PUZZLE SELECT PANEL
 // ─────────────────────────────────────────────────────────────────────────────
-export function showPuzzleSelect(sidebar, onChosen) {
-    transitionPanel(sidebar, buildPuzzleSelect(onChosen));
+export function showPuzzleSelect(container, onChosen) {
+    container.innerHTML = "";
+    container.appendChild(buildPuzzleSelect(onChosen));
 }
 
 function buildPuzzleSelect(onChosen) {
     const el = document.createElement("div");
-    el.className = "sidebar-panel";
+    el.className = "puzzle-select-panel";
 
     // Heading row — title left, actions right
     const headingRow = document.createElement("div");
@@ -790,7 +825,8 @@ function buildSavedCustomGames(onChosen) {
                 modifiers: spec.modifiers,
                 code: game.code,
                 regionType: spec.regionType,
-                regionMap: spec.regionMap
+                regionMap: spec.regionMap,
+                mode: spec.mode
             };
 
             const completed = isCompleted(meta);
@@ -824,8 +860,8 @@ function buildSavedCustomGames(onChosen) {
                     e.stopPropagation();
                     if (confirm("Reset progress for this custom puzzle?")) {
                         clearState(meta);
-                        const sidebar = btn.closest(".sidebar");
-                        if (sidebar) showPuzzleSelect(sidebar, onChosen);
+                        const container = btn.closest("#puzzle-select-area");
+                        if (container) showPuzzleSelect(container, onChosen);
                     }
                 });
                 badge.appendChild(dismissBtn);
@@ -894,8 +930,8 @@ function buildDailyChallengeCard(onChosen) {
             e.stopPropagation();
             if (confirm("Reset progress for the Daily Challenge?")) {
                 clearState(meta);
-                const sidebar = btn.closest(".sidebar");
-                if (sidebar) showPuzzleSelect(sidebar, onChosen);
+                const container = btn.closest("#puzzle-select-area");
+                if (container) showPuzzleSelect(container, onChosen);
             }
         });
         badge.appendChild(dismissBtn);
@@ -1027,10 +1063,11 @@ function buildPuzzleGrid(puzzles, onChosen, limit = 0) {
                 e.stopPropagation();
                 if (confirm("Reset progress for this puzzle?")) {
                     clearState(resolvedMeta);
-                    const sidebar = card.closest(".sidebar");
-                    if (sidebar) showPuzzleSelect(sidebar, onChosen);
+                    const container = card.closest("#puzzle-select-area");
+                    if (container) showPuzzleSelect(container, onChosen);
                 }
             });
+
             status.appendChild(dismissBtn);
         } else {
             status.textContent = puzzle.difficulty_label || "";
@@ -1321,9 +1358,13 @@ function showCustomGamePopup(onChosen) {
     const REGION_KEYS = ["classic", "chaos"];
     const REGION_LABELS = { classic: "Classic (3x3)", chaos: "Chaos" };
 
+    const MODE_KEYS = ["normal", "reconstruction"];
+    const MODE_LABELS = { normal: "Standard", reconstruction: "Reconstruction" };
+
     // State for the popup
     let popupDifficulty = "medium";
     let popupRegionType = "classic";
+    let popupMode = "normal";
     let popupSeed = Math.floor(Math.random() * 999999) + 1;
     let popupMods = {};
     let generatedCode = null;
@@ -1357,6 +1398,41 @@ function showCustomGamePopup(onChosen) {
 
         const body = document.createElement("div");
         body.className = "popup-body";
+
+        // Game Mode picker
+        const modeRow = document.createElement("div");
+        modeRow.className = "popup-field";
+        const modeLabel = document.createElement("div");
+        modeLabel.className = "popup-field-label";
+        modeLabel.textContent = "Game Mode";
+        const modeBtns = document.createElement("div");
+        modeBtns.className = "popup-diff-btns";
+        for (const mk of MODE_KEYS) {
+            const b = document.createElement("button");
+            b.className = `popup-diff-btn${popupMode === mk ? " active" : ""}`;
+            b.textContent = MODE_LABELS[mk];
+            b.addEventListener("click", () => {
+                popupMode = mk;
+                if (mk === "reconstruction") {
+                    // Disable incompatible modifiers
+                    const incompatible = ["decaying", "living", "fragile", "auto-candidate-start", "no-candidates", "candidate-only", "ordered", "small-notepad"];
+                    for (const k of incompatible) delete popupMods[k];
+                }
+                generatedCode = null;
+                renderPopup();
+            });
+            modeBtns.appendChild(b);
+        }
+        modeRow.appendChild(modeLabel);
+        modeRow.appendChild(modeBtns);
+        if (popupMode === "reconstruction") {
+            const hint = document.createElement("div");
+            hint.className = "popup-field-hint";
+            hint.style.marginTop = "4px";
+            hint.textContent = "Rebuild the grid using polyomino pieces. Sudoku rules apply during placement.";
+            modeRow.appendChild(hint);
+        }
+        body.appendChild(modeRow);
 
         // Difficulty picker
         const diffRow = document.createElement("div");
@@ -1442,12 +1518,36 @@ function showCustomGamePopup(onChosen) {
             const active = !!popupMods[mod.key];
             const tile = document.createElement("div");
             tile.className = `popup-mod-tile${active ? " active" : ""}`;
+            
+            const reconstructionIncompatible = ["decaying", "living", "fragile", "auto-candidate-start", "no-candidates", "candidate-only", "ordered", "small-notepad"].includes(mod.key);
+
             if (mod.classicOnly && popupRegionType !== "classic") {
                 tile.classList.add("popup-mod-tile--limited");
+            } else if (reconstructionIncompatible && popupMode === "reconstruction") {
+                tile.classList.add("popup-mod-tile--limited");
+                // We'll customize the text via CSS later or just append a span
+                const lock = document.createElement("span");
+                lock.style.fontSize = "0.65rem";
+                lock.style.color = "var(--error-text)";
+                lock.style.fontWeight = "bold";
+                lock.style.marginLeft = "auto";
+                lock.textContent = "Standard Only";
+                // We'll append it to the header
             }
+
             const tileHeader = document.createElement("div");
             tileHeader.className = "popup-mod-tile-header";
             tileHeader.innerHTML = `<span>${mod.icon} ${mod.label}</span>`;
+            
+            if (reconstructionIncompatible && popupMode === "reconstruction") {
+                const lock = document.createElement("span");
+                lock.style.fontSize = "0.65rem";
+                lock.style.color = "var(--error-text)";
+                lock.style.fontWeight = "bold";
+                lock.textContent = " Standard Only";
+                tileHeader.querySelector("span").appendChild(lock);
+            }
+
             const toggleBtn = document.createElement("button");
             toggleBtn.className = `modifier-toggle-btn${active ? " modifier-toggle-btn--on" : ""}`;
             toggleBtn.textContent = active ? "On" : "Off";
@@ -1495,6 +1595,7 @@ function showCustomGamePopup(onChosen) {
                 if (active) {
                     delete popupMods[mod.key];
                 } else {
+                    if (reconstructionIncompatible && popupMode === "reconstruction") return;
                     for (const k of (mod.incompatible ?? [])) delete popupMods[k];
                     if (mod.classicOnly && popupRegionType !== "classic") {
                         popupRegionType = "classic";
@@ -1525,7 +1626,8 @@ function showCustomGamePopup(onChosen) {
                     meta: {
                         difficulty: popupDifficulty,
                         modifiers: popupMods,
-                        regionType: popupRegionType
+                        regionType: popupRegionType,
+                        mode: popupMode
                     }
                 });
                 popupSeed = Math.max(1, Number(seedInput?.value) || popupSeed);
@@ -1533,7 +1635,8 @@ function showCustomGamePopup(onChosen) {
                     difficulty: popupDifficulty, 
                     seed: popupSeed, 
                     modifiers: popupMods,
-                    regionType: popupRegionType 
+                    regionType: popupRegionType,
+                    mode: popupMode
                 });
                 renderPopup();
             });
@@ -1570,7 +1673,7 @@ function showCustomGamePopup(onChosen) {
             playBtn.className = "popup-play-btn";
             playBtn.textContent = "▶ Play Now";
             playBtn.addEventListener("click", () => {
-                const { regionMap } = decodeCustomGame(generatedCode);
+                const { regionMap, mode } = decodeCustomGame(generatedCode);
                 closePopup();
                 onChosen({
                     type: "custom",
@@ -1582,7 +1685,8 @@ function showCustomGamePopup(onChosen) {
                     modifiers: { ...popupMods },
                     code: generatedCode,
                     regionType: popupRegionType,
-                    regionMap
+                    regionMap,
+                    mode
                 });
             });
 
@@ -1641,7 +1745,8 @@ function buildCustomGameInput(onChosen) {
                 modifiers: spec.modifiers,
                 code,
                 regionType: spec.regionType,
-                regionMap: spec.regionMap
+                regionMap: spec.regionMap,
+                mode: spec.mode
             });
             input.value = "";
         } catch (e) {
