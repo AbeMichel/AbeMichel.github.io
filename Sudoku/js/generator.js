@@ -740,6 +740,7 @@ class HumanSolver {
 }
 
 export function getRequiredTechniquesForPuzzle(board, regionMap = DEFAULT_REGION_MAP) {
+  if (!board) return [];
   const solver = new HumanSolver(regionMap);
   const bb = new BitmaskBoard(regionMap);
   for (let r = 0; r < 9; r++) {
