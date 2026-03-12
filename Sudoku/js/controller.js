@@ -76,8 +76,13 @@ export function attachController(root, getState, setState, rerender, getMods, on
             }
             if (action === "clear") { setState(placeNumber(getState(), 0)); rerender(); }
             if (action === "auto-candidates") {
-                if (!isModifierActive(mods, "no-candidates") && !isModifierActive(mods, "candidate-only")) {
-                    setState(toggleAutoCandidates(getState())); rerender();
+                const state = getState();
+                if (state.mode === "reconstruction") {
+                    setState(toggleAutoCandidates(state));
+                    rerender();
+                } else if (!isModifierActive(mods, "no-candidates") && !isModifierActive(mods, "candidate-only")) {
+                    setState(toggleAutoCandidates(state));
+                    rerender();
                 }
             }
         }
@@ -96,6 +101,7 @@ export function attachController(root, getState, setState, rerender, getMods, on
             let originalPlacedPos = null;
             let originalRotation = 0;
             let originalMirrored = false;
+            let dragStartBoard = state.board;
 
             if (pieceEl) {
                 pieceId = Number(pieceEl.dataset.pieceId);
@@ -117,8 +123,8 @@ export function attachController(root, getState, setState, rerender, getMods, on
                             originalPlacedPos = { ...piece.placedPos };
                         }
                     }
-                    // If picking up from board, remove it first
-                    setState(removePiece(state, pieceId));
+                    // If picking up from board, remove it first WITHOUT history update
+                    setState(removePiece(state, pieceId, false));
                 }
             }
 
@@ -150,7 +156,8 @@ export function attachController(root, getState, setState, rerender, getMods, on
                         dragGrabOffset: grabOffset,
                         dragOriginalPos: originalPlacedPos,
                         dragOriginalRotation: originalRotation,
-                        dragOriginalMirrored: originalMirrored
+                        dragOriginalMirrored: originalMirrored,
+                        dragStartBoard: dragStartBoard
                     }
                 });
                 rerender();
@@ -208,7 +215,7 @@ export function attachController(root, getState, setState, rerender, getMods, on
         if (!state || !state.reconstruction || !state.reconstruction.dragPieceId) return;
         document.body.classList.remove("is-dragging");
 
-        const { dragPieceId, dragSnapPos, dragOriginalPos, dragOriginalRotation, dragOriginalMirrored } = state.reconstruction;
+        const { dragPieceId, dragSnapPos, dragOriginalPos, dragOriginalRotation, dragOriginalMirrored, dragStartBoard } = state.reconstruction;
 
         let nextState = {
             ...state,
@@ -220,17 +227,27 @@ export function attachController(root, getState, setState, rerender, getMods, on
                 dragGrabOffset: null,
                 dragOriginalPos: null,
                 dragOriginalRotation: null,
-                dragOriginalMirrored: null
+                dragOriginalMirrored: null,
+                dragStartBoard: null
             }
         };
 
         const pieceElAtUp = document.elementFromPoint(e.clientX, e.clientY);
         const droppedInTray = pieceElAtUp?.closest("#piece-tray");
 
+        let historyCommitted = false;
+
         if (dragSnapPos && !droppedInTray) {
-            const resultState = placePiece(nextState, dragPieceId, dragSnapPos.r, dragSnapPos.c);
+            // Try placing without internal history push
+            const resultState = placePiece(nextState, dragPieceId, dragSnapPos.r, dragSnapPos.c, false);
             if (resultState !== nextState) {
-                nextState = resultState;
+                // SUCCESS: Manually push dragStartBoard to history
+                nextState = {
+                    ...resultState,
+                    history: [...resultState.history, dragStartBoard],
+                    future: []
+                };
+                historyCommitted = true;
             } else if (dragOriginalPos) {
                 // If invalid but was previously on board, put it back with original orientation
                 let restoredState = nextState;
@@ -243,10 +260,11 @@ export function attachController(root, getState, setState, rerender, getMods, on
                         )
                     }
                 };
-                const finalState = placePiece(restoredState, dragPieceId, dragOriginalPos.r, dragOriginalPos.c);
+                // Put back in original spot (No history because it's a revert)
+                const finalState = placePiece(restoredState, dragPieceId, dragOriginalPos.r, dragOriginalPos.c, false);
                 if (finalState) nextState = finalState;
             } else {
-                // If invalid and came from tray, restore original orientation (in tray)
+                // Invalid and came from tray, restore orientation in tray
                 nextState = {
                     ...nextState,
                     reconstruction: {
@@ -259,16 +277,32 @@ export function attachController(root, getState, setState, rerender, getMods, on
             }
         } else {
             // Dropped in tray or off-board
-            // Restore original orientation (in tray)
-            nextState = {
-                ...nextState,
-                reconstruction: {
-                    ...nextState.reconstruction,
-                    pieces: nextState.reconstruction.pieces.map(p => 
-                        p.id === dragPieceId ? { ...p, rotation: dragOriginalRotation, mirrored: dragOriginalMirrored } : p
-                    )
-                }
-            };
+            if (dragOriginalPos) {
+                // It moved from board to tray -> This IS a change, commit it
+                nextState = {
+                    ...nextState,
+                    history: [...nextState.history, dragStartBoard],
+                    future: [],
+                    reconstruction: {
+                        ...nextState.reconstruction,
+                        pieces: nextState.reconstruction.pieces.map(p => 
+                            p.id === dragPieceId ? { ...p, rotation: dragOriginalRotation, mirrored: dragOriginalMirrored } : p
+                        )
+                    }
+                };
+                historyCommitted = true;
+            } else {
+                // It was already in tray and returned to tray -> No change
+                nextState = {
+                    ...nextState,
+                    reconstruction: {
+                        ...nextState.reconstruction,
+                        pieces: nextState.reconstruction.pieces.map(p => 
+                            p.id === dragPieceId ? { ...p, rotation: dragOriginalRotation, mirrored: dragOriginalMirrored } : p
+                        )
+                    }
+                };
+            }
         }
 
         setState(nextState);

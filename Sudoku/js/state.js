@@ -344,7 +344,7 @@ export function placeNumber(state, number) {
     return { ...state, board: newBoard, history: newHistory, future: [], mistakes: newMistakes };
 }
 
-export function placePiece(state, pieceId, r, c) {
+export function placePiece(state, pieceId, r, c, addToHistory = true) {
     if (!state.reconstruction) return state;
 
     const piece = state.reconstruction.pieces.find(p => p.id === pieceId);
@@ -368,7 +368,11 @@ export function placePiece(state, pieceId, r, c) {
         newBoard[targetR][targetC].pieceId = pieceId;
     }
 
-    const newHistory = [...state.history, state.board];
+    if (state.autoCandidates) {
+        applyAutoCandidates(newBoard, state.regionMap);
+    }
+
+    const newHistory = addToHistory ? [...state.history, state.board] : state.history;
     return {
         ...state,
         board: newBoard,
@@ -378,7 +382,7 @@ export function placePiece(state, pieceId, r, c) {
     };
 }
 
-export function removePiece(state, pieceId) {
+export function removePiece(state, pieceId, addToHistory = true) {
     if (!state.reconstruction) return state;
 
     const piece = state.reconstruction.pieces.find(p => p.id === pieceId);
@@ -402,7 +406,11 @@ export function removePiece(state, pieceId) {
         newBoard[targetR][targetC].pieceId = null;
     }
 
-    const newHistory = [...state.history, state.board];
+    if (state.autoCandidates) {
+        applyAutoCandidates(newBoard, state.regionMap);
+    }
+
+    const newHistory = addToHistory ? [...state.history, state.board] : state.history;
     return {
         ...state,
         board: newBoard,

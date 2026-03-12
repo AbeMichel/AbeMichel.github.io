@@ -347,6 +347,20 @@ function renderPieceTray(state) {
     gameActions.appendChild(createBtn("reset", resetIcon, "Reset", "header-btn--reset"));
     tray.appendChild(gameActions);
 
+    // 1.5 Auto Candidates toggle (centered below main actions)
+    const extraActions = document.createElement("div");
+    extraActions.className = "puzzle-controls-extra";
+    extraActions.style.justifyContent = "center";
+    extraActions.style.marginBottom = "1rem";
+    
+    const autoBtn = document.createElement("button");
+    autoBtn.textContent = "Auto Candidates";
+    autoBtn.dataset.action = "auto-candidates";
+    autoBtn.className = "mode-btn";
+    if (state.autoCandidates) autoBtn.classList.add("active");
+    extraActions.appendChild(autoBtn);
+    tray.appendChild(extraActions);
+
     // 2. Scrolling Piece Container
     const scrollArea = document.createElement("div");
     scrollArea.className = "piece-tray-scroll";
