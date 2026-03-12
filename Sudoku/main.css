@@ -611,10 +611,6 @@ body.dark-mode .puzzle-card-badge--chaos {
     border-color: var(--warning-border);
 }
 
-.achievement-pill--unlocked::before {
-    content: "🏆";
-}
-
 .layout {
     display: grid;
     grid-template-columns: 2fr 1fr;

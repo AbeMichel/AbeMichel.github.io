@@ -110,13 +110,12 @@ function getEventContext(extra = {}) {
     if (!activeMeta || !state) return extra;
     const elapsed = (state.startTime ? (Date.now() - state.startTime) : 0) + (state._priorElapsed || 0);
     return {
-        puzzle: activeMeta,
-        solveTime: elapsed,
-        mistakes: state.mistakes || 0,
-        hintsUsed: _hintsUsedInSession,
-        modifiers: activeMods,
-        difficulty: activeMeta.difficulty,
-        isChaos: activeMeta.regionType === "chaos",
+        meta: { ...activeMeta, modifiers: { ...activeMods } },
+        state: state,
+        elapsedMs: elapsed,
+        settings: getSettings(),
+        hintsUsedInSession: _hintsUsedInSession,
+        totalPauseMs: _totalPauseMs,
         ...extra
     };
 }
@@ -181,11 +180,7 @@ function setState(newState) {
             const techniques = getRequiredTechniquesForPuzzle(state.original, state.regionMap);
 
             evaluateAchievements(ACHIEVEMENT_EVENTS.PUZZLE_COMPLETED, getEventContext({ 
-                solveTime: totalMs,
-                totalPauseMs: _totalPauseMs,
-                techniques,
-                settings: getSettings(),
-                hintsUsedInSession: _hintsUsedInSession
+                techniques
             }));
 
             if (!isCompleted(activeMeta)) {
@@ -401,13 +396,9 @@ export async function loadPuzzle(meta, options = {}) {
     _pauseStartTime = null;
 
     evaluateAchievements(ACHIEVEMENT_EVENTS.PUZZLE_STARTED, { 
-        puzzle: meta,
-        solveTime: 0,
-        mistakes: 0,
-        hintsUsed: 0,
-        modifiers: meta.modifiers || {},
-        difficulty: meta.difficulty,
-        isChaos: (meta.regionType === "chaos")
+        meta,
+        elapsedMs: 0,
+        state: null
     });
 
     // Resolve the canonical seed for random puzzles so storage keys are stable

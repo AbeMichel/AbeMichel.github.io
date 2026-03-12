@@ -1522,9 +1522,11 @@ function showCustomGamePopup(onChosen) {
             genBtn.textContent = "Generate Code";
             genBtn.addEventListener("click", () => {
                 evaluateAchievements(ACHIEVEMENT_EVENTS.PUZZLE_CREATED, {
-                    difficulty: popupDifficulty,
-                    modifiers: popupMods,
-                    isChaos: (popupRegionType === "chaos")
+                    meta: {
+                        difficulty: popupDifficulty,
+                        modifiers: popupMods,
+                        regionType: popupRegionType
+                    }
                 });
                 popupSeed = Math.max(1, Number(seedInput?.value) || popupSeed);
                 generatedCode = encodeCustomGame({ 
@@ -1872,10 +1874,7 @@ export function showSharePopup(meta) {
     copyUrlBtn.textContent = "Copy";
     copyUrlBtn.addEventListener("click", () => {
         evaluateAchievements(ACHIEVEMENT_EVENTS.PUZZLE_SHARED, {
-            puzzle: meta,
-            modifiers: meta.modifiers || {},
-            difficulty: meta.difficulty,
-            isChaos: (meta.regionType === "chaos")
+            meta
         });
         navigator.clipboard.writeText(fullUrl).then(() => {
             copyUrlBtn.textContent = "Copied!";
@@ -1902,10 +1901,7 @@ export function showSharePopup(meta) {
     copyCodeBtn.textContent = "Copy";
     copyCodeBtn.addEventListener("click", () => {
         evaluateAchievements(ACHIEVEMENT_EVENTS.PUZZLE_SHARED, {
-            puzzle: meta,
-            modifiers: meta.modifiers || {},
-            difficulty: meta.difficulty,
-            isChaos: (meta.regionType === "chaos")
+            meta
         });
         navigator.clipboard.writeText(code).then(() => {
             copyCodeBtn.textContent = "Copied!";
