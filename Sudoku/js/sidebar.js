@@ -1737,7 +1737,7 @@ function buildCustomGameInput(onChosen) {
             errorEl.hidden = true;
             onChosen({
                 type: "custom",
-                key: `custom:${code}`,
+                key: "shared",
                 label: `Custom · ${DIFFICULTY_LABELS[spec.difficulty]}`,
                 difficulty: spec.difficulty,
                 difficulty_label: DIFFICULTY_LABELS[spec.difficulty],
