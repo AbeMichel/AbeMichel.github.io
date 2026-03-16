@@ -9,8 +9,10 @@ export class SudokuRecon extends LitElement {
   static properties = {
     gameState: { type: Object },
     uiState: { type: Object },
+    multiplayerState: { type: Object },
     modifiers: { type: Object },
     settingsState: { type: Object },
+    multiplayerState: { type: Object },
     _dragAnimClass: { type: String }
   };
 
@@ -196,6 +198,13 @@ export class SudokuRecon extends LitElement {
           }
           
           const regionColor = (this.settingsState?.regionColors) ? getRegionColor(cell.region) : '';
+          const flashType = this.uiState.flashingCells?.[cell.id] || '';
+
+          let placedByColor = '';
+          if (this.multiplayerState?.mpMode === 'CO_OP' && this.settingsState?.showPlayerColors && cell.placedBy) {
+            const peer = this.multiplayerState.peers.find(p => p.id === cell.placedBy);
+            if (peer) placedByColor = peer.color;
+          }
 
           return html`
             <sudoku-cell
@@ -205,6 +214,8 @@ export class SudokuRecon extends LitElement {
               .fixed="${cell.fixed}"
               .regionIndex="${cell.region}"
               .regionColor="${regionColor}"
+              .flashType="${flashType}"
+              .placedByColor="${placedByColor}"
               .pieceColor="${piece?.color || ''}"
               .pieceBorderClasses="${pieceBorderClasses}"
               ?selected="${this.uiState.selectedId === cell.id}"

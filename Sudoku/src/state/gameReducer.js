@@ -76,7 +76,7 @@ export const gameReducer = (state = defaultState, action) => {
         seed: resolvedSeed,
         difficulty: resolvedDifficulty,
         mode: resolvedMode,
-        cells: resolvedMode === 'RECONSTRUCTION' ? cells.map(c => ({ ...c, v: 0, fixed: false })) : cells,
+        cells: (resolvedMode === 'RECONSTRUCTION' ? cells.map(c => ({ ...c, v: 0, fixed: false })) : cells).map(c => ({ ...c, placedBy: null })),
         regions,
         pieces,
         reconConstraints,
@@ -99,10 +99,10 @@ export const gameReducer = (state = defaultState, action) => {
     case Actions.GAME.WIN:
       return { ...state, status: 'WON' };
     case Actions.BOARD.SET_VALUE: {
-      const { id, value } = action.payload;
+      const { id, value, peerId } = action.payload;
       const newCells = state.cells.map(cell => {
         if (cell.id === id && !cell.fixed) {
-          return { ...cell, v: value };
+          return { ...cell, v: value, placedBy: peerId };
         }
         return cell;
       });
@@ -124,9 +124,20 @@ export const gameReducer = (state = defaultState, action) => {
     }
     case Actions.BOARD.CLEAR_CELL: {
       const { id } = action.payload;
+      const peerId = action._mp?.peerId || null;
       const newCells = state.cells.map(cell => {
         if (cell.id === id && !cell.fixed) {
-          return { ...cell, v: 0, c: [] };
+          return { ...cell, v: 0, c: [], placedBy: peerId };
+        }
+        return cell;
+      });
+      return { ...state, cells: newCells };
+    }
+    case Actions.BOARD.CLEAR_PLACED_BY: {
+      const { id } = action.payload;
+      const newCells = state.cells.map(cell => {
+        if (cell.id === id) {
+          return { ...cell, placedBy: null };
         }
         return cell;
       });

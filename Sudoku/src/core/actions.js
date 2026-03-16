@@ -4,6 +4,7 @@ export const Actions = Object.freeze({
     SET_CANDIDATE: 'BOARD/SET_CANDIDATE',
     CLEAR_CELL: 'BOARD/CLEAR_CELL',
     MOVE_PIECE: 'BOARD/MOVE_PIECE',
+    CLEAR_PLACED_BY: 'BOARD/CLEAR_PLACED_BY',
   },
   GAME: {
     START: 'GAME/START',
@@ -21,6 +22,8 @@ export const Actions = Object.freeze({
     SET_VIEW: 'UI/SET_VIEW',
     OPEN_MODAL: 'UI/OPEN_MODAL',
     CLOSE_MODAL: 'UI/CLOSE_MODAL',
+    FLASH_CELL: 'UI/FLASH_CELL',
+    CLEAR_FLASH: 'UI/CLEAR_FLASH',
   },
   MP: {
     CONNECT: 'MP/CONNECT',
@@ -28,6 +31,12 @@ export const Actions = Object.freeze({
     PEER_LEFT: 'MP/PEER_LEFT',
     PEER_SYNC: 'MP/PEER_SYNC',
     DISCONNECT: 'MP/DISCONNECT',
+    SET_PLAYER_NAME: 'MP/SET_PLAYER_NAME',
+    SET_STATUS: 'MP/SET_STATUS',
+    SET_OPPONENT_BOARD: 'MP/SET_OPPONENT_BOARD',
+    ACTION_REJECTED: 'MP/ACTION_REJECTED',
+    SYNC_STATE: 'MP/SYNC_STATE',
+    GUEST_CONFIRM: 'MP/GUEST_CONFIRM',
   },
   MOD: {
     TRIGGER: 'MOD/TRIGGER',
@@ -58,6 +67,7 @@ export const setValueAction = (id, value) => ({ type: Actions.BOARD.SET_VALUE, p
 export const setCandidateAction = (id, value) => ({ type: Actions.BOARD.SET_CANDIDATE, payload: { id, value } });
 export const clearCellAction = (id) => ({ type: Actions.BOARD.CLEAR_CELL, payload: { id } });
 export const movePieceAction = (pieceId, position) => ({ type: Actions.BOARD.MOVE_PIECE, payload: { pieceId, position } });
+export const clearPlacedByAction = (id) => ({ type: Actions.BOARD.CLEAR_PLACED_BY, payload: { id } });
 
 // Game Actions
 export const startGameAction = (seed, difficulty, mode) => ({ type: Actions.GAME.START, payload: { seed, difficulty, mode } });
@@ -75,13 +85,30 @@ export const setInputModeAction = (mode) => ({ type: Actions.UI.SET_INPUT_MODE, 
 export const setViewAction = (view) => ({ type: Actions.UI.SET_VIEW, payload: { view } });
 export const openModalAction = (modal) => ({ type: Actions.UI.OPEN_MODAL, payload: { modal } });
 export const closeModalAction = () => ({ type: Actions.UI.CLOSE_MODAL });
+export const flashCellAction = (id, flashType = 'conflict') => ({ type: Actions.UI.FLASH_CELL, payload: { id, flashType } });
+export const clearFlashAction = (id) => ({ type: Actions.UI.CLEAR_FLASH, payload: { id } });
 
 // MP Actions
-export const mpConnectAction = (peerId) => ({ type: Actions.MP.CONNECT, payload: { peerId } });
-export const mpPeerJoinedAction = (peerId, name) => ({ type: Actions.MP.PEER_JOINED, payload: { peerId, name } });
+export const mpConnectAction = (peerId, isHost, playerName, roomCode) => ({ 
+  type: Actions.MP.CONNECT, 
+  payload: { peerId, isHost, playerName, roomCode } 
+});
+export const mpPeerJoinedAction = (peerId, name, isHost = false) => ({ 
+  type: Actions.MP.PEER_JOINED, 
+  payload: { peerId, name, isHost } 
+});
 export const mpPeerLeftAction = (peerId) => ({ type: Actions.MP.PEER_LEFT, payload: { peerId } });
 export const mpPeerSyncAction = (action) => ({ type: Actions.MP.PEER_SYNC, payload: { action } });
 export const mpDisconnectAction = () => ({ type: Actions.MP.DISCONNECT });
+export const mpSetPlayerNameAction = (name) => ({ type: Actions.MP.SET_PLAYER_NAME, payload: { name } });
+export const mpSetStatusAction = (status) => ({ type: Actions.MP.SET_STATUS, payload: { status } });
+export const mpSetOpponentBoardAction = (peerId, filledCount, totalCells) => ({ 
+  type: Actions.MP.SET_OPPONENT_BOARD, 
+  payload: { peerId, filledCount, totalCells } 
+});
+export const mpActionRejectedAction = (cellId) => ({ type: Actions.MP.ACTION_REJECTED, payload: { cellId } });
+export const mpSyncStateAction = (gameState) => ({ type: Actions.MP.SYNC_STATE, payload: { gameState } });
+export const mpGuestConfirmAction = (peerId, confirmed) => ({ type: Actions.MP.GUEST_CONFIRM, payload: { peerId, confirmed } });
 
 // Modifier Actions
 export const modTriggerAction = (modifierId, payload) => ({ type: Actions.MOD.TRIGGER, payload: { modifierId, ...payload } });

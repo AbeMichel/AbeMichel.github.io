@@ -1,6 +1,9 @@
 import { LitElement, html, css } from 'https://esm.sh/lit@3';
 import './board-container.js';
+import './mp-lobby.js';
+import './mp-player-list.js';
 import { getActiveModifiers } from '../modifiers/registry.js';
+import { createRoom, joinRoom } from '../services/multiplayerClient.js';
 
 let _store = null;
 export function setStore(storeInstance) {
@@ -15,7 +18,8 @@ export class AppRoot extends LitElement {
     gameState: { type: Object },
     uiState: { type: Object },
     modifiersState: { type: Object },
-    settingsState: { type: Object }
+    settingsState: { type: Object },
+    multiplayerState: { type: Object }
   };
 
   static styles = css`
@@ -44,6 +48,12 @@ export class AppRoot extends LitElement {
       justify-content: center;
       flex: 1;
     }
+
+    button {
+      margin: 0.5rem;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+    }
   `;
 
   constructor() {
@@ -52,6 +62,7 @@ export class AppRoot extends LitElement {
     this.uiState = {};
     this.modifiersState = {};
     this.settingsState = {};
+    this.multiplayerState = {};
   }
 
   connectedCallback() {
@@ -67,6 +78,7 @@ export class AppRoot extends LitElement {
       this.uiState = state.ui;
       this.modifiersState = state.modifiers;
       this.settingsState = state.settings;
+      this.multiplayerState = state.multiplayer;
 
       if (action && action.type === 'GAME/START') {
         _store.registerModifiers(getActiveModifiers(state.modifiers.active));
@@ -78,6 +90,7 @@ export class AppRoot extends LitElement {
     this.uiState = state.ui;
     this.modifiersState = state.modifiers;
     this.settingsState = state.settings;
+    this.multiplayerState = state.multiplayer;
     
     if (this.gameState.cells && this.gameState.cells.length > 0) {
       _store.registerModifiers(getActiveModifiers(this.modifiersState.active));
@@ -113,10 +126,27 @@ export class AppRoot extends LitElement {
         seed: config.seed || null,
         chaos: config.chaos || false,
         modifiers: config.modifiers || [],
-        clues: config.clues || null
+        clues: config.clues || null,
+        mpMode: config.mpMode || null
       }
     });
     _store.dispatch({ type: 'UI/SET_VIEW', payload: { view: 'GAME' } });
+  }
+
+  async _hostGame() {
+    const name = prompt('Enter your name:', 'Host');
+    if (!name) return;
+    await createRoom(name, 'CO_OP', { difficulty: 'MEDIUM' });
+    _store.dispatch({ type: 'UI/SET_VIEW', payload: { view: 'LOBBY' } });
+  }
+
+  async _joinGame() {
+    const name = prompt('Enter your name:', 'Guest');
+    if (!name) return;
+    const code = prompt('Enter room code:');
+    if (!code) return;
+    await joinRoom(code, name);
+    _store.dispatch({ type: 'UI/SET_VIEW', payload: { view: 'LOBBY' } });
   }
 
   _onDispatchAction(e) {
@@ -148,21 +178,46 @@ export class AppRoot extends LitElement {
           <button @click="${() => this._startGame({ mode: 'RECONSTRUCTION' })}">
             Start Reconstruction
           </button>
+          <hr style="width: 80%; margin: 1rem 0;">
+          <button @click="${this._hostGame}">Host Multiplayer</button>
+          <button @click="${this._joinGame}">Join Multiplayer</button>
         </div>
+      `;
+    }
+
+    if (view === 'LOBBY') {
+      return html`
+        <mp-lobby
+          .gameState="${this.gameState}"
+          .uiState="${this.uiState}"
+          .multiplayerState="${this.multiplayerState}"
+          .settingsState="${this.settingsState}"
+          @dispatch-action="${this._onDispatchAction}"
+        ></mp-lobby>
       `;
     }
 
     if (view === 'GAME') {
       return html`
         <div class="hud">
-          <span>Time: ${this._formatTime(this.gameState.timer)}</span>
-          <span>Mistakes: ${this.gameState.mistakes}</span>
+          <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+            <span>Time: ${this._formatTime(this.gameState.timer)}</span>
+            <span>Mistakes: ${this.gameState.mistakes}</span>
+          </div>
+          ${this.multiplayerState?.status === 'PLAYING' || this.multiplayerState?.status === 'LOBBY' ? html`
+            <mp-player-list 
+              compact
+              .peers="${this.multiplayerState.peers}" 
+              .localPeerId="${this.multiplayerState.peerId}"
+            ></mp-player-list>
+          ` : ''}
         </div>
         <board-container 
           .gameState="${this.gameState}"
           .uiState="${this.uiState}"
           .modifiers="${this.modifiersState}"
           .settingsState="${this.settingsState}"
+          .multiplayerState="${this.multiplayerState}"
           @dispatch-action="${this._onDispatchAction}"
         ></board-container>
       `;

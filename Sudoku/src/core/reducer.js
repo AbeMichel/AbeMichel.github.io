@@ -46,7 +46,12 @@ export const rootReducer = (state = {}, action) => {
     history: state.history
   };
 
-  // 2. Modifier Reducer
+  // 2. MP State Sync
+  if (action.type === Actions.MP.SYNC_STATE) {
+    newState.game = action.payload.gameState;
+  }
+
+  // 3. Modifier Reducer
   const modifierState = modifierReducer(state.modifiers, action, newState.game);
   if (modifierState._reorderCells) {
     newState.game = { ...newState.game, cells: modifierState._reorderCells };

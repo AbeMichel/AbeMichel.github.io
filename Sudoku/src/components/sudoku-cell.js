@@ -13,7 +13,9 @@ export class SudokuCell extends LitElement {
     regionIndex: { type: Number },
     regionColor: { type: String },
     pieceColor: { type: String },
-    pieceBorderClasses: { type: Array }
+    pieceBorderClasses: { type: Array },
+    flashType: { type: String },
+    placedByColor: { type: String }
   };
 
   static styles = css`
@@ -28,6 +30,28 @@ export class SudokuCell extends LitElement {
       cursor: pointer;
       user-select: none;
       position: relative;
+    }
+
+    @keyframes flash-conflict {
+      0%   { background-color: var(--cell-conflict-bg, #ffcdd2); }
+      100% { background-color: var(--cell-bg, #f0f0f0); }
+    }
+
+    :host(.flash-conflict) {
+      animation: flash-conflict 0.6s ease-out;
+    }
+
+    :host(.has-player-color)::after {
+      content: '';
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--player-color);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+      z-index: 2;
     }
 
     :host(.region-border-top)    { border-top: 2px solid var(--region-border-color, #333); }
@@ -181,10 +205,18 @@ export class SudokuCell extends LitElement {
       }
     }
     
-    if (changedProperties.has('modClasses') || changedProperties.has('pieceBorderClasses')) {
+    if (changedProperties.has('modClasses') || changedProperties.has('pieceBorderClasses') || changedProperties.has('flashType') || changedProperties.has('placedByColor')) {
       const mods = this.modClasses || [];
       const borders = this.pieceBorderClasses || [];
-      this.className = [...mods, ...borders].join(' ');
+      const flash = this.flashType ? [`flash-${this.flashType}`] : [];
+      const playerColor = this.placedByColor ? ['has-player-color'] : [];
+      this.className = [...mods, ...borders, ...flash, ...playerColor].join(' ');
+      
+      if (this.placedByColor) {
+        this.style.setProperty('--player-color', this.placedByColor);
+      } else {
+        this.style.removeProperty('--player-color');
+      }
     }
   }
 

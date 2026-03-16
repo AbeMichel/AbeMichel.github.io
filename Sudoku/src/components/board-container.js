@@ -8,6 +8,7 @@ export class BoardContainer extends LitElement {
   static properties = {
     gameState: { type: Object },
     uiState: { type: Object },
+    multiplayerState: { type: Object }, 
     modifiers: { type: Object },
     settingsState: { type: Object },
     _boardHeight: { type: Number },
@@ -266,6 +267,7 @@ export class BoardContainer extends LitElement {
               .uiState="${this.uiState}"
               .modifiers="${this.modifiers}"
               .settingsState="${this.settingsState}"
+              .multiplayerState="${this.multiplayerState}"
             ></sudoku-recon>
           </div>
           <div class="tray-area">
@@ -287,6 +289,7 @@ export class BoardContainer extends LitElement {
         .uiState="${this.uiState}"
         .modifiers="${this.modifiers}"
         .settingsState="${this.settingsState}"
+        .multiplayerState="${this.multiplayerState}"
       ></sudoku-board>
     `;
   }

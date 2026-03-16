@@ -2,7 +2,8 @@ import { Actions } from '../core/actions.js';
 
 const defaultState = { 
   darkMode: false, 
-  regionColors: false 
+  regionColors: false,
+  showPlayerColors: true
 };
 
 export const settingsReducer = (state = defaultState, action) => {

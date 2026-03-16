@@ -24,7 +24,6 @@ export const createStore = (reducer, initialState = {}) => {
 
   const dispatch = (action) => {
     let currentAction = action;
-
     // 1. Run all active modifier onAction hooks
     for (const modifier of activeModifiers) {
       if (modifier.onAction) {

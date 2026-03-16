@@ -8,8 +8,10 @@ export class SudokuBoard extends LitElement {
   static properties = {
     gameState: { type: Object },
     uiState: { type: Object },
+    multiplayerState: { type: Object },
     modifiers: { type: Object },
-    settingsState: { type: Object }
+    settingsState: { type: Object },
+    multiplayerState: { type: Object }
   };
 
   static styles = css`
@@ -66,7 +68,14 @@ export class SudokuBoard extends LitElement {
       const actionType = this.uiState?.inputMode === 'CANDIDATE'
         ? 'BOARD/SET_CANDIDATE'
         : 'BOARD/SET_VALUE';
-      this._dispatch({ type: actionType, payload: { id: selectedId, value: parseInt(e.key) } });
+      this._dispatch({ 
+        type: actionType, 
+        payload: { 
+          id: selectedId, 
+          value: parseInt(e.key), 
+          peerId: this.multiplayerState?.peerId || null 
+        } 
+      });
       return;
     }
 
@@ -75,7 +84,13 @@ export class SudokuBoard extends LitElement {
       if (selectedId == null) return;
       const cell = this.gameState?.cells?.[selectedId];
       if (!cell || cell.fixed) return;
-      this._dispatch({ type: 'BOARD/CLEAR_CELL', payload: { id: selectedId } });
+      this._dispatch({ 
+        type: 'BOARD/CLEAR_CELL', 
+        payload: { 
+          id: selectedId,
+          peerId: this.multiplayerState?.peerId || null,
+        } 
+      });
       return;
     }
 
@@ -122,6 +137,13 @@ export class SudokuBoard extends LitElement {
           const allModClasses = [...modifierClasses, ...borderClasses];
           
           const regionColor = (this.settingsState?.regionColors) ? getRegionColor(cell.region) : '';
+          const flashType = this.uiState.flashingCells?.[cell.id] || '';
+
+          let placedByColor = '';
+          if (this.multiplayerState?.mpMode === 'CO_OP' && this.settingsState?.showPlayerColors && cell.placedBy) {
+            const peer = this.multiplayerState.peers.find(p => p.id === cell.placedBy);
+            if (peer) placedByColor = peer.color;
+          }
 
           return html`
             <sudoku-cell
@@ -131,6 +153,8 @@ export class SudokuBoard extends LitElement {
               .fixed="${cell.fixed}"
               .regionIndex="${cell.region}"
               .regionColor="${regionColor}"
+              .flashType="${flashType}"
+              .placedByColor="${placedByColor}"
               ?selected="${this.uiState.selectedId === cell.id}"
               ?highlighted="${highlightedIds.includes(cell.id)}"
               ?conflict="${conflictIds.includes(cell.id)}"
