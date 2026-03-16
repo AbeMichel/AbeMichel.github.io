@@ -1,50 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sudoku by Abe</title>
-    <meta name="keywords" content="sudoku, sudoku generator, sudoku solver, sudoku puzzles, sudoku variants">
-    <meta name="author" content="Abe Michel">
-    <link rel="stylesheet" href="main.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sudoku 2.0</title>
+  <style>
+    :root {
+      /* Board Colors */
+      --board-border-color: #333333;
+      
+      /* Cell States */
+      --cell-bg: #ffffff;
+      --cell-border: #cccccc;
+      --cell-selected-bg: #bbdefb;
+      --cell-selected-outline: #2196f3;
+      --cell-highlight-bg: #e3f2fd;
+      --cell-conflict-bg: #ffcdd2;
+      
+      /* Text Colors */
+      --cell-value-color: #2196f3;
+      --cell-fixed-color: #000000;
+      --cell-conflict-color: #d32f2f;
+      --candidate-color: #777777;
+      
+      /* Global Layout */
+      --bg-color: #f5f5f5;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-color);
+    }
+  </style>
 </head>
 <body>
-    <header class="site-header">
-        <div class="header-left">
-            <div class="header-brand">Sudokus By Abe</div>
-            <div class="header-date" id="header-date"></div>
-        </div>
-        <div id="header-streak" class="header-streak"></div>
-    </header>
-    <div class="layout">
-        <main class="board-area">
-            <div id="puzzle-select-area" class="puzzle-select-area" style="display: none;"></div>
-            <div id="game-area" class="game-area">
-                <header id="game-header" class="game-header"></header>
-                <div class="game-main">
-                    <div class="board-wrapper">
-                        <div id="board-container"></div>
-                    </div>
-                    <section id="controls" class="board-controls"></section>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <script type="module" src="./js/app.js"></script>
-    <script>
-        const d = new Date();
-        document.getElementById('header-date').textContent =
-            d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    </script>
-    <script src="https://storage.ko-fi.com/cdn/scripts/overlay-widget.js"></script>
-    <script>
-        kofiWidgetOverlay.draw('abemichel', {
-            'type': 'floating-chat',
-            'floating-chat.donateButton.text': 'Tip Me',
-            'floating-chat.donateButton.background-color': '#323842',
-            'floating-chat.donateButton.text-color': '#fff'
-        });
-    </script>
+  <app-root></app-root>
+  <script type="module" src="./main.js"></script>
 </body>
 </html>

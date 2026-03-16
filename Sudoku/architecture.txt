@@ -1,0 +1,204 @@
+# Sudoku 2.0 Technical Architecture
+
+## 1. File & Module Structure
+The project uses a flat ES module structure served directly from GitHub Pages. No build step is required. Lit is imported via CDN (e.g., `https://esm.sh/lit`).
+
+```text
+/
+├── index.html                  # Entry point (loads main.js)
+├── main.js                     # Initializes store, effects, and root component
+├── src/
+│   ├── core/                   # The "Engine"
+│   │   ├── store.js            # Central Redux-like Store (state + dispatch)
+│   │   ├── reducer.js          # Root reducer combining domain reducers
+│   │   ├── actions.js          # Action creators and type constants
+│   │   └── history.js          # Undo/Redo logic (state stack management)
+│   ├── state/                  # Domain-specific reducers
+│   │   ├── gameReducer.js      # Board, timer, mistakes, win conditions
+│   │   ├── uiReducer.js        # Selection, modals, views, input modes
+│   │   ├── modifierReducer.js  # Modifier-specific state updates
+│   │   └── mpReducer.js        # Peer/room status (excluding action sync)
+│   ├── logic/                  # Pure functional logic
+│   │   ├── solver.js           # DLX Solver (unique solution check)
+│   │   ├── humanSolver.js      # Logic-based grading (X-Wing, Hidden Pair, etc.)
+│   │   ├── generator.js        # Puzzle generation & piece partitioning
+│   │   └── prng.js             # Seedable random number generator
+│   ├── modifiers/              # Modifier Plugin System
+│   │   ├── registry.js         # Exports array of all available modifiers
+│   │   ├── fragile.js          # Example: Resets board on mistake
+│   │   ├── decaying.js         # Example: Clears digits after N seconds
+│   │   └── ...                 # Other 8 modifiers
+│   ├── components/             # Lit Web Components
+│   │   ├── app-root.js         # Top-level layout and routing
+│   │   ├── board-container.js  # Wrapper that switches board modes
+│   │   ├── sudoku-board.js     # Standard mode board
+│   │   ├── sudoku-recon.js     # Reconstruction mode board
+│   │   ├── sudoku-cell.js      # Persistent cell element (the "Atom")
+│   │   ├── ui-hud.js           # Timer, mistakes, streak
+│   │   ├── ui-controls.js      # Numpad / Piece tray
+│   │   └── ui-modals/          # Settings, Stats, Achievements, Win
+│   ├── services/               # Side Effects (The "Outside" World)
+│   │   ├── persistence.js      # LocalStorage sync
+│   │   ├── multiplayer.js      # PeerJS lifecycle and action broadcasting
+│   │   ├── timer.js            # Precise performance.now() ticking
+│   │   └── achievements.js     # Milestone monitoring
+│   └── utils/
+│       ├── encoding.js         # Base64/Shareable URL compression
+│       └── geometry.js         # Grid/Region math (Chaos mode helpers)
+└── assets/                     # CSS, sounds, static icons
+```
+
+## 2. State Shape
+The state is a single, serializable JSON object. No class instances or functions allowed.
+
+```javascript
+{
+  game: {
+    seed: "123456",
+    difficulty: "HARD",
+    mode: "STANDARD",      // "STANDARD" | "RECONSTRUCTION"
+    cells: [               // 81 cells for Sudoku
+      { id: 0, v: 5, c: [1, 2], fixed: true, solution: 5, region: 0 }
+    ],
+    regions: [[0,1,2,9,10,11,...], ...], // Chaos mode support
+    timer: 0,              // ms
+    mistakes: 0,
+    isPaused: false,
+    status: "PLAYING"      // "PLAYING" | "WON" | "LOST"
+  },
+  ui: {
+    view: "MENU",          // "MENU" | "GAME" | "LOADING"
+    selectedId: 0,
+    inputMode: "VALUE",    // "VALUE" | "CANDIDATE"
+    activeModal: null,     // "SETTINGS" | "STATS" | "WIN"
+    paletteHue: 200        // For Rainbow modifier
+  },
+  modifiers: {
+    active: ["BLACKOUT", "FRAGILE"],
+    modState: {            // Specific data per modifier
+      "BLACKOUT": { revealed: [0, 5, 10] },
+      "DECAYING": { expiry: { "12": 172635... } }
+    }
+  },
+  multiplayer: {
+    peerId: null,
+    room: null,
+    peers: [],             // [{ id, name, isHost }]
+    isHost: false
+  },
+  history: {               // Top-level undo/redo stack
+    past: [], 
+    future: [] 
+  },
+  settings: { darkMode: true, regionColors: true },
+  stats: { streaks: 5, bestTimes: { "HARD": 120000 } },
+  achievements: ["CHALLENGE_COMPLETE", "FAST_SOLVE"]
+}
+```
+
+## 3. Action Catalogue
+All state changes flow through these actions.
+
+| Domain | Action Type | Description |
+| :--- | :--- | :--- |
+| **Board** | `BOARD/SET_VALUE` | Set a digit in a cell. |
+| | `BOARD/SET_CANDIDATE` | Toggle a pencil mark. |
+| | `BOARD/CLEAR_CELL` | Remove all data from a cell. |
+| | `BOARD/MOVE_PIECE` | (Reconstruction) Move/Rotate/Flip polyomino. |
+| **Game** | `GAME/START` | Initialize a new puzzle from seed. |
+| | `GAME/LOAD_DAILY` | Load today's date-seeded puzzle. |
+| | `GAME/RESET` | Wipe board to initial clues. |
+| | `GAME/TICK` | Update timer (internal effect). |
+| | `GAME/PAUSE` | Set `isPaused: true`. |
+| | `GAME/RESUME` | Set `isPaused: false`. |
+| | `GAME/HINT` | Triggers hint logic (Payload: `NEXT_NUMBER`, `NEXT_CELL`, or `NEXT_TECHNIQUE`). |
+| | `GAME/WIN` | Trigger win sequence. |
+| **UI** | `UI/SELECT_CELL` | Highlight a specific cell ID. |
+| | `UI/SET_INPUT_MODE` | Toggle Value vs Candidate. |
+| | `UI/SET_VIEW` | Navigate between screens. |
+| | `UI/OPEN_MODAL` | Set `activeModal` (Payload: modal name). |
+| | `UI/CLOSE_MODAL` | Clear `activeModal`. |
+| **Multiplayer** | `MP/CONNECT` | Start PeerJS session. |
+| | `MP/PEER_JOINED` | Add peer to `peers` array (Payload: id, name). |
+| | `MP/PEER_LEFT` | Remove peer from `peers` array (Payload: id). |
+| | `MP/PEER_SYNC` | Receive foreign action (or state if late join). |
+| | `MP/DISCONNECT` | Tear down PeerJS session and clear MP state. |
+| **Modifier** | `MOD/TRIGGER` | Manual or scheduled modifier effect. |
+| | `MOD/TICK` | Fired every second; time-driven modifiers update their `modState`. |
+| **System** | `SETTINGS/UPDATE` | Merge partial settings object. |
+| | `STATS/UPDATE` | Merge partial stats object. |
+| | `ACHIEVEMENTS/UNLOCK` | Append achievement ID if not present. |
+
+## 4. Modifier Interface
+Modifiers are objects that "hook" into the dispatch loop.
+
+```javascript
+const FragileModifier = {
+  id: "FRAGILE",
+  
+  // 1. Logic: Intercept actions before they hit the reducer
+  onAction: (state, action, dispatch) => {
+    if (action.type === 'BOARD/SET_VALUE') {
+      const cell = state.game.cells[action.payload.id];
+      // If the value is wrong, trigger a reset instead of placing it
+      if (action.payload.value !== cell.solution) {
+        dispatch({ type: 'GAME/RESET', meta: { source: 'FRAGILE' } });
+        return null; // Block the original action
+      }
+    }
+    return action; // Let other actions pass
+  },
+
+  // 2. State: Initial configuration
+  initialModState: () => ({ lastReset: null }),
+
+  // 3. Side Effects: React to state changes
+  onStateChange: (oldState, newState, dispatch) => {
+    // e.g. If timer hits zero in TIME_OUT, trigger failure
+  },
+
+  // 4. Rendering: CSS class injection
+  getCssClasses: (state) => ['mod-fragile']
+};
+```
+
+## 5. Board Mode Interface
+Every game mode (Standard, Reconstruction) must be a Lit component implementing this contract. The board's responsibility is strictly rendering and input translation; all validation logic resides in the modifier system.
+
+- **Properties (Reactive)**:
+  - `state`: The partial `game` state object.
+  - `ui`: The partial `ui` state object.
+  - `activeModifiers`: Array of active modifier IDs.
+- **Methods**:
+  - `handleInput(key)`: Translates keyboard/numpad events into domain actions and dispatches them.
+  - `reinitialize()`: Called by the container to reset local UI state (e.g., drag offsets) when a new game starts.
+- **Events**:
+  - `dispatch-action`: A custom event (`bubbles: true, composed: true`) fired for every user interaction. The payload is a standard action object.
+- **Render Requirements**:
+  - **Persistent Atoms**: Must map cell data to `sudoku-cell` components using stable keys (cell IDs) to ensure elements are never destroyed/recreated.
+  - **Interaction Handling**: Raw DOM events (click, mousedown, touchstart) must be captured and translated into the `dispatch-action` event.
+
+## 6. Multiplayer Architecture
+Peer-to-peer sync using **PeerJS**.
+
+1. **Connection Lifecycle**:
+   - Host generates a Room ID.
+   - Guests connect. Host sends the initial full state (including Seed + Active Modifiers).
+2. **Action Sync**:
+   - Every local action (e.g., `BOARD/SET_VALUE`) is broadcast to all peers *before* being applied locally.
+   - Actions are timestamped to ensure deterministic order if needed, though Sudoku is mostly conflict-free.
+3. **Conflict Handling**:
+   - Since the reducer is pure and the PRNG is seeded, all peers stay in sync as long as they process the same action stream.
+   - For "First to Solve" competitive modes, the `GAME/WIN` action includes a client timestamp; the host arbitrates the winner.
+
+## 7. Rendering Architecture
+- **Persistent Cells**: `sudoku-cell` elements are indexed 0–80. Lit's `repeat` directive or a static array ensures they are never recreated.
+- **CSS-Driven States**: 
+  - Cell conflicts, highlights, and modifier effects (like "Rainbow" or "Blackout") are toggled via CSS classes (e.g., `.is-selected`, `.is-revealed`).
+  - Animations (e.g., "Fragile" reset flash) use CSS `@keyframes` triggered by a temporary `data-anim` attribute on the board container.
+- **Modifier Rendering**: The root component queries all active modifiers for `getCssClasses` and applies them to the board's class list, allowing plugins to change the board's appearance (e.g. Symbols mode).
+
+## 8. Open Questions & Tradeoffs
+1. **Action Ordering in MP**: Without a server, two people clicking the same cell at the exact same millisecond might cause a temporary divergence. *Decision: Treat Sudoku as "eventually consistent"; the host's action list is the source of truth if a desync is detected.*
+2. **Performance of "Living" Modifier**: Frequent row/col swaps in Lit are efficient due to keyed `repeat`, but animations might be choppy if not handled with CSS Transitions. *Decision: Use CSS Grid and `transition` for reordering.*
+3. **Human Solver Complexity**: Implementing a full "Next Technique" engine in Vanilla JS is heavy. *Decision: Port the existing logic into a Web Worker to keep the UI thread 100% responsive during complex grading.*

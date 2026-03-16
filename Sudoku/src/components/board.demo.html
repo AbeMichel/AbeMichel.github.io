@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sudoku Board Demo</title>
+  <style>
+    :root {
+      --board-border-color: #333;
+      --cell-bg: #ffffff;
+      --cell-border: #cccccc;
+      --cell-selected-bg: #bbdefb;
+      --cell-highlight-bg: #e3f2fd;
+      --cell-conflict-bg: #ffcdd2;
+      --cell-value-color: #2196f3;
+      --cell-fixed-color: #000;
+      --candidate-color: #777;
+    }
+    body {
+      font-family: system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+      background: #fafafa;
+    }
+    .controls {
+      margin-top: 1rem;
+      display: flex;
+      gap: 1rem;
+    }
+    pre {
+      background: #eee;
+      padding: 1rem;
+      border-radius: 4px;
+      max-width: 600px;
+      overflow: auto;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Sudoku Board Demo</h1>
+  
+  <div id="board-container">
+    <sudoku-board></sudoku-board>
+  </div>
+
+  <div class="controls">
+    <button id="toggle-mode">Switch to Candidate Mode (C)</button>
+    <button id="reset-selection">Reset Selection</button>
+  </div>
+
+  <h3>State Snapshot</h3>
+  <pre id="state-display"></pre>
+
+  <script type="module">
+    import { createStore } from '../core/store.js';
+    import { rootReducer } from '../core/reducer.js';
+    import { Actions } from '../core/actions.js';
+    import './sudoku-board.js';
+
+    // 1. Initial State for Demo
+    const initialState = {
+      game: {
+        cells: Array.from({length: 81}, (_, i) => ({
+          id: i, v: 0, c: [], fixed: false, solution: (i % 9) + 1
+        })),
+        regions: null,
+        status: 'PLAYING'
+      },
+      ui: {
+        selectedId: 0,
+        inputMode: 'VALUE',
+        view: 'GAME'
+      }
+    };
+
+    // 2. Create Store
+    const store = createStore(rootReducer, initialState);
+
+    // 3. Query Board from markup
+    const board = document.querySelector('sudoku-board');
+
+    // 4. Update Board on State Change
+    const update = (state) => {
+      board.gameState = state.game;
+      board.uiState = state.ui;
+      board.modifiers = state.modifiers;
+      document.getElementById('state-display').textContent = JSON.stringify({
+        selectedId: state.ui.selectedId,
+        inputMode: state.ui.inputMode,
+        cells: state.game.cells.filter(c => c.v !== 0 || c.c.length > 0).slice(0, 5) // Show only 5 changed cells for brevity
+      }, null, 2);
+    };
+
+    store.subscribe(update);
+    update(store.getState());
+
+    // 5. Handle Board Actions
+    board.addEventListener('dispatch-action', (e) => {
+      ('Action dispatched:', e.detail);
+      // Store dispatch will update the board automatically through the subscriber
+      store.dispatch(e.detail);
+      board.focus();
+    });
+
+    // 6. UI Controls
+    document.getElementById('toggle-mode').onclick = () => {
+      const mode = store.getState().ui.inputMode === 'VALUE' ? 'CANDIDATE' : 'VALUE';
+      store.dispatch({ type: 'UI/SET_INPUT_MODE', payload: { mode } });
+      board.focus();
+    };
+    document.getElementById('reset-selection').onclick = () => {
+      store.dispatch({ type: 'UI/SELECT_CELL', payload: { id: null } });
+      board.focus();
+    };
+
+    // Auto-focus board
+    board.reinitialize();
+    board.focus();
+  </script>
+</body>
+</html>

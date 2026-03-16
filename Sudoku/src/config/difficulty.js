@@ -1,0 +1,7 @@
+export const DIFFICULTY_DEFAULTS = {
+  VERY_EASY: 45,
+  EASY: 38,
+  MEDIUM: 32,
+  HARD: 27,
+  VERY_HARD: 23
+};
