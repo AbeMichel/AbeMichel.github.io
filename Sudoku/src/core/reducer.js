@@ -5,11 +5,53 @@ import { mpReducer } from '../state/mpReducer.js';
 import { statsReducer } from '../state/statsReducer.js';
 import { reconReducer } from '../state/reconReducer.js';
 import { settingsReducer } from '../state/settingsReducer.js';
+import { competitiveReducer } from '../state/competitiveReducer.js';
 import { historyReducer } from './history.js';
 import { Actions } from './actions.js';
 
 const defaultSettings = { darkMode: true, regionColors: true };
 const defaultAchievements = [];
+
+/**
+ * Pure helper to apply a board action to a cells array.
+ */
+const applyBoardActionToCells = (cells, action) => {
+  switch (action.type) {
+    case Actions.BOARD.SET_VALUE: {
+      const { id, value, peerId } = action.payload;
+      return cells.map(cell => {
+        if (cell.id === id && !cell.fixed) {
+          return { ...cell, v: value, placedBy: peerId || null };
+        }
+        return cell;
+      });
+    }
+    case Actions.BOARD.SET_CANDIDATE: {
+      const { id, value } = action.payload;
+      return cells.map(cell => {
+        if (cell.id === id) {
+          const candidates = cell.c || [];
+          const newCandidates = candidates.includes(value)
+            ? candidates.filter(v => v !== value)
+            : [...candidates, value].sort();
+          return { ...cell, c: newCandidates };
+        }
+        return cell;
+      });
+    }
+    case Actions.BOARD.CLEAR_CELL: {
+      const { id, peerId } = action.payload;
+      return cells.map(cell => {
+        if (cell.id === id && !cell.fixed) {
+          return { ...cell, v: 0, c: [], placedBy: peerId || null };
+        }
+        return cell;
+      });
+    }
+    default:
+      return cells;
+  }
+};
 
 export const rootReducer = (state = {}, action) => {
   const previousGameSlice = state.game;
@@ -35,6 +77,36 @@ export const rootReducer = (state = {}, action) => {
     return newState;
   }
 
+  // Check if it's an opponent board action in competitive mode before domain reducers
+  if (
+    state.multiplayer?.mpMode === 'COMPETITIVE' &&
+    action._mp?.peerId &&
+    action._mp.peerId !== state.multiplayer.peerId &&
+    (action.type === Actions.BOARD.SET_VALUE || action.type === Actions.BOARD.SET_CANDIDATE || action.type === Actions.BOARD.CLEAR_CELL)
+  ) {
+    const opponentPeerId = action._mp.peerId;
+    const opponentBoard = state.multiplayer.competitiveBoards?.[opponentPeerId];
+    if (opponentBoard) {
+      const updatedCells = applyBoardActionToCells(opponentBoard.cells, action);
+      const filledCount = updatedCells.filter(c => !c.fixed && c.v > 0).length;
+      return {
+        ...state,
+        multiplayer: {
+          ...state.multiplayer,
+          competitiveBoards: {
+            ...state.multiplayer.competitiveBoards,
+            [opponentPeerId]: {
+              ...opponentBoard,
+              cells: updatedCells,
+              filledCount
+            }
+          }
+        }
+      };
+    }
+    return state;
+  }
+
   // 1. Initial Domain Reducers
   let newState = {
     game: gameReducer(state.game, action),
@@ -51,7 +123,10 @@ export const rootReducer = (state = {}, action) => {
     newState.game = action.payload.gameState;
   }
 
-  // 3. Modifier Reducer
+  // 3. Competitive Reducer
+  newState = competitiveReducer(newState, action);
+
+  // 4. Modifier Reducer
   const modifierState = modifierReducer(state.modifiers, action, newState.game);
   if (modifierState._reorderCells) {
     newState.game = { ...newState.game, cells: modifierState._reorderCells };

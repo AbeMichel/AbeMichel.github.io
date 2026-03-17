@@ -81,6 +81,18 @@ export class MpPlayerList extends LitElement {
       font-style: italic;
       font-size: 0.8em;
     }
+
+    .player-item.is-disconnected {
+      opacity: 0.45;
+    }
+
+    .player-item.is-disconnected .name {
+      text-decoration: line-through;
+    }
+
+    .status-disconnected {
+      color: #f44336;
+    }
   `;
 
   render() {
@@ -89,15 +101,18 @@ export class MpPlayerList extends LitElement {
     return html`
       <div class="player-list">
         ${this.peers.map(peer => html`
-          <div class="player-item ${peer.id === this.localPeerId ? 'is-local' : ''}">
+          <div class="player-item ${peer.id === this.localPeerId ? 'is-local' : ''} ${peer.connected === false ? 'is-disconnected' : ''}">
             <div class="color-swatch" style="background-color: ${peer.color || '#ccc'}"></div>
             <span class="name">${peer.name || 'Anonymous'}</span>
             ${peer.isHost ? html`<span class="host-crown">👑</span>` : ''}
-            
+
             ${!this.compact ? html`
-              <span class="status-icon ${peer.confirmed ? 'status-confirmed' : 'status-waiting'}">
-                ${peer.isHost ? '' : (peer.confirmed ? '✓' : 'waiting...')}
-              </span>
+              ${peer.connected === false
+                ? html`<span class="status-icon status-disconnected">✕</span>`
+                : html`<span class="status-icon ${peer.confirmed ? 'status-confirmed' : 'status-waiting'}">
+                    ${peer.isHost ? '' : (peer.confirmed ? '✓' : 'waiting...')}
+                  </span>`
+              }
             ` : ''}
           </div>
         `)}

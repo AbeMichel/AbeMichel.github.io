@@ -1,6 +1,7 @@
 import Peer from 'https://esm.sh/peerjs@1.5.4';
 import { Actions } from '../core/actions.js';
 import { assignColor } from '../config/multiplayerColors.js';
+import { getPlayerId } from './persistence.js';
 
 let _peer = null;
 let _connections = new Map(); // id -> connection
@@ -8,9 +9,13 @@ let _store = null;
 let _isHost = false;
 let _roomCode = null;
 let _lastActionSequence = 0;
-let _pendingActions = new Map(); // sequence -> action
 
-const SYNCABLE_ACTION_PREFIXES = ['BOARD/', 'RECON/', 'MP/GUEST_CONFIRM'];
+function generateRoomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars
+  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+const SYNCABLE_ACTION_PREFIXES = ['BOARD/', 'RECON/', 'MP/GUEST_CONFIRM', 'COMPETITIVE/', 'MP/UPDATE_LOBBY_CONFIG', 'GAME/START'];
 
 export function initMultiplayer(store) {
   _store = store;
@@ -18,7 +23,7 @@ export function initMultiplayer(store) {
   _store.subscribe((state, action) => {
     if (action._mpOrigin) return; // Ignore actions that came from the network
 
-    const isSyncable = SYNCABLE_ACTION_PREFIXES.some(p => action.type.startsWith(p)) || action.type === Actions.GAME.START;
+    const isSyncable = SYNCABLE_ACTION_PREFIXES.some(p => action.type.startsWith(p));
     if (!isSyncable) return;
 
     if (_isHost) {
@@ -26,24 +31,12 @@ export function initMultiplayer(store) {
     } else if (_peer && !state.multiplayer.isHost && state.multiplayer.status !== 'DISCONNECTED') {
       _handleLocalActionGuest(state, action);
     }
-
-    // Competitive mode updates
-    if (state.multiplayer.mpMode === 'COMPETITIVE' && action.type.startsWith('BOARD/')) {
-      const filledCount = state.game.cells.filter(c => c.v !== 0).length;
-      const totalCells = state.game.cells.length;
-      const mpAction = {
-        type: Actions.MP.SET_OPPONENT_BOARD,
-        payload: { peerId: state.multiplayer.peerId, filledCount, totalCells },
-        _mpOrigin: true
-      };
-      _broadcast(mpAction);
-    }
   });
 }
 
 export async function createRoom(playerName, mpMode, gameConfig) {
   return new Promise((resolve, reject) => {
-    _peer = new Peer();
+    _peer = new Peer(generateRoomCode());
     
     _peer.on('open', (id) => {
       _isHost = true;
@@ -56,11 +49,12 @@ export async function createRoom(playerName, mpMode, gameConfig) {
 
       _store.dispatch({
         type: Actions.MP.PEER_JOINED,
-        payload: { 
-          peerId: id, 
-          name: playerName, 
+        payload: {
+          peerId: id,
+          name: playerName,
           isHost: true,
           color: assignColor(0),
+          playerId: getPlayerId()
         }
       });
 
@@ -69,7 +63,6 @@ export async function createRoom(playerName, mpMode, gameConfig) {
         payload: { status: 'LOBBY' }
       });
 
-      console.log(`Room created! Code: ${id}`);
       resolve(id);
     });
 
@@ -126,38 +119,75 @@ export function isConnected() {
   return _peer && !_peer.destroyed;
 }
 
+export function broadcastAction(action) {
+  _broadcast({ ...action, _mpOrigin: true });
+}
+
 // --- Internal Helpers ---
 
 function _handleIncomingConnection(conn) {
   conn.on('data', (data) => {
     if (data.type === 'JOIN_REQUEST') {
       _connections.set(conn.peer, conn);
-      
+
+      const state = _store.getState();
+      const disconnectedPeer = state.multiplayer.peers.find(
+        p => p.playerId && p.playerId === data.playerId && p.connected === false
+      );
+
+      if (disconnectedPeer) {
+        // Rejoin: restore the old slot with the new peerId
+        _store.dispatch({
+          type: Actions.MP.PEER_REJOINED,
+          payload: { peerId: conn.peer, playerId: data.playerId }
+        });
+        _broadcast({
+          type: Actions.MP.PEER_REJOINED,
+          payload: { peerId: conn.peer, playerId: data.playerId },
+          _mpOrigin: true
+        });
+      } else {
+        // New join: assign color and add
+        const guestColor = assignColor(state.multiplayer.peers.length);
+        _store.dispatch({
+          type: Actions.MP.PEER_JOINED,
+          payload: { peerId: conn.peer, name: data.playerName, isHost: false, color: guestColor, playerId: data.playerId }
+        });
+        _broadcast({
+          type: Actions.MP.PEER_JOINED,
+          payload: { peerId: conn.peer, name: data.playerName, isHost: false, color: guestColor, playerId: data.playerId },
+          _mpOrigin: true
+        });
+      }
+
       setTimeout(() => {
-        // Send current state and peer list
-        const state = _store.getState();
+        const freshState = _store.getState();
+        const mp = freshState.multiplayer;
+        const hostInPeers = mp.peers.find(p => p.id === mp.peerId);
+        const peers = hostInPeers
+          ? mp.peers
+          : [
+              ...mp.peers,
+              {
+                id: mp.peerId,
+                name: mp.playerName,
+                isHost: true,
+                connected: true,
+                color: mp.peers.find(p => p.isHost)?.color || assignColor(0),
+                confirmed: false
+              }
+            ];
         conn.send({
           type: 'INITIAL_SYNC',
           payload: {
-            gameState: state.game,
-            mpMode: state.multiplayer.mpMode,
-            peers: state.multiplayer.peers
+            gameState: freshState.game,
+            mpMode: mp.mpMode,
+            peers,
+            lobbyConfig: mp.lobbyConfig,
+            status: mp.status
           }
         });
       }, 500);
-
-      const currentPeerCount = _store.getState().multiplayer.peers.length;
-      const guestColor = assignColor(currentPeerCount);
-      _store.dispatch({
-        type: Actions.MP.PEER_JOINED,
-        payload: { peerId: conn.peer, name: data.playerName, isHost: false, color: guestColor }
-      });
-
-      _broadcast({
-        type: Actions.MP.PEER_JOINED,
-        payload: { peerId: conn.peer, name: data.playerName, isHost: false, color: guestColor },
-        _mpOrigin: true
-      });
     } else if (data._mpOrigin) {
       // Received action from guest
       _handleRemoteActionFromGuest(data);
@@ -173,23 +203,37 @@ function _handleIncomingConnection(conn) {
 function _handleOutgoingConnection(conn, playerName) {
   conn.on('open', () => {
     _connections.set(conn.peer, conn);
-    conn.send({ type: 'JOIN_REQUEST', playerName });
+    conn.send({ type: 'JOIN_REQUEST', playerName, playerId: getPlayerId() });
   });
 
   conn.on('data', (data) => {
     if (data.type === 'INITIAL_SYNC') {
+      const status = data.payload.status || 'LOBBY';
+      let gameState = data.payload.gameState;
+      if (data.payload.mpMode === 'COMPETITIVE' && status === 'PLAYING' && gameState?.cells) {
+        // Strip opponent's placements — guest needs a blank board to fill independently
+        gameState = {
+          ...gameState,
+          cells: gameState.cells.map(c => c.fixed ? c : { ...c, v: 0, c: [] })
+        };
+      }
       _store.dispatch({
         type: Actions.MP.SYNC_STATE,
-        payload: { gameState: data.payload.gameState }
+        payload: { gameState }
       });
+      const localPeerId = _store.getState().multiplayer.peerId;
       data.payload.peers.forEach(p => {
+        if (p.id === localPeerId) return; // own entry already set by MP/CONNECT
         _store.dispatch({
           type: Actions.MP.PEER_JOINED,
-          payload: { peerId: p.id, name: p.name, isHost: p.isHost, color: p.color }
+          payload: { peerId: p.id, name: p.name, isHost: p.isHost, color: p.color, playerId: p.playerId }
         });
       });
-      _store.dispatch({ type: Actions.MP.SET_STATUS, payload: { status: 'LOBBY' } });
-      _store.dispatch({ type: Actions.UI.SET_VIEW, payload: { view: 'LOBBY' } });
+      if (data.payload.lobbyConfig) {
+        _store.dispatch({ type: 'MP/UPDATE_LOBBY_CONFIG', payload: data.payload.lobbyConfig });
+      }
+      _store.dispatch({ type: Actions.MP.SET_STATUS, payload: { status, mpMode: data.payload.mpMode } });
+      _store.dispatch({ type: Actions.UI.SET_VIEW, payload: { view: status === 'PLAYING' ? 'GAME' : 'LOBBY' } });
     } else if (data.type === Actions.MP.ACTION_REJECTED) {
       _store.dispatch({ type: Actions.UI.FLASH_CELL, payload: { id: data.payload.cellId, flashType: 'conflict' } });
     } else if (data._mpOrigin) {

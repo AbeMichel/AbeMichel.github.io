@@ -7,21 +7,29 @@ export class MpLobby extends LitElement {
     gameState: { type: Object },
     uiState: { type: Object },
     multiplayerState: { type: Object },
-    settingsState: { type: Object }
+    settingsState: { type: Object },
+    _copyFeedback: { type: Boolean, state: true }
   };
 
   static styles = css`
     :host {
       display: flex;
-      flex-direction: column;
       align-items: center;
+      justify-content: center;
+      min-height: 100vh;
       width: 100%;
-      max-width: 600px;
-      margin: 2rem auto;
-      padding: 1.5rem;
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      box-sizing: border-box;
+    }
+
+    .lobby-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      box-shadow: var(--glass-shadow);
+      width: min(92vw, 480px);
       box-sizing: border-box;
     }
 
@@ -30,22 +38,33 @@ export class MpLobby extends LitElement {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
-      border-bottom: 2px solid #f0f0f0;
+      border-bottom: 1px solid var(--glass-border);
       margin-bottom: 1.5rem;
-      padding-bottom: 0.5rem;
+      padding-bottom: 0.75rem;
+    }
+
+    .room-header h2 {
+      font-family: var(--font-display);
+      font-weight: 500;
+      font-size: 1.2rem;
+      color: var(--text-primary);
+      margin: 0;
     }
 
     .room-code {
-      font-family: monospace;
-      font-size: 1.2rem;
-      background: #f5f5f5;
-      padding: 4px 8px;
-      border-radius: 4px;
+      font-family: var(--font-numbers);
+      font-size: 1rem;
+      color: var(--text-primary);
+      background: var(--chip-bg);
+      padding: 4px 10px;
+      border-radius: var(--radius-chip);
       cursor: pointer;
+      box-shadow: var(--chip-shadow);
+      transition: all 0.15s;
     }
 
     .room-code:hover {
-      background: #e0e0e0;
+      box-shadow: var(--chip-shadow-hover);
     }
 
     .section {
@@ -55,10 +74,12 @@ export class MpLobby extends LitElement {
 
     .section h3 {
       margin-top: 0;
-      font-size: 0.9rem;
-      text-transform: uppercase;
-      color: #777;
-      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 0.85rem;
+      color: var(--text-accent);
+      letter-spacing: 0.03em;
     }
 
     .config-grid {
@@ -74,21 +95,27 @@ export class MpLobby extends LitElement {
     }
 
     label {
-      font-size: 0.85rem;
-      font-weight: bold;
+      font-family: var(--font-ui);
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-secondary);
     }
 
     select {
-      padding: 8px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
+      padding: 8px 10px;
+      border-radius: var(--radius-chip);
+      border: 1px solid var(--glass-border);
+      background: var(--glass-bg);
+      color: var(--text-primary);
+      font-family: var(--font-ui);
+      font-size: 0.9rem;
     }
 
     .player-list-container {
-      background: #fafafa;
-      border-radius: 4px;
+      background: var(--chip-bg);
+      border-radius: var(--radius-md);
       padding: 1rem;
-      min-height: 100px;
+      min-height: 80px;
     }
 
     .footer-actions {
@@ -96,49 +123,56 @@ export class MpLobby extends LitElement {
       display: flex;
       justify-content: space-between;
       margin-top: 1rem;
+      gap: 8px;
     }
 
     button {
-      padding: 10px 20px;
-      border-radius: 4px;
+      padding: 10px 18px;
+      border-radius: var(--radius-chip);
       border: none;
       cursor: pointer;
-      font-weight: bold;
-      font-size: 1rem;
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 0.95rem;
+      color: var(--chip-color);
+      background: var(--chip-bg);
+      box-shadow: var(--chip-shadow);
+      transition: all 0.15s;
     }
 
     .btn-primary {
-      background: #4caf50;
-      color: white;
+      background: var(--chip-bg);
+      color: var(--chip-color);
     }
 
     .btn-primary:disabled {
-      background: #ccc;
+      opacity: 0.45;
       cursor: not-allowed;
+      box-shadow: none;
     }
 
     .btn-secondary {
-      background: #f5f5f5;
-      color: #333;
+      background: var(--chip-bg);
+      color: var(--text-secondary);
     }
 
     .btn-ready {
-      background: #2196f3;
-      color: white;
+      background: var(--chip-bg);
+      color: var(--num-placed);
     }
 
     .btn-unready {
-      background: #ff5722;
-      color: white;
+      background: var(--chip-active-bg);
+      color: var(--chip-active-color);
     }
 
     .spinner {
-      margin: 2rem;
-      border: 4px solid rgba(0,0,0,0.1);
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      border-left-color: #2196f3;
+      margin: 2rem auto;
+      border: 3px solid var(--glass-border);
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-circle);
+      border-left-color: var(--text-accent);
       animation: spin 1s linear infinite;
     }
 
@@ -150,21 +184,20 @@ export class MpLobby extends LitElement {
 
   _copyCode() {
     navigator.clipboard.writeText(this.multiplayerState.roomCode);
-    alert('Room code copied to clipboard!');
+    this._copyFeedback = true;
+    setTimeout(() => { this._copyFeedback = false; }, 2000);
   }
 
-  _onConfigChange(e, key) {
+  _onConfigChange(field, value) {
     if (!this.multiplayerState.isHost) return;
-    
-    let actionType, payload;
-    if (key === 'mpMode') {
-      actionType = 'MP/CONNECT'; // We don't have a dedicated mpMode action, but it's in mp state
-      payload = { ...this.multiplayerState, mpMode: e.target.value };
-    } else if (key === 'difficulty') {
-      // For now we'll just handle it during GAME/START
-    }
-    
-    // Dispatch local update or broadcast
+    this.dispatchEvent(new CustomEvent('dispatch-action', {
+      detail: {
+        type: 'MP/UPDATE_LOBBY_CONFIG',
+        payload: { [field]: value }
+      },
+      bubbles: true,
+      composed: true
+    }));
   }
 
   _toggleReady() {
@@ -182,20 +215,17 @@ export class MpLobby extends LitElement {
 
   _startGame() {
     if (!this.multiplayerState.isHost) return;
-
-    const difficulty = this.shadowRoot.querySelector('#difficulty').value;
-    const mpMode = this.shadowRoot.querySelector('#mpMode').value;
-
-    const seed = Date.now();
+    const { mpMode, difficulty } = this.multiplayerState.lobbyConfig || { mpMode: 'CO_OP', difficulty: 'MEDIUM' };
+    const seed = String(Date.now());
     this.dispatchEvent(new CustomEvent('dispatch-action', {
-      detail: { 
-        type: 'GAME/START', 
-        payload: { 
-          difficulty, 
+      detail: {
+        type: 'GAME/START',
+        payload: {
+          difficulty,
           mpMode,
-          mode: 'STANDARD', // Default for now
+          mode: mpMode === 'CO_OP' ? 'STANDARD' : 'STANDARD',
           seed,
-        } 
+        }
       },
       bubbles: true,
       composed: true
@@ -216,8 +246,10 @@ export class MpLobby extends LitElement {
 
     if (status === 'CONNECTING') {
       return html`
-        <div class="spinner"></div>
-        <p>Connecting to room...</p>
+        <div class="lobby-card" style="text-align:center;">
+          <div class="spinner"></div>
+          <p style="font-family:var(--font-display);font-style:italic;color:var(--text-secondary);margin:0;">Connecting to room…</p>
+        </div>
       `;
     }
 
@@ -225,61 +257,69 @@ export class MpLobby extends LitElement {
     const localPeer = peers.find(p => p.id === peerId);
 
     return html`
-      <div class="room-header">
-        <h2>Multiplayer Lobby</h2>
-        <div class="room-code" @click="${this._copyCode}" title="Click to copy">
-          Code: ${roomCode}
-        </div>
-      </div>
-
-      <div class="section">
-        <h3>Game Configuration</h3>
-        <div class="config-grid">
-          <div class="control-group">
-            <label>Mode</label>
-            <select id="mpMode" ?disabled="${!isHost}" @change="${e => this._onConfigChange(e, 'mpMode')}">
-              <option value="CO_OP" ?selected="${this.multiplayerState.mpMode === 'CO_OP'}">Co-op</option>
-              <option value="COMPETITIVE" ?selected="${this.multiplayerState.mpMode === 'COMPETITIVE'}">Competitive</option>
-              <option value="VERSUS" ?selected="${this.multiplayerState.mpMode === 'VERSUS'}">Versus</option>
-            </select>
-          </div>
-          <div class="control-group">
-            <label>Difficulty</label>
-            <select id="difficulty" ?disabled="${!isHost}">
-              <option value="VERY_EASY">Very Easy</option>
-              <option value="EASY">Easy</option>
-              <option value="MEDIUM" selected>Medium</option>
-              <option value="HARD">Hard</option>
-              <option value="VERY_HARD">Very Hard</option>
-            </select>
+      <div class="lobby-card">
+        <div class="room-header">
+          <h2>Multiplayer Lobby</h2>
+          <div class="room-code" @click="${this._copyCode}" title="Click to copy">
+            ${this._copyFeedback ? 'Copied!' : `Code: ${roomCode}`}
           </div>
         </div>
-      </div>
 
-      <div class="section">
-        <h3>Players (${peers.length})</h3>
-        <div class="player-list-container">
-          <mp-player-list 
-            .peers="${peers}" 
-            .localPeerId="${peerId}"
-          ></mp-player-list>
+        <div class="section">
+          <h3>Game Configuration</h3>
+          <div class="config-grid">
+            <div class="control-group">
+              <label>Mode</label>
+              <select id="mpMode"
+                .value="${this.multiplayerState.lobbyConfig?.mpMode || 'CO_OP'}"
+                ?disabled="${!isHost}"
+                @change="${e => this._onConfigChange('mpMode', e.target.value)}">
+                <option value="CO_OP">Co-op</option>
+                <option value="COMPETITIVE">Competitive</option>
+                <option value="VERSUS" disabled>Versus (Coming Soon)</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label>Difficulty</label>
+              <select id="difficulty"
+                .value="${this.multiplayerState.lobbyConfig?.difficulty || 'MEDIUM'}"
+                ?disabled="${!isHost}"
+                @change="${e => this._onConfigChange('difficulty', e.target.value)}">
+                <option value="VERY_EASY">Very Easy</option>
+                <option value="EASY">Easy</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HARD">Hard</option>
+                <option value="VERY_HARD">Very Hard</option>
+              </select>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div class="footer-actions">
-        <button class="btn-secondary" @click="${this._leave}">
-          ${isHost ? 'Cancel' : 'Leave'}
-        </button>
+        <div class="section">
+          <h3>Players (${peers.length})</h3>
+          <div class="player-list-container">
+            <mp-player-list
+              .peers="${peers}"
+              .localPeerId="${peerId}"
+            ></mp-player-list>
+          </div>
+        </div>
 
-        ${isHost ? html`
-          <button class="btn-primary" ?disabled="${!allConfirmed}" @click="${this._startGame}">
-            Start Game
+        <div class="footer-actions">
+          <button class="btn-secondary" @click="${this._leave}">
+            ${isHost ? 'Cancel' : 'Leave'}
           </button>
-        ` : html`
-          <button class="${localPeer?.confirmed ? 'btn-unready' : 'btn-ready'}" @click="${this._toggleReady}">
-            ${localPeer?.confirmed ? 'Unready' : 'Ready Up'}
-          </button>
-        `}
+
+          ${isHost ? html`
+            <button class="btn-primary" ?disabled="${!allConfirmed}" @click="${this._startGame}">
+              Start Game
+            </button>
+          ` : html`
+            <button class="${localPeer?.confirmed ? 'btn-unready' : 'btn-ready'}" @click="${this._toggleReady}">
+              ${localPeer?.confirmed ? 'Unready' : 'Ready Up'}
+            </button>
+          `}
+        </div>
       </div>
     `;
   }

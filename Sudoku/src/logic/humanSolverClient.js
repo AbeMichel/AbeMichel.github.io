@@ -7,8 +7,13 @@ export class HumanSolverClient {
 
   _initWorker() {
     if (!this.worker) {
-      this.worker = new Worker(new URL('./humanSolver.js', import.meta.url), { type: 'module' });
+      this.worker = new Worker(new URL('./humanSolver.js?v=' + Date.now(), import.meta.url), { type: 'module' });
       this.worker.onmessage = (e) => {
+        if (e.data.type === 'DEBUG') {
+          console.log('WORKER naked singles:', e.data.nakedSingles);
+          console.log('WORKER total empty cells with candidates:', e.data.totalEmpty);
+          return;
+        }
         this.busy = false;
         const result = e.data.payload;
         const resolve = this.queue.shift();

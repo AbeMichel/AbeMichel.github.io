@@ -4,7 +4,18 @@ const KEYS = {
   GAME: 'sudoku2_game',
   SETTINGS: 'sudoku2_settings',
   STATS: 'sudoku2_stats',
-  ACHIEVEMENTS: 'sudoku2_achievements'
+  ACHIEVEMENTS: 'sudoku2_achievements',
+  PLAYER_NAME: 'sudoku2_playerName',
+  PLAYER_ID: 'sudoku2_playerId'
+};
+
+export const getPlayerId = () => {
+  let id = localStorage.getItem(KEYS.PLAYER_ID);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(KEYS.PLAYER_ID, id);
+  }
+  return id;
 };
 
 export const initPersistence = (store) => {
@@ -37,6 +48,10 @@ export const initPersistence = (store) => {
       case Actions.SYSTEM.ACHIEVEMENTS_UNLOCK:
         localStorage.setItem(KEYS.ACHIEVEMENTS, JSON.stringify(state.achievements));
         break;
+
+      case Actions.MP.SET_PLAYER_NAME:
+        localStorage.setItem(KEYS.PLAYER_NAME, JSON.stringify(state.multiplayer.playerName));
+        break;
     }
   });
 
@@ -60,8 +75,13 @@ export const loadPersistedState = () => {
 
     const achievements = localStorage.getItem(KEYS.ACHIEVEMENTS);
     if (achievements) state.achievements = JSON.parse(achievements);
+
+    const playerName = localStorage.getItem(KEYS.PLAYER_NAME);
+    if (playerName) state.playerName = JSON.parse(playerName);
   } catch (e) {
     console.error('Failed to parse persisted state', e);
   }
+  // Ensure playerId exists (generates one on first visit)
+  getPlayerId();
   return state;
 };

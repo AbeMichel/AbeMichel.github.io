@@ -3,6 +3,9 @@ export const Actions = Object.freeze({
     SET_VALUE: 'BOARD/SET_VALUE',
     SET_CANDIDATE: 'BOARD/SET_CANDIDATE',
     CLEAR_CELL: 'BOARD/CLEAR_CELL',
+    CLEAR_CANDIDATES: 'BOARD/CLEAR_CANDIDATES',
+    SET_ALL_CANDIDATES: 'BOARD/SET_ALL_CANDIDATES',
+    RESTORE_MANUAL_CANDIDATES: 'BOARD/RESTORE_MANUAL_CANDIDATES',
     MOVE_PIECE: 'BOARD/MOVE_PIECE',
     CLEAR_PLACED_BY: 'BOARD/CLEAR_PLACED_BY',
   },
@@ -37,6 +40,8 @@ export const Actions = Object.freeze({
     ACTION_REJECTED: 'MP/ACTION_REJECTED',
     SYNC_STATE: 'MP/SYNC_STATE',
     GUEST_CONFIRM: 'MP/GUEST_CONFIRM',
+    RETURN_TO_LOBBY: 'MP/RETURN_TO_LOBBY',
+    PEER_REJOINED: 'MP/PEER_REJOINED',
   },
   MOD: {
     TRIGGER: 'MOD/TRIGGER',
@@ -59,6 +64,11 @@ export const Actions = Object.freeze({
     MIRROR_PIECE: 'RECON/MIRROR_PIECE',
     SELECT_PIECE: 'RECON/SELECT_PIECE',
     RETURN_TO_TRAY: 'RECON/RETURN_TO_TRAY',
+  },
+  COMPETITIVE: {
+    UPDATE_BOARD: 'COMPETITIVE/UPDATE_BOARD',
+    SET_RESULT:   'COMPETITIVE/SET_RESULT',
+    PLAY_AGAIN:   'COMPETITIVE/PLAY_AGAIN',
   }
 });
 
@@ -109,6 +119,7 @@ export const mpSetOpponentBoardAction = (peerId, filledCount, totalCells) => ({
 export const mpActionRejectedAction = (cellId) => ({ type: Actions.MP.ACTION_REJECTED, payload: { cellId } });
 export const mpSyncStateAction = (gameState) => ({ type: Actions.MP.SYNC_STATE, payload: { gameState } });
 export const mpGuestConfirmAction = (peerId, confirmed) => ({ type: Actions.MP.GUEST_CONFIRM, payload: { peerId, confirmed } });
+export const mpReturnToLobbyAction = () => ({ type: Actions.MP.RETURN_TO_LOBBY });
 
 // Modifier Actions
 export const modTriggerAction = (modifierId, payload) => ({ type: Actions.MOD.TRIGGER, payload: { modifierId, ...payload } });
@@ -134,3 +145,14 @@ export const rotatePieceAction = (pieceId, direction) => ({ type: Actions.RECON.
 export const mirrorPieceAction = (pieceId) => ({ type: Actions.RECON.MIRROR_PIECE, payload: { pieceId } });
 export const selectPieceAction = (pieceId) => ({ type: Actions.RECON.SELECT_PIECE, payload: { pieceId } });
 export const returnToTrayAction = (pieceId) => ({ type: Actions.RECON.RETURN_TO_TRAY, payload: { pieceId } });
+
+// Competitive Actions
+export const competitiveUpdateBoardAction = (peerId, cells, filledCount, finished, finishTime) => ({
+  type: Actions.COMPETITIVE.UPDATE_BOARD,
+  payload: { peerId, cells, filledCount, finished, finishTime }
+});
+export const competitiveSetResultAction = (winnerId, winnerName, results) => ({
+  type: Actions.COMPETITIVE.SET_RESULT,
+  payload: { winnerId, winnerName, results }
+});
+export const competitivePlayAgainAction = () => ({ type: Actions.COMPETITIVE.PLAY_AGAIN });

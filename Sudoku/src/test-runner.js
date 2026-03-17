@@ -8,6 +8,7 @@ import { runTests as runGeneratorTests } from './logic/generator.test.js';
 import { runTests as runModifierTests } from './modifiers/modifiers.test.js';
 import { runTests as runGeometryTests } from './utils/boardGeometry.test.js';
 import { runTests as runPieceGeometryTests } from './utils/pieceGeometry.test.js';
+import { runTests as runHintsTests } from './services/hints.test.js';
 
 export const runAllTests = () => {
   console.log('--- STARTING ALL TESTS ---');
@@ -21,5 +22,6 @@ export const runAllTests = () => {
   runModifierTests();
   runGeometryTests();
   runPieceGeometryTests();
+  runHintsTests();
   console.log('--- ALL TESTS COMPLETE ---');
 };

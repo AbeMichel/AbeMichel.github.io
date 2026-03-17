@@ -76,7 +76,7 @@ export const gameReducer = (state = defaultState, action) => {
         seed: resolvedSeed,
         difficulty: resolvedDifficulty,
         mode: resolvedMode,
-        cells: (resolvedMode === 'RECONSTRUCTION' ? cells.map(c => ({ ...c, v: 0, fixed: false })) : cells).map(c => ({ ...c, placedBy: null })),
+        cells: (resolvedMode === 'RECONSTRUCTION' ? cells.map(c => ({ ...c, v: 0, fixed: false })) : cells).map(c => ({ ...c, placedBy: null, manualCandidates: [], autoCandidates: [], removedCandidates: [] })),
         regions,
         pieces,
         reconConstraints,
@@ -100,37 +100,86 @@ export const gameReducer = (state = defaultState, action) => {
       return { ...state, status: 'WON' };
     case Actions.BOARD.SET_VALUE: {
       const { id, value, peerId } = action.payload;
+      let mistakeIncrement = 0;
       const newCells = state.cells.map(cell => {
         if (cell.id === id && !cell.fixed) {
-          return { ...cell, v: value, placedBy: peerId };
+          const v = value === 0 ? null : value;
+          if (v != null && v !== cell.solution) mistakeIncrement = 1;
+          return { ...cell, v, placedBy: peerId, removedCandidates: [] };
         }
         return cell;
       });
-      return { ...state, cells: newCells };
+      return { ...state, cells: newCells, mistakes: state.mistakes + mistakeIncrement };
     }
     case Actions.BOARD.SET_CANDIDATE: {
-      const { id, value } = action.payload;
-      const newCells = state.cells.map(cell => {
-        if (cell.id === id) {
-          const candidates = cell.c || [];
-          const newCandidates = candidates.includes(value)
-            ? candidates.filter(v => v !== value)
-            : [...candidates, value].sort();
-          return { ...cell, c: newCandidates };
-        }
-        return cell;
-      });
-      return { ...state, cells: newCells };
+      const { id, value, autoCandidates } = action.payload;
+      return {
+        ...state,
+        cells: state.cells.map(cell => {
+          if (cell.id !== id || cell.fixed || cell.v !== null) return cell;
+
+          if (autoCandidates) {
+            // Auto mode: toggle displayed c via removedCandidates; leave manualCandidates alone
+            const isDisplayed = (cell.c || []).includes(value);
+            if (isDisplayed) {
+              return {
+                ...cell,
+                c: (cell.c || []).filter(v => v !== value),
+                removedCandidates: [...(cell.removedCandidates || []), value]
+              };
+            } else {
+              return {
+                ...cell,
+                c: [...(cell.c || []), value].sort(),
+                removedCandidates: (cell.removedCandidates || []).filter(v => v !== value)
+              };
+            }
+          } else {
+            // Manual mode: toggle manualCandidates and mirror to c; leave autoCandidates/removedCandidates alone
+            const isIn = (cell.manualCandidates || []).includes(value);
+            const newManual = isIn
+              ? (cell.manualCandidates || []).filter(v => v !== value)
+              : [...(cell.manualCandidates || []), value].sort();
+            return { ...cell, manualCandidates: newManual, c: newManual };
+          }
+        })
+      };
     }
     case Actions.BOARD.CLEAR_CELL: {
       const { id } = action.payload;
       const peerId = action._mp?.peerId || null;
       const newCells = state.cells.map(cell => {
         if (cell.id === id && !cell.fixed) {
-          return { ...cell, v: 0, c: [], placedBy: peerId };
+          return { ...cell, v: null, placedBy: peerId, removedCandidates: [] };
         }
         return cell;
       });
+      return { ...state, cells: newCells };
+    }
+    case Actions.BOARD.SET_ALL_CANDIDATES: {
+      const { candidates } = action.payload;
+      const newCells = state.cells.map(cell => {
+        if (cell.fixed || cell.v !== null) return cell;
+        const computed = candidates[cell.id];
+        if (computed === undefined) return cell;
+        // Store computed values in autoCandidates; display them in c (auto mode owns c)
+        return { ...cell, autoCandidates: computed, c: computed };
+      });
+      return { ...state, cells: newCells };
+    }
+    case Actions.BOARD.RESTORE_MANUAL_CANDIDATES: {
+      const newCells = state.cells.map(cell => {
+        if (cell.fixed || cell.v !== null) return cell;
+        // Switch c back to manualCandidates; autoCandidates stays intact
+        return { ...cell, c: [...(cell.manualCandidates || [])] };
+      });
+      return { ...state, cells: newCells };
+    }
+    case Actions.BOARD.CLEAR_CANDIDATES: {
+      const { id } = action.payload;
+      const newCells = state.cells.map(cell =>
+        cell.id === id && !cell.fixed ? { ...cell, c: [] } : cell
+      );
       return { ...state, cells: newCells };
     }
     case Actions.BOARD.CLEAR_PLACED_BY: {

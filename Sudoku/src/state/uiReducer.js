@@ -6,7 +6,11 @@ const defaultState = {
   inputMode: 'VALUE',
   activeModal: null,
   paletteHue: 200,
-  flashingCells: {}
+  flashingCells: {},
+  competitiveResult: null,
+  showWinModal: false,
+  viewingSolution: false,
+  showSettings: false
 };
 
 export const uiReducer = (state = defaultState, action) => {
@@ -34,6 +38,22 @@ export const uiReducer = (state = defaultState, action) => {
       delete newFlashes[action.payload.id];
       return { ...state, flashingCells: newFlashes };
     }
+    case 'UI/OPEN_SETTINGS':
+      return { ...state, showSettings: true };
+    case 'UI/CLOSE_SETTINGS':
+      return { ...state, showSettings: false };
+    case Actions.GAME.WIN:
+      return { ...state, showWinModal: true, viewingSolution: false };
+    case 'UI/CLOSE_WIN_MODAL':
+      return { ...state, showWinModal: false, viewingSolution: true };
+    case 'UI/SHOW_WIN_MODAL':
+      return { ...state, showWinModal: true, viewingSolution: false };
+    case Actions.GAME.START:
+      return { ...state, showWinModal: false, viewingSolution: false };
+    case Actions.COMPETITIVE.SET_RESULT:
+      return { ...state, competitiveResult: action.payload, showWinModal: true, viewingSolution: false };
+    case Actions.MP.RETURN_TO_LOBBY:
+      return { ...state, view: 'LOBBY', competitiveResult: null, showWinModal: false, viewingSolution: false };
     default:
       return state;
   }

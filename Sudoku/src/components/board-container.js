@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'https://esm.sh/lit@3';
 import './sudoku-board.js';
 import './sudoku-recon.js';
+import './competitive-board.js';
 import './piece-tray.js';
 import { hasOverlap, getCellsAtPosition } from '../utils/pieceGeometry.js';
 
@@ -8,9 +9,10 @@ export class BoardContainer extends LitElement {
   static properties = {
     gameState: { type: Object },
     uiState: { type: Object },
-    multiplayerState: { type: Object }, 
+    multiplayerState: { type: Object },
     modifiers: { type: Object },
     settingsState: { type: Object },
+    historyState: { type: Object },
     _boardHeight: { type: Number },
     _trayWidth: { type: Number }
   };
@@ -91,6 +93,8 @@ export class BoardContainer extends LitElement {
 
   firstUpdated() {
     this._observeBoard();
+    const board = this.shadowRoot.querySelector('sudoku-board');
+    board?.focus();
   }
 
   updated(changedProperties) {
@@ -258,6 +262,18 @@ export class BoardContainer extends LitElement {
   render() {
     if (!this.gameState) return html`<div>Loading...</div>`;
 
+    if (this.gameState.mode === 'STANDARD' && this.multiplayerState?.mpMode === 'COMPETITIVE') {
+      return html`
+        <competitive-board
+          .gameState="${this.gameState}"
+          .uiState="${this.uiState}"
+          .modifiers="${this.modifiers}"
+          .settingsState="${this.settingsState}"
+          .multiplayerState="${this.multiplayerState}"
+        ></competitive-board>
+      `;
+    }
+
     if (this.gameState.mode === 'RECONSTRUCTION') {
       return html`
         <div class="recon-layout">
@@ -283,14 +299,174 @@ export class BoardContainer extends LitElement {
       `;
     }
 
+    const totalSeconds = Math.floor((this.gameState?.timer || 0) / 1000);
+    const timer = `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
+    const mistakes = this.gameState?.mistakes ?? 0;
+    const inputMode = this.uiState?.inputMode || 'VALUE';
+    const selectedId = this.uiState?.selectedId;
+    const peerId = this.multiplayerState?.peerId || null;
+    const canUndo = (this.historyState?.past?.length ?? 0) > 0;
+    const canRedo = (this.historyState?.future?.length ?? 0) > 0;
+
+    const dispatch = (detail) => this.dispatchEvent(new CustomEvent('dispatch-action', { detail, bubbles: true, composed: true }));
+
+    const hudBtn = (icon, type, enabled = true) => html`
+      <button style="
+        width:32px;height:32px;border-radius:var(--radius-circle);
+        border:none;cursor:${enabled ? 'pointer' : 'default'};
+        background:var(--hud-btn-bg);
+        color:var(--text-primary);font-size:13px;
+        box-shadow:var(--hud-btn-shadow);
+        backdrop-filter:blur(4px);
+        transition:all 0.15s;
+        display:flex;align-items:center;justify-content:center;
+        opacity:${enabled ? 1 : 0.35};
+      " ?disabled="${!enabled}" @mousedown="${e => e.preventDefault()}" @click="${() => enabled && dispatch({ type })}">
+        ${icon}
+      </button>`;
+
+    const modeChip = (label, mode) => {
+      const active = inputMode === mode;
+      return html`
+        <button style="
+          flex:1;height:30px;border-radius:var(--radius-chip);
+          border:none;cursor:pointer;
+          font-family:var(--font-ui);font-size:11px;letter-spacing:0.05em;font-weight:500;
+          color:${active ? 'var(--chip-active-color)' : 'var(--text-primary)'};
+          background:${active ? 'var(--chip-active-bg)' : 'var(--chip-bg)'};
+          box-shadow:${active ? 'var(--chip-shadow-active)' : 'var(--chip-shadow)'};
+          transition:all 0.12s;
+        " @mousedown="${e => e.preventDefault()}" @click="${() => dispatch({ type: 'UI/SET_INPUT_MODE', payload: { mode } })}">
+          ${label}
+        </button>`;
+    };
+
+    const numChip = (n) => html`
+      <button style="
+        width:44px;height:44px;border-radius:var(--radius-chip);
+        border:none;cursor:pointer;
+        font-family:var(--font-numbers);font-weight:700;font-size:20px;
+        color:var(--chip-color);
+        background:var(--chip-bg);
+        box-shadow:var(--chip-shadow);
+        text-shadow:0 1px 0 rgba(255,255,255,0.18),0 -1px 1px rgba(0,0,0,0.2);
+        transition:all 0.12s;
+      " @mousedown="${e => e.preventDefault()}" @click="${() => {
+        const effectiveMode = this.uiState?.inputMode || 'VALUE';
+        const actionType = effectiveMode === 'CANDIDATE' ? 'BOARD/SET_CANDIDATE' : 'BOARD/SET_VALUE';
+        const payload = { id: selectedId, value: n, peerId };
+        if (actionType === 'BOARD/SET_CANDIDATE') payload.autoCandidates = this.settingsState?.autoCandidates ?? false;
+        dispatch({ type: actionType, payload });
+      }}">
+        ${n}
+      </button>`;
+
+    const actionChip = (label, type, payload = {}) => html`
+      <button style="
+        height:36px;padding:0 14px;border-radius:var(--radius-chip);
+        border:none;cursor:pointer;white-space:nowrap;
+        font-family:var(--font-display);font-size:12px;font-style:italic;
+        color:var(--chip-color);
+        background:var(--chip-bg);
+        box-shadow:var(--chip-shadow);
+        transition:all 0.12s;
+      " @mousedown="${e => e.preventDefault()}" @click="${() => dispatch({ type, payload })}">
+        ${label}
+      </button>`;
+
     return html`
-      <sudoku-board
-        .gameState="${this.gameState}"
-        .uiState="${this.uiState}"
-        .modifiers="${this.modifiers}"
-        .settingsState="${this.settingsState}"
-        .multiplayerState="${this.multiplayerState}"
-      ></sudoku-board>
+      <div style="display:flex;flex-direction:column;align-items:center;width:100%;padding:0 1rem;box-sizing:border-box;">
+        <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:20px;">
+          <div style="font-family:var(--font-display);font-size:28px;font-weight:500;color:var(--text-primary);text-shadow:0 1px 3px rgba(255,255,255,0.3);">Sudokus</div>
+          <div style="font-family:var(--font-display);font-style:italic;font-size:14px;color:var(--text-accent);margin-top:-2px;padding-left:3px;">by Abe</div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:40px;margin-bottom:16px;">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:1px;min-width:52px;">
+            ${this.settingsState?.showTimer !== false ? html`
+              <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-secondary);font-family:var(--font-ui);">Time</div>
+              <div style="font-family:var(--font-display);font-size:24px;color:var(--text-primary);">${timer}</div>
+            ` : ''}
+          </div>
+          <div style="display:flex;gap:8px;">
+            ${hudBtn('↩', 'HISTORY/UNDO', canUndo && !this.uiState?.viewingSolution)}
+            ${hudBtn('↪', 'HISTORY/REDO', canRedo && !this.uiState?.viewingSolution)}
+            ${hudBtn('⚙', 'UI/OPEN_SETTINGS')}
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:1px;min-width:52px;">
+            ${this.settingsState?.showMistakes !== false ? html`
+              <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-secondary);font-family:var(--font-ui);">Mistakes</div>
+              <div style="font-family:var(--font-display);font-size:24px;color:var(--text-primary);">${mistakes}</div>
+            ` : ''}
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:flex-start;gap:20px;">
+          <sudoku-board
+            .gameState="${this.gameState}"
+            .uiState="${this.uiState}"
+            .modifiers="${this.modifiers}"
+            .settingsState="${this.settingsState}"
+            .multiplayerState="${this.multiplayerState}"
+            .viewingSolution="${this.uiState?.viewingSolution ?? false}"
+          ></sudoku-board>
+
+          <div style="
+            display:flex;flex-direction:column;gap:10px;padding-top:8px;
+            opacity:${this.uiState?.viewingSolution ? 0.3 : 1};
+            pointer-events:${this.uiState?.viewingSolution ? 'none' : 'auto'};
+            transition:opacity 0.3s ease;
+          ">
+            <div style="display:flex;gap:6px;">
+              ${modeChip('Value', 'VALUE')}
+              ${modeChip('Candidate', 'CANDIDATE')}
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;">
+              ${[1,2,3,4,5,6,7,8,9].map(n => numChip(n))}
+            </div>
+            <div style="display:flex;flex-direction:column;gap:7px;">
+              <button style="
+                height:36px;padding:0 14px;border-radius:var(--radius-chip);
+                border:none;cursor:pointer;white-space:nowrap;
+                font-family:var(--font-display);font-size:12px;font-style:italic;
+                color:var(--chip-color);
+                background:var(--chip-bg);
+                box-shadow:var(--chip-shadow);
+                transition:all 0.12s;
+              " @mousedown="${e => e.preventDefault()}" @click="${() => {
+                const cell = this.gameState?.cells?.[selectedId];
+                if (!cell || cell.fixed) return;
+                if (cell.v !== 0) {
+                  dispatch({ type: 'BOARD/CLEAR_CELL', payload: { id: selectedId, peerId } });
+                } else if (cell.c?.length > 0) {
+                  dispatch({ type: 'BOARD/CLEAR_CANDIDATES', payload: { id: selectedId } });
+                }
+              }}">Erase</button>
+              ${actionChip('Hint', 'GAME/HINT', {})}
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:6px 2px;">
+              <span style="font-family:var(--font-display);font-style:italic;font-size:12px;color:var(--text-secondary);">Auto candidates</span>
+              <div @mousedown="${e => e.preventDefault()}" @click="${() => {
+                dispatch({ type: 'SETTINGS/SET', payload: { key: 'autoCandidates', value: !this.settingsState?.autoCandidates } });
+                setTimeout(() => this.shadowRoot.querySelector('sudoku-board')?.focus(), 0);
+              }}" style="
+                width:36px;height:20px;border-radius:10px;
+                background:${this.settingsState?.autoCandidates ? 'rgba(208,104,64,0.6)' : 'rgba(180,130,90,0.25)'};
+                border:1px solid ${this.settingsState?.autoCandidates ? 'rgba(190,90,55,0.5)' : 'rgba(180,130,90,0.3)'};
+                position:relative;cursor:pointer;transition:background 0.2s;flex-shrink:0;
+              ">
+                <div style="
+                  width:14px;height:14px;border-radius:50%;background:#fdf5ee;
+                  position:absolute;top:2px;left:2px;
+                  transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);
+                  transform:${this.settingsState?.autoCandidates ? 'translateX(16px)' : 'translateX(0)'};
+                  pointer-events:none;
+                "></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     `;
   }
 }

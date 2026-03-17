@@ -5,13 +5,15 @@ import { getRow, getCol, getHighlightedIds, getConflictIds, getRegionBorderClass
 import { getRegionColor } from '../config/regionColors.js';
 
 export class SudokuBoard extends LitElement {
+  static shadowRootOptions = { ...LitElement.shadowRootOptions };
+
   static properties = {
     gameState: { type: Object },
     uiState: { type: Object },
     multiplayerState: { type: Object },
     modifiers: { type: Object },
     settingsState: { type: Object },
-    multiplayerState: { type: Object }
+    viewingSolution: { type: Boolean }
   };
 
   static styles = css`
@@ -21,34 +23,68 @@ export class SudokuBoard extends LitElement {
       width: min(90vw, 540px);
       height: min(90vw, 540px);
       margin: 0 auto;
-      border: 2px solid var(--board-border-color, #333);
+      border: 1px solid var(--board-border);
+      background: var(--board-bg);
+      box-shadow: var(--board-shadow);
+      border-radius: var(--radius-sm);
       box-sizing: border-box;
       outline: none;
     }
 
     .grid {
       display: contents; /* Grid logic is now on host */
+      outline: none;
     }
   `;
 
   constructor() {
     super();
-    this.tabIndex = 0; // Make board focusable
+    this.tabIndex = 0;
+    this._shiftHeld = false;
+    this._preShiftMode = null;
+    this._boundKeyDown = this.handleInput.bind(this);
+    this._boundKeyUp = this._handleKeyUp.bind(this);
   }
 
   connectedCallback() {
     super.connectedCallback();
-    this.addEventListener('keydown', (e) => {
-      this.handleInput(e);
-    });
+    this.addEventListener('keydown', this._boundKeyDown);
+    this.addEventListener('keyup', this._boundKeyUp);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.removeEventListener('keydown', this._boundKeyDown);
+    this.removeEventListener('keyup', this._boundKeyUp);
   }
 
   handleInput(e) {
+    if (this.viewingSolution) return;
+
+    if (e.key === 'Shift' && !this._shiftHeld) {
+      this._shiftHeld = true;
+      this._preShiftMode = this.uiState?.inputMode || 'VALUE';
+      const opposite = this._preShiftMode === 'VALUE' ? 'CANDIDATE' : 'VALUE';
+      this._dispatch({ type: 'UI/SET_INPUT_MODE', payload: { mode: opposite } });
+      return;
+    }
+
     const selectedId = this.uiState?.selectedId;
     // Arrow key navigation
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
       e.preventDefault();
-      if (selectedId == null) return;
+      if (selectedId == null) {
+        const cells = this.gameState?.cells || [];
+        let startId = 0;
+        for (let i = cells.length - 1; i >= 0; i--) {
+          if (!cells[i].fixed && cells[i].v !== 0) {
+            startId = cells[i].id;
+            break;
+          }
+        }
+        this._dispatch({ type: 'UI/SELECT_CELL', payload: { id: startId } });
+        return;
+      }
       const row = Math.floor(selectedId / 9);
       const col = selectedId % 9;
       let newId = selectedId;
@@ -61,21 +97,25 @@ export class SudokuBoard extends LitElement {
     }
 
     // Digit input
-    if (/^[1-9]$/.test(e.key)) {
+    if (/^Digit[1-9]$/.test(e.code)) {
       if (selectedId == null) return;
       const cell = this.gameState?.cells?.[selectedId];
       if (!cell || cell.fixed) return;
-      const actionType = this.uiState?.inputMode === 'CANDIDATE'
+      const effectiveMode = this._shiftHeld
+        ? (this._preShiftMode === 'VALUE' ? 'CANDIDATE' : 'VALUE')
+        : (this.uiState?.inputMode || 'VALUE');
+      const actionType = effectiveMode === 'CANDIDATE'
         ? 'BOARD/SET_CANDIDATE'
         : 'BOARD/SET_VALUE';
-      this._dispatch({ 
-        type: actionType, 
-        payload: { 
-          id: selectedId, 
-          value: parseInt(e.key), 
-          peerId: this.multiplayerState?.peerId || null 
-        } 
-      });
+      const payload = {
+        id: selectedId,
+        value: parseInt(e.code.replace('Digit', '')),
+        peerId: this.multiplayerState?.peerId || null
+      };
+      if (actionType === 'BOARD/SET_CANDIDATE') {
+        payload.autoCandidates = this.settingsState?.autoCandidates ?? false;
+      }
+      this._dispatch({ type: actionType, payload });
       return;
     }
 
@@ -84,22 +124,20 @@ export class SudokuBoard extends LitElement {
       if (selectedId == null) return;
       const cell = this.gameState?.cells?.[selectedId];
       if (!cell || cell.fixed) return;
-      this._dispatch({ 
-        type: 'BOARD/CLEAR_CELL', 
-        payload: { 
-          id: selectedId,
-          peerId: this.multiplayerState?.peerId || null,
-        } 
-      });
+      if (cell.v !== 0) {
+        this._dispatch({ type: 'BOARD/CLEAR_CELL', payload: { id: selectedId, peerId: this.multiplayerState?.peerId || null } });
+      } else if (cell.c?.length > 0) {
+        this._dispatch({ type: 'BOARD/CLEAR_CANDIDATES', payload: { id: selectedId } });
+      }
       return;
     }
 
     // Toggle input mode
-    if (e.key === 'v' || e.key === 'V') {
+    if ((e.key === 'v' || e.key === 'V') && !this._shiftHeld) {
       this._dispatch({ type: 'UI/SET_INPUT_MODE', payload: { mode: 'VALUE' } });
       return;
     }
-    if (e.key === 'c' || e.key === 'C') {
+    if ((e.key === 'c' || e.key === 'C') && !this._shiftHeld) {
       this._dispatch({ type: 'UI/SET_INPUT_MODE', payload: { mode: 'CANDIDATE' } });
       return;
     }
@@ -109,6 +147,18 @@ export class SudokuBoard extends LitElement {
       this._dispatch({ type: 'UI/SELECT_CELL', payload: { id: null } });
       return;
     }
+  }
+
+  _handleKeyUp(e) {
+    if (e.key === 'Shift' && this._shiftHeld) {
+      this._shiftHeld = false;
+      this._dispatch({ type: 'UI/SET_INPUT_MODE', payload: { mode: this._preShiftMode } });
+      this._preShiftMode = null;
+    }
+  }
+
+  firstUpdated() {
+    this.focus();
   }
 
   reinitialize() {
@@ -126,7 +176,9 @@ export class SudokuBoard extends LitElement {
   render() {
     if (!this.gameState || !this.gameState.cells) return html`<div>Loading...</div>`;
 
-    const highlightedIds = getHighlightedIds(this.uiState.selectedId, this.gameState.regions);
+    const highlightedIds = this.settingsState?.highlightPeers !== false
+      ? getHighlightedIds(this.uiState.selectedId, this.gameState.regions)
+      : [];
     const conflictIds = getConflictIds(this.gameState.cells, this.gameState.regions);
 
     return html`
@@ -158,7 +210,9 @@ export class SudokuBoard extends LitElement {
               ?selected="${this.uiState.selectedId === cell.id}"
               ?highlighted="${highlightedIds.includes(cell.id)}"
               ?conflict="${conflictIds.includes(cell.id)}"
+              ?mistake="${!cell.fixed && cell.v > 0 && cell.v !== cell.solution}"
               .modClasses="${allModClasses}"
+              ?readonly="${this.uiState?.viewingSolution}"
             ></sudoku-cell>
           `;
         })}

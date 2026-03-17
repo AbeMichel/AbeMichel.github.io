@@ -5,17 +5,19 @@ export class SudokuCell extends LitElement {
     cellId: { type: Number },
     value: { type: Number },
     candidates: { type: Array },
-    fixed: { type: Boolean },
-    selected: { type: Boolean },
+    fixed: { type: Boolean, reflect: true },
+    selected: { type: Boolean, reflect: true },
     highlighted: { type: Boolean },
     conflict: { type: Boolean },
+    mistake: { type: Boolean },
     modClasses: { type: Array },
     regionIndex: { type: Number },
     regionColor: { type: String },
     pieceColor: { type: String },
     pieceBorderClasses: { type: Array },
     flashType: { type: String },
-    placedByColor: { type: String }
+    placedByColor: { type: String },
+    readonly: { type: Boolean, reflect: true }
   };
 
   static styles = css`
@@ -77,18 +79,44 @@ export class SudokuCell extends LitElement {
     :host(.piece-border-bottom) { border-bottom: 2px solid var(--piece-border-color, #555) !important; }
     :host(.piece-border-right)  { border-right: 2px solid var(--piece-border-color, #555) !important; }
 
-    :host([highlighted]) {
-      background-color: var(--cell-highlight-bg, #fcfcda);
+    :host([highlighted]) .cell {
+      filter: brightness(0.88);
     }
 
     :host([selected]) {
-      background-color: var(--cell-selected-bg, #b3e5fc);
-      outline: 2px solid var(--cell-selected-outline, #2196f3);
-      z-index: 1;
+      outline: none;
+      box-shadow:
+        inset 0 0 0 1px rgba(180,140,80,0.4),
+        0 4px 12px rgba(80,60,40,0.25),
+        0 2px 6px rgba(80,60,40,0.15);
+      transform: scale(1.04);
+      z-index: 2;
+      position: relative;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    :host([selected]) .cell {
+      filter: brightness(1.06);
     }
 
     :host([conflict]) {
-      background-color: var(--cell-conflict-bg, #ffcdd2);
+      background-color: rgba(80, 110, 160, 0.12);
+    }
+
+    @keyframes mistake-pulse {
+      0%   { background-color: rgba(180, 60, 40, 0.35); }
+      60%  { background-color: rgba(180, 60, 40, 0.18); }
+      100% { background-color: rgba(180, 60, 40, 0.12); }
+    }
+
+    :host([mistake]) {
+      background-color: rgba(180, 60, 40, 0.12);
+      animation: mistake-pulse 0.6s ease-out forwards;
+    }
+
+    :host([readonly]) .cell {
+      pointer-events: none;
+      cursor: default;
     }
 
     .cell {
@@ -120,12 +148,22 @@ export class SudokuCell extends LitElement {
       z-index: 1;
     }
 
-    :host([fixed]) .value {
-      color: var(--cell-fixed-color, #000);
+    :host([fixed]) .cell {
+      color: var(--num-fixed-dark, #1a1208);
+      background: rgba(0, 0, 0, 0.06);
+      text-shadow:
+        0 1px 0 rgba(255,255,255,0.18),
+        0 -1px 2px rgba(0,0,0,0.4);
     }
 
     :host([conflict]) .value {
-      color: var(--cell-conflict-color, #d32f2f);
+      color: var(--num-conflict-cool, #4a6080);
+      text-shadow: none;
+    }
+
+    :host([mistake]) .value {
+      color: var(--num-conflict);
+      text-shadow: none;
     }
 
     .value:empty {
@@ -147,30 +185,51 @@ export class SudokuCell extends LitElement {
       z-index: 1;
     }
 
-    .candidate {
+    .candidate-slot {
       display: flex;
       align-items: center;
       justify-content: center;
+      width: 100%;
+      height: 100%;
+      pointer-events: auto;
+      cursor: default;
+    }
+
+    :host([selected]) .candidate-slot {
+      cursor: pointer;
+    }
+
+    .candidate-num {
       font-size: 0.6rem;
       color: var(--candidate-color, #777);
       opacity: 0;
-      transition: opacity 0.2s ease;
-      pointer-events: auto;
+      transition: opacity 0.1s ease, color 0.1s ease;
+      pointer-events: none;
     }
 
-    .candidate.is-active {
+    .candidate-num.is-active {
       opacity: 1;
     }
 
-    /* Pop animation on value change */
-    @keyframes pop {
-      0% { transform: scale(0.5); opacity: 0; }
-      70% { transform: scale(1.2); }
-      100% { transform: scale(1); opacity: 1; }
+    :host([selected]) .candidate-slot:hover .candidate-num:not(.is-active) {
+      opacity: 1;
+      color: rgba(90, 75, 55, 0.4);
+      transition: color 0.1s ease;
+    }
+
+    :host([selected]) .candidate-slot:hover .candidate-num.is-active {
+      color: var(--num-placed);
+      filter: brightness(1.2);
+    }
+
+    /* Settle animation on value change */
+    @keyframes place-value {
+      0%   { transform: scale(1.08); }
+      100% { transform: scale(1); }
     }
 
     :host([data-just-placed]) .value {
-      animation: pop 0.2s ease-out;
+      animation: place-value 0.15s ease-out forwards;
     }
   `;
 
@@ -183,11 +242,13 @@ export class SudokuCell extends LitElement {
     this.selected = false;
     this.highlighted = false;
     this.conflict = false;
+    this.mistake = false;
     this.modClasses = [];
     this.regionIndex = 0;
     this.regionColor = '';
     this.pieceColor = '';
     this.pieceBorderClasses = [];
+    this.readonly = false;
     this._handleClick = this._handleClick.bind(this);
   }
 
@@ -221,7 +282,7 @@ export class SudokuCell extends LitElement {
   }
 
   _handleClick(e) {
-    if (e.target.closest('.candidate')) return;
+    if (e.target.closest('.candidate-slot')) return;
     this.dispatchEvent(new CustomEvent('dispatch-action', {
       detail: { type: 'UI/SELECT_CELL', payload: { id: this.cellId } },
       bubbles: true,
@@ -250,13 +311,9 @@ export class SudokuCell extends LitElement {
         ` : html`
           <div class="candidates">
             ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(digit => html`
-              <span 
-                class="candidate ${this.candidates.includes(digit) ? 'is-active' : ''}"
-                data-digit="${digit}"
-                @click="${(e) => this._handleCandidateClick(e, digit)}"
-              >
-                ${digit}
-              </span>
+              <div class="candidate-slot" @click="${(e) => this._handleCandidateClick(e, digit)}">
+                <span class="candidate-num ${this.candidates.includes(digit) ? 'is-active' : ''}">${digit}</span>
+              </div>
             `)}
           </div>
         `}

@@ -1,0 +1,93 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&family=Lora:wght@400;600;700&family=Inter:wght@300;400;500&display=swap');
+
+:root {
+  --bg-gradient: linear-gradient(160deg, #ede0d0 0%, #ddd0c0 50%, #d4c8b8 100%);
+  --board-bg: linear-gradient(135deg, #c8bfb0 0%, #bdb4a5 40%, #c4bbb0 70%, #b8b0a2 100%);
+  --board-border: rgba(100, 85, 65, 0.35);
+  --board-shadow: 0 12px 40px rgba(80,60,40,0.28), 0 4px 12px rgba(80,60,40,0.18), inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -1px 0 rgba(0,0,0,0.08);
+  --cell-border: rgba(90, 75, 55, 0.2);
+  --cell-border-box: rgba(70, 55, 35, 0.35);
+  --cell-hover: rgba(255, 250, 240, 0.18);
+  --cell-selected: rgba(255, 248, 235, 0.32);
+  --cell-selected-ring: inset 0 0 0 1px rgba(180,140,80,0.4);
+  --cell-highlighted: rgba(255, 248, 235, 0.14);
+  --cell-conflict-bg: rgba(180, 60, 40, 0.12);
+  --num-fixed: #0f0a04;
+  --num-fixed-carved: #7a7268;
+  --num-fixed-dark: #1a1208;
+  --num-conflict-cool: #4a6080;
+  --num-placed: #2a4a2a;
+  --num-conflict: #6a1808;
+  --num-candidate: #5a4a3a;
+  --num-shadow-fixed: 0 1px 0 rgba(255,255,255,0.18), 0 -1px 2px rgba(0,0,0,0.3);
+  --num-shadow-placed: 0 1px 0 rgba(255,255,255,0.12), 0 -1px 1px rgba(0,0,0,0.2);
+  --chip-bg: linear-gradient(145deg, #b8b0a0, #a8a090);
+  --chip-bg-hover: linear-gradient(145deg, #c4bcac, #b4ac9c);
+  --chip-color: #1a1008;
+  --chip-shadow: 0 5px 12px rgba(60,45,25,0.32), 0 2px 5px rgba(60,45,25,0.2), inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -1px 0 rgba(0,0,0,0.15);
+  --chip-shadow-hover: 0 7px 18px rgba(60,45,25,0.36), 0 3px 7px rgba(60,45,25,0.22), inset 0 1px 0 rgba(255,255,255,0.28);
+  --chip-shadow-active: 0 2px 5px rgba(60,45,25,0.24), inset 0 2px 4px rgba(0,0,0,0.14);
+  --chip-active-bg: linear-gradient(145deg, #7a6e5e, #6a6050);
+  --chip-active-color: #f0e8d8;
+  --hud-btn-bg: rgba(255, 250, 245, 0.5);
+  --hud-btn-shadow: 0 2px 8px rgba(100,70,40,0.18), 0 1px 2px rgba(100,70,40,0.12);
+  --font-display: 'Playfair Display', serif;
+  --font-numbers: 'Lora', serif;
+  --font-ui: 'Inter', sans-serif;
+  --text-primary: #3a2a1a;
+  --text-secondary: #9a7458;
+  --text-accent: #c05a3a;
+  --text-muted: #b08060;
+  --shadow-float: 0 8px 40px rgba(120,60,30,0.12), 0 2px 8px rgba(120,60,30,0.08);
+  --glass-bg: rgba(253, 246, 240, 0.82);
+  --glass-border: rgba(200, 130, 90, 0.22);
+  --glass-shadow: 0 8px 40px rgba(120,60,30,0.12), 0 2px 8px rgba(120,60,30,0.08);
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-pill: 20px;
+  --radius-chip: 6px;
+  --radius-circle: 50%;
+  --gap-sm: 8px;
+  --gap-md: 16px;
+  --gap-lg: 24px;
+  --progress-player: rgba(208,104,64,0.65);
+  --progress-opponent: rgba(120,100,180,0.55);
+
+  /* Bridge to existing cell variable names used by sudoku-cell.js */
+  --board-border-color: var(--board-border);
+  --cell-bg: transparent;
+  --cell-selected-bg: var(--cell-selected);
+  --cell-selected-outline: transparent;
+  --cell-highlight-bg: var(--cell-highlighted);
+  --cell-value-color: var(--num-placed);
+  --cell-fixed-color: var(--num-fixed);
+  --cell-conflict-color: var(--num-conflict);
+  --candidate-color: var(--num-candidate);
+  --region-border-color: var(--cell-border-box);
+}
+
+[data-theme="dark"] {
+  --bg-gradient: linear-gradient(160deg, #1a1510 0%, #141210 50%, #110f0d 100%);
+  --board-bg: linear-gradient(135deg, #2a2520 0%, #252018 40%, #2a2318 70%, #201c14 100%);
+  --cell-hover: rgba(255, 240, 200, 0.06);
+  --cell-selected: rgba(255, 240, 200, 0.12);
+  --cell-highlighted: rgba(255, 240, 200, 0.05);
+  --num-fixed: #f0e8d0;
+  --num-placed: #90c890;
+  --text-primary: #e8d8c0;
+  --text-secondary: #a08060;
+  --glass-bg: rgba(30, 24, 18, 0.88);
+  --glass-border: rgba(150, 100, 60, 0.3);
+  --chip-bg: linear-gradient(145deg, #3a3428, #2e2820);
+  --chip-bg-hover: linear-gradient(145deg, #44382c, #382e22);
+  --chip-color: #e8d8c0;
+  --chip-active-bg: linear-gradient(145deg, #5a5040, #4a4030);
+}
+
+body {
+  background: var(--bg-gradient);
+  font-family: var(--font-ui);
+  min-height: 100vh;
+  margin: 0;
+}
