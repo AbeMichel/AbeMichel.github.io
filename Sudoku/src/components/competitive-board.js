@@ -49,16 +49,19 @@ export class CompetitiveBoard extends LitElement {
     }
 
     .opponents-side {
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: repeat(var(--cols, 1), 1fr);
       gap: 1.5rem;
-      align-items: center;
+      align-items: start;
+      width: 100%;
+      flex: 1;
     }
 
     .opponent-wrap {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
+      min-width: 0;
     }
 
     .opponent-label {
@@ -66,6 +69,9 @@ export class CompetitiveBoard extends LitElement {
       font-size: 13px;
       font-style: italic;
       color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .opponent-label.disconnected {
@@ -76,8 +82,8 @@ export class CompetitiveBoard extends LitElement {
     .opponent-board {
       display: grid;
       grid-template-columns: repeat(9, 1fr);
-      width: 300px;
-      height: 300px;
+      width: 100%;
+      aspect-ratio: 1 / 1;
       background: var(--board-bg);
       border: 1px solid var(--board-border);
       box-shadow: var(--board-shadow);
@@ -98,7 +104,7 @@ export class CompetitiveBoard extends LitElement {
     }
 
     .bar-bg {
-      width: 300px;
+      width: 100%;
       height: 6px;
       background: rgba(180, 110, 80, 0.15);
       border-radius: var(--radius-sm);
@@ -186,6 +192,16 @@ export class CompetitiveBoard extends LitElement {
         ${n}
       </button>`;
 
+    const opponents = peers.filter(p => p.id !== peerId);
+    let cols = 1;
+    if (opponents.length > 0) {
+      let r = 1;
+      while (cols * r < opponents.length) {
+        if (cols <= r) cols++;
+        else r++;
+      }
+    }
+
     return html`
       <div class="game-area">
         <div class="local-side">
@@ -245,18 +261,16 @@ export class CompetitiveBoard extends LitElement {
 
         <div class="vs-divider">vs</div>
 
-        <div class="opponents-side">
-          ${this._renderOpponents(peers, peerId, competitiveBoards)}
+        <div class="opponents-side" style="--cols: ${cols}">
+          ${this._renderOpponents(opponents, competitiveBoards)}
         </div>
       </div>
     `;
   }
 
-  _renderOpponents(peers, peerId, competitiveBoards) {
-    const opponents = peers.filter(p => p.id !== peerId);
-
+  _renderOpponents(opponents, competitiveBoards) {
     if (opponents.length === 0) return html`
-      <div style="font-family:var(--font-display);font-style:italic;font-size:14px;color:var(--text-secondary);">
+      <div style="grid-column: 1 / -1; font-family:var(--font-display);font-style:italic;font-size:14px;color:var(--text-secondary);text-align:center;">
         Waiting for opponents…
       </div>`;
 
