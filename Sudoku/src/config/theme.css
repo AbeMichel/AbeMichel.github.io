@@ -111,6 +111,28 @@
   --tech-bar-fill: linear-gradient(90deg, var(--text-accent), #e09070);
   --tech-bar-bg: rgba(190,150,110,0.18);
 
+  /* Piece tray */
+  --tray-bg: transparent;
+  --piece-grid-bg: rgba(248,240,228,0.96);
+  --piece-grid-border: rgba(180,130,80,0.2);
+  --piece-grid-selected: rgba(192,90,58,0.35);
+  --piece-grid-hover: rgba(180,130,80,0.3);
+  --piece-btn-bg: rgba(253,246,240,0.7);
+  --piece-btn-color: var(--text-primary);
+  --piece-btn-border: var(--glass-border);
+  --piece-label-color: var(--text-secondary);
+  --piece-cell-inset-shadow: inset 2px 2px 4px rgba(255,255,255,0.5), inset -2px -2px 4px rgba(0,0,0,0.2);
+  --piece-container-shadow: drop-shadow(0px 2px 4px rgba(0,0,0,0.2));
+  --piece-container-shadow-hover: drop-shadow(0px 4px 8px rgba(0,0,0,0.3));
+  --hover-preview-bg: rgba(253,246,240,0.97);
+  --hover-preview-border: var(--glass-border);
+  --hover-preview-shadow: var(--shadow-modal);
+
+  /* Reconstruction drop zone & conflict */
+  --recon-drop-valid: rgba(76,175,80,0.3);
+  --recon-drop-invalid: rgba(244,67,54,0.3);
+  --recon-conflict-bg: rgba(200,50,30,0.3);
+
   /* Multiplayer entry — code input */
   --code-input-bg: rgba(253, 246, 240, 0.6);
   --code-input-border: rgba(200, 130, 90, 0.35);
@@ -152,6 +174,14 @@
   --code-input-border: rgba(150, 100, 60, 0.4);
   --code-input-border-focus: rgba(200, 120, 60, 0.65);
   --modal-bg: rgba(28, 22, 16, 0.96);
+
+  --piece-grid-bg: rgba(30,22,14,0.96);
+  --piece-grid-border: rgba(100,70,40,0.3);
+  --piece-grid-selected: rgba(192,90,58,0.4);
+  --hover-preview-bg: rgba(20,15,10,0.97);
+  --recon-drop-valid: rgba(100,200,100,0.25);
+  --recon-drop-invalid: rgba(220,80,60,0.25);
+  --recon-conflict-bg: rgba(220,60,40,0.32);
 }
 
 body {

@@ -169,6 +169,67 @@ export class ResultScreen extends LitElement {
     this.dispatchEvent(new CustomEvent('dispatch-action', { detail, bubbles: true, composed: true }));
   }
 
+  _renderCoop() {
+    const { timer, mistakes } = this.gameState;
+    const peers = this.multiplayerState.peers || [];
+    const localId = this.multiplayerState.peerId;
+
+    const cellsByPeer = {};
+    (this.gameState.cells || []).forEach(c => {
+      if (c.placedBy) cellsByPeer[c.placedBy] = (cellsByPeer[c.placedBy] || 0) + 1;
+    });
+
+    return html`
+      <div class="result-card">
+        <div class="winner-text">Puzzle Solved!</div>
+        <div class="winner-sub">Great teamwork</div>
+
+        <table>
+          <tbody>
+            <tr>
+              <td style="text-align:left;color:var(--text-secondary);font-family:var(--font-ui);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;">Time</td>
+              <td class="time">${this._formatTime(timer)}</td>
+            </tr>
+            <tr>
+              <td style="text-align:left;color:var(--text-secondary);font-family:var(--font-ui);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;">Mistakes</td>
+              <td>${mistakes ?? 0}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Cells placed</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${peers.map(p => html`
+              <tr class="${p.id === localId ? 'is-local' : ''}">
+                <td style="text-align:left;">
+                  <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color || 'var(--text-accent)'};margin-right:8px;"></span>
+                  ${p.name}${p.id === localId ? ' (you)' : ''}
+                </td>
+                <td>${cellsByPeer[p.id] || 0}</td>
+              </tr>
+            `)}
+          </tbody>
+        </table>
+
+        <div class="actions">
+          ${this.multiplayerState.isHost ? html`
+            <button @click="${() => this._dispatch({ type: 'MP/RETURN_TO_LOBBY' })}">Play Again</button>
+          ` : html`
+            <button disabled>Waiting for host...</button>
+          `}
+          <button @click="${this._changeSettings}">Change Settings</button>
+          <button class="btn-danger" @click="${this._quit}">Quit</button>
+        </div>
+      </div>
+    `;
+  }
+
   _renderSingleplayer() {
     const { timer, mistakes, difficulty, seed } = this.gameState;
     return html`
@@ -202,6 +263,7 @@ export class ResultScreen extends LitElement {
 
   render() {
     const result = this.uiState.competitiveResult;
+    if (!result && this.multiplayerState?.mpMode === 'CO_OP') return this._renderCoop();
     if (!result) return this._renderSingleplayer();
 
     const winnerPeer = this.multiplayerState.peers.find(p => p.id === result.winnerId) || 

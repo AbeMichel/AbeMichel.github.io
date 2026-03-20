@@ -361,19 +361,19 @@ export class ModeSelect extends LitElement {
       {
         mode: 'STANDARD',
         label: 'Classic',
-        desc: 'The timeless 9×9 sudoku.\nPure logic, no gimmicks.',
+        desc: 'The timeless 9×9 sudoku.',
         previewVar: '--preview-classic-bg'
       },
       {
         mode: 'CHAOS',
         label: 'Chaos',
-        desc: 'Irregular regions break the familiar grid.\nExpect the unexpected.',
+        desc: 'Irregular regions break the familiar grid.',
         previewVar: '--preview-chaos-bg'
       },
       {
         mode: 'RECONSTRUCTION',
         label: 'Reconstruction',
-        desc: 'Place the pieces back where they belong.\nSpatial memory meets logic.',
+        desc: 'Place the pieces back where they belong.',
         previewVar: '--preview-recon-bg'
       }
     ];

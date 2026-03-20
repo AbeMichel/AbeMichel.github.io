@@ -2,6 +2,7 @@ import { Actions, clearPlacedByAction } from '../core/actions.js';
 import { getDailyConfig, generatePuzzle, generateReconPieces } from '../logic/generator.js';
 import { getConflictIds } from '../utils/boardGeometry.js';
 import { getRandomPuzzle, getSeededPuzzle, puzzleToGameState, getDailyPuzzle } from './puzzleLoader.js';
+import { broadcastAction } from './multiplayerClient.js';
 
 const PIECE_COLORS = [
   '#e8f4fd', '#fdf2e8', '#e8fdf5', '#f5e8fd',
@@ -154,7 +155,13 @@ export const initGameEffects = (store) => {
       }
     }
 
-    if ((action.type === Actions.BOARD.SET_VALUE || action.type === Actions.BOARD.CLEAR_CELL || action.type === 'INTERNAL/REFRESH_CANDIDATES') && state.settings?.autoCandidates) {
+    if ((action.type === Actions.BOARD.SET_VALUE ||
+         action.type === Actions.BOARD.CLEAR_CELL ||
+         action.type === 'INTERNAL/REFRESH_CANDIDATES' ||
+         action.type === Actions.RECON.PLACE_PIECE ||
+         action.type === Actions.RECON.PICK_UP_PIECE ||
+         action.type === Actions.RECON.RETURN_TO_TRAY ||
+         action.type === Actions.RECON.RETURN_PIECE) && state.settings?.autoCandidates) {
       runAutoCandidates(state, store);
     }
 
@@ -180,6 +187,33 @@ export const initGameEffects = (store) => {
           }
         }
       }
+    }
+
+    // Co-op win detection — standard check skips when multiplayer status is 'PLAYING'
+    if (action.type === Actions.BOARD.SET_VALUE && state.multiplayer?.mpMode === 'CO_OP') {
+      const { cells, regions, status } = state.game;
+      if (cells && status !== 'WON') {
+        const nonFixed = cells.filter(c => !c.fixed);
+        if (nonFixed.every(c => c.v > 0) && nonFixed.every(c => c.v === c.solution)) {
+          if (getConflictIds(cells, regions).length === 0) {
+            store.dispatch({ type: Actions.GAME.WIN });
+          }
+        }
+      }
+    }
+
+    // Co-op undo/redo sync — broadcast to peers so all boards stay in sync.
+    // Not added to SYNCABLE_ACTION_PREFIXES to avoid syncing undo/redo in competitive
+    // mode where each player has an independent board.
+    if ((action.type === Actions.HISTORY.UNDO || action.type === Actions.HISTORY.REDO) &&
+        state.multiplayer?.mpMode === 'CO_OP' &&
+        state.multiplayer.status === 'PLAYING' &&
+        !action._mpOrigin) {
+      broadcastAction({ type: action.type, _mp: { peerId: state.multiplayer.peerId } });
+    }
+
+    if (action.type?.startsWith('RECON/') && state._reconWin && state.game.status !== 'WON') {
+      store.dispatch({ type: Actions.GAME.WIN });
     }
 
     if (action.type === Actions.GAME.WIN) {

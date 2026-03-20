@@ -27,6 +27,56 @@ export class BoardContainer extends LitElement {
       -webkit-user-select: none;
     }
 
+    .recon-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+
+    .recon-hud {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      box-sizing: border-box;
+    }
+
+    .hud-btn {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 14px;
+      color: var(--text-secondary);
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: color 0.2s;
+      padding: 0;
+    }
+
+    .hud-btn:hover {
+      color: var(--text-primary);
+    }
+
+    .timer-display {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+    }
+
+    .mistake-counter {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+      min-width: 52px;
+      text-align: center;
+    }
+
     .recon-layout {
       display: grid;
       grid-template-columns: min(90vw, 540px) 1fr;
@@ -275,25 +325,122 @@ export class BoardContainer extends LitElement {
     }
 
     if (this.gameState.mode === 'RECONSTRUCTION') {
+      const totalSeconds = Math.floor((this.gameState?.timer || 0) / 1000);
+      const reconTimer = `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
+      const moveCount = this.gameState.moveCount ?? 0;
+      const canUndo = (this.historyState?.past?.length ?? 0) > 0;
+      const canRedo = (this.historyState?.future?.length ?? 0) > 0;
+      const reconDispatch = (detail) => this.dispatchEvent(new CustomEvent('dispatch-action', { detail, bubbles: true, composed: true }));
+      const reconHudBtn = (icon, type, enabled = true) => html`
+        <button style="
+          width:32px;height:32px;border-radius:var(--radius-circle);
+          border:none;cursor:${enabled ? 'pointer' : 'default'};
+          background:var(--hud-btn-bg);
+          color:var(--text-primary);font-size:13px;
+          box-shadow:var(--hud-btn-shadow);
+          backdrop-filter:blur(4px);
+          transition:all 0.15s;
+          display:flex;align-items:center;justify-content:center;
+          opacity:${enabled ? 1 : 0.35};
+        " ?disabled="${!enabled}" @mousedown="${e => e.preventDefault()}" @click="${() => enabled && reconDispatch({ type })}">
+          ${icon}
+        </button>`;
+
       return html`
-        <div class="recon-layout">
-          <div class="board-area">
-            <sudoku-recon
-              .gameState="${this.gameState}"
-              .uiState="${this.uiState}"
-              .modifiers="${this.modifiers}"
-              .settingsState="${this.settingsState}"
-              .multiplayerState="${this.multiplayerState}"
-            ></sudoku-recon>
+        <div style="display:flex;flex-direction:column;align-items:center;width:100%;padding:0 1rem;box-sizing:border-box;">
+          <div style="display:flex;align-items:center;justify-content:center;width:100%;margin-bottom:20px;position:relative;">
+            <button @mousedown="${e => e.preventDefault()}" @click="${() => {
+              if (this.gameState?.status === 'PLAYING') reconDispatch({ type: 'GAME/ABANDON' });
+              reconDispatch({ type: 'UI/SET_VIEW', payload: { view: 'TITLE' } });
+            }}" style="
+              position:absolute;left:0;
+              font-family:var(--font-display);font-style:italic;font-size:14px;
+              color:var(--text-secondary);background:none;border:none;
+              cursor:pointer;transition:color 0.2s;padding:0;
+            " onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-secondary)'">← Menu</button>
+            <div style="display:flex;flex-direction:column;align-items:center;">
+              <div style="font-family:var(--font-display);font-size:28px;font-weight:500;color:var(--text-primary);text-shadow:0 1px 3px rgba(255,255,255,0.3);">Sudokus</div>
+              <div style="font-family:var(--font-display);font-style:italic;font-size:14px;color:var(--text-accent);margin-top:-2px;padding-left:3px;">by Abe</div>
+            </div>
           </div>
-          <div class="tray-area">
-            <piece-tray
-              .pieces="${this.gameState.pieces}"
-              .selectedPieceId="${this.uiState.selectedPieceId}"
-              .reconConstraints="${this.gameState.reconConstraints}"
-              .availableHeight="${this._boardHeight}"
-              .availableWidth="${this._trayWidth || 160}"
-            ></piece-tray>
+
+          <div style="display:flex;align-items:center;gap:40px;margin-bottom:16px;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:1px;min-width:52px;">
+              ${this.settingsState?.showTimer !== false ? html`
+                <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-secondary);font-family:var(--font-ui);">Time</div>
+                <div style="font-family:var(--font-display);font-size:24px;color:var(--text-primary);">${reconTimer}</div>
+              ` : ''}
+            </div>
+            <div style="display:flex;gap:8px;">
+              ${reconHudBtn('↩', 'HISTORY/UNDO', canUndo)}
+              ${reconHudBtn('↪', 'HISTORY/REDO', canRedo)}
+              ${reconHudBtn('⚙', 'UI/OPEN_SETTINGS')}
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:1px;min-width:52px;">
+              <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-secondary);font-family:var(--font-ui);">Moves</div>
+              <div style="font-family:var(--font-display);font-size:24px;color:var(--text-primary);">${moveCount}</div>
+            </div>
+          </div>
+
+          <div class="recon-layout">
+            <div class="board-area" style="display:flex;flex-direction:column;gap:12px;">
+              <sudoku-recon
+                .gameState="${this.gameState}"
+                .uiState="${this.uiState}"
+                .modifiers="${this.modifiers}"
+                .settingsState="${this.settingsState}"
+                .multiplayerState="${this.multiplayerState}"
+              ></sudoku-recon>
+
+              <div style="display:flex;gap:7px;justify-content:center;">
+                ${[1,2,3,4,5,6,7,8,9].map(n => html`
+                  <button style="
+                    width:44px;height:44px;border-radius:var(--radius-chip);
+                    border:none;cursor:pointer;
+                    font-family:var(--font-numbers);font-weight:700;font-size:20px;
+                    color:var(--chip-color);
+                    background:var(--chip-bg);
+                    box-shadow:var(--chip-shadow);
+                    text-shadow:0 1px 0 rgba(255,255,255,0.18),0 -1px 1px rgba(0,0,0,0.2);
+                    transition:all 0.12s;
+                  " @mousedown="${e => e.preventDefault()}" @click="${() => {
+                    const selectedId = this.uiState?.selectedId;
+                    if (selectedId == null) return;
+                    reconDispatch({ type: 'BOARD/SET_CANDIDATE', payload: { id: selectedId, value: n, autoCandidates: this.settingsState?.autoCandidates ?? false } });
+                  }}">${n}</button>
+                `)}
+              </div>
+
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 4px;">
+                <span style="font-family:var(--font-display);font-style:italic;font-size:12px;color:var(--text-secondary);">Auto candidates</span>
+                <div @mousedown="${e => e.preventDefault()}" @click="${() => {
+                  reconDispatch({ type: 'SETTINGS/SET', payload: { key: 'autoCandidates', value: !this.settingsState?.autoCandidates } });
+                }}" style="
+                  width:36px;height:20px;border-radius:10px;
+                  background:${this.settingsState?.autoCandidates ? 'rgba(208,104,64,0.6)' : 'rgba(180,130,90,0.25)'};
+                  border:1px solid ${this.settingsState?.autoCandidates ? 'rgba(190,90,55,0.5)' : 'rgba(180,130,90,0.3)'};
+                  position:relative;cursor:pointer;transition:background 0.2s;flex-shrink:0;
+                ">
+                  <div style="
+                    width:14px;height:14px;border-radius:50%;background:#fdf5ee;
+                    position:absolute;top:2px;left:2px;
+                    transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);
+                    transform:${this.settingsState?.autoCandidates ? 'translateX(16px)' : 'translateX(0)'};
+                    pointer-events:none;
+                  "></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="tray-area">
+              <piece-tray
+                .pieces="${this.gameState.pieces}"
+                .selectedPieceId="${this.uiState.selectedPieceId}"
+                .reconConstraints="${this.gameState.reconConstraints}"
+                .availableHeight="${this._boardHeight}"
+                .availableWidth="${this._trayWidth || 160}"
+              ></piece-tray>
+            </div>
           </div>
         </div>
       `;

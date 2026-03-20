@@ -62,7 +62,7 @@ export const reconReducer = (state, action) => {
         p.id === pieceId ? { ...p, held: false, placedAt: { boardRow, boardCol } } : p
       );
 
-      const nextGameState = { ...state.game, pieces: newPieces, cells: newCells };
+      const nextGameState = { ...state.game, pieces: newPieces, cells: newCells, moveCount: (state.game.moveCount || 0) + 1 };
       
       // Check Win Condition
       const allPlaced = newPieces.every(p => p.placedAt !== null);

@@ -25,7 +25,7 @@ export class PieceTray extends LitElement {
       box-sizing: border-box;
       padding: 8px;
       gap: 6px;
-      background: #eee;
+      background: var(--tray-bg);
       border-radius: 8px;
       overflow: hidden;
       position: relative;
@@ -41,10 +41,10 @@ export class PieceTray extends LitElement {
       padding: 4px;
       border: 2px solid transparent;
       border-radius: 4px;
-      background: white;
+      background: var(--piece-grid-bg);
       cursor: grab;
       touch-action: none;
-      filter: drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.2));
+      filter: var(--piece-container-shadow);
       transition: filter 0.15s ease, transform 0.15s ease;
       box-sizing: border-box;
       -webkit-user-drag: none;
@@ -56,19 +56,18 @@ export class PieceTray extends LitElement {
     }
 
     .piece-container:hover {
-      filter: drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.3));
+      filter: var(--piece-container-shadow-hover);
       transform: translateY(-1px);
     }
 
     .piece-container.is-selected {
-      border-color: #2196f3;
-      box-shadow: 0 0 5px rgba(33, 150, 243, 0.5);
+      border-color: var(--piece-grid-selected);
     }
 
     .piece-grid {
       display: grid;
-      background: #ccc;
-      border: 1px solid #ccc;
+      background: var(--piece-grid-border);
+      border: 1px solid var(--piece-grid-border);
       pointer-events: none;
     }
 
@@ -77,11 +76,9 @@ export class PieceTray extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #333;
+      color: var(--piece-label-color);
       font-weight: bold;
-      box-shadow:
-        inset 2px 2px 4px rgba(255, 255, 255, 0.5),
-        inset -2px -2px 4px rgba(0, 0, 0, 0.2);
+      box-shadow: var(--piece-cell-inset-shadow);
       border-radius: 2px;
       box-sizing: border-box;
     }
@@ -99,16 +96,20 @@ export class PieceTray extends LitElement {
       font-size: 9px;
       padding: 1px 3px;
       cursor: pointer;
+      background: var(--piece-btn-bg);
+      color: var(--piece-btn-color);
+      border: 1px solid var(--piece-btn-border);
+      border-radius: var(--radius-sm);
     }
 
     .hover-preview {
       position: fixed;
       z-index: 1000;
-      background: white;
-      border: 2px solid #2196f3;
+      background: var(--hover-preview-bg);
+      border: 2px solid var(--hover-preview-border);
       border-radius: 8px;
       padding: 5px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      box-shadow: var(--hover-preview-shadow);
       pointer-events: none;
       display: grid;
       gap: 1px;
@@ -123,9 +124,7 @@ export class PieceTray extends LitElement {
       font-size: 1.2rem;
       font-weight: bold;
       background: transparent;
-      box-shadow:
-        inset 2px 2px 4px rgba(255, 255, 255, 0.5),
-        inset -2px -2px 4px rgba(0, 0, 0, 0.2);
+      box-shadow: var(--piece-cell-inset-shadow);
       border-radius: 2px;
     }
 
@@ -152,7 +151,7 @@ export class PieceTray extends LitElement {
     .animating-mirror { animation: mirror-flip 0.2s ease-out; }
 
     .tray-empty {
-      color: #666;
+      color: var(--text-secondary);
       font-weight: bold;
       align-self: center;
     }

@@ -77,6 +77,9 @@ export class SudokuRecon extends LitElement {
     .animating-cw    { animation: rotate-cw   0.2s ease-out; }
     .animating-ccw   { animation: rotate-ccw  0.2s ease-out; }
     .animating-mirror { animation: mirror-flip 0.2s ease-out; }
+
+    .preview-valid   { background-color: var(--recon-drop-valid)   !important; }
+    .preview-invalid { background-color: var(--recon-drop-invalid) !important; }
   `;
 
   constructor() {
@@ -183,21 +186,22 @@ export class SudokuRecon extends LitElement {
       <div class="grid">
         ${repeat(this.gameState.cells, (cell) => cell.id, (cell) => {
           const isPreview = previewCells.includes(cell.id);
-          const previewColor = isPreview ? (isValidPlacement ? 'rgba(76, 175, 80, 0.3)' : 'rgba(244, 67, 54, 0.3)') : '';
-          
+
           const borderClasses = getRegionBorderClasses(cell.id, this.gameState.regions);
           const modifierClasses = this.modifiers ? this.modifiers.active : [];
-          
+
           const piece = cellIdToPiece.get(cell.id);
           const pieceBorderClasses = getPieceBorderClasses(cell.id, piece);
-          
+
           const allModClasses = [...modifierClasses, ...borderClasses];
           if (piece) {
             allModClasses.push('has-piece');
             allModClasses.push(...pieceBorderClasses);
           }
-          
-          const regionColor = (this.settingsState?.regionColors) ? getRegionColor(cell.region) : '';
+          if (isPreview) allModClasses.push(isValidPlacement ? 'preview-valid' : 'preview-invalid');
+          if (!isPreview && piece && conflictIds.includes(cell.id)) allModClasses.push('recon-conflict');
+
+          const regionColor = (this.settingsState?.regionColors && !piece) ? getRegionColor(cell.region) : '';
           const flashType = this.uiState.flashingCells?.[cell.id] || '';
 
           let placedByColor = '';
@@ -221,7 +225,6 @@ export class SudokuRecon extends LitElement {
               ?selected="${this.uiState.selectedId === cell.id}"
               ?conflict="${conflictIds.includes(cell.id)}"
               .modClasses="${allModClasses}"
-              style="${previewColor ? `background-color: ${previewColor}` : ''}"
             ></sudoku-cell>
           `;
         })}

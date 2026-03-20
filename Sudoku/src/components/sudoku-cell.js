@@ -222,6 +222,24 @@ export class SudokuCell extends LitElement {
       filter: brightness(1.2);
     }
 
+    :host(.preview-valid)   { --cell-preview-bg: var(--recon-drop-valid); }
+    :host(.preview-invalid) { --cell-preview-bg: var(--recon-drop-invalid); }
+    :host(.recon-conflict)  { --cell-preview-bg: var(--recon-conflict-bg); }
+
+    :host(.recon-conflict) .value {
+      color: var(--num-conflict);
+      text-shadow: none;
+    }
+
+    .cell::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-color: var(--cell-preview-bg, transparent);
+      pointer-events: none;
+      z-index: 2;
+    }
+
     /* Settle animation on value change */
     @keyframes place-value {
       0%   { transform: scale(1.08); }

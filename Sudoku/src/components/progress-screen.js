@@ -67,12 +67,37 @@ function achievementIcon(ach, unlocked) {
   `;
 }
 
+function achievementIconLarge(ach, unlocked) {
+  const src = `./assets/achievements/${ach.id.toLowerCase()}.png`;
+  const placeholder = `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+      <rect width="100" height="100" rx="16" fill="rgba(160,120,80,0.1)"/>
+      <circle cx="50" cy="40" r="16" fill="rgba(160,120,80,0.2)"/>
+      <ellipse cx="50" cy="76" rx="28" ry="16" fill="rgba(160,120,80,0.2)"/>
+    </svg>
+  `)}`;
+  return html`
+    <img
+      class="ach-modal-icon"
+      src="${src}"
+      alt="${ach.name}"
+      style="opacity:${unlocked ? 1 : 'var(--ach-locked-opacity)'};
+             filter:${unlocked ? 'none' : 'grayscale(0.6)'};"
+      @error="${e => { e.target.src = placeholder; }}"
+    />
+  `;
+}
+
 export class ProgressScreen extends LitElement {
   static properties = {
     uiState:          { type: Object },
     settingsState:    { type: Object },
     statsState:       { type: Object },
     achievementsState:{ type: Array },
+    _activeFilter:    { type: String, state: true },
+    _selectedAch:     { type: Object, state: true },
+    _hoveredAch:      { type: Object, state: true },
+    _mousePos:        { type: Object, state: true }
   };
 
   static styles = css`
@@ -237,8 +262,15 @@ export class ProgressScreen extends LitElement {
       display:flex;flex-direction:column;align-items:center;
       gap:5px;cursor:default;
       transition:transform 0.18s;text-align:center;
+      width: fit-content;
+      margin: 0 auto;
+      padding: 4px 8px;
+      border-radius: 8px;
     }
-    .ach-item:hover { transform:translateY(-2px); }
+    .ach-item:hover { 
+      transform:translateY(-2px);
+      background: rgba(255, 255, 255, 0.05);
+    }
     .ach-name {
       font-family:var(--font-display);font-size:10px;
       color:var(--text-primary);line-height:1.3;
@@ -255,6 +287,141 @@ export class ProgressScreen extends LitElement {
       font-size:13px;color:var(--text-muted);
       padding:12px 0;
     }
+
+    /* ── Achievement Tooltip ────────────────── */
+
+    .ach-tooltip {
+      position: fixed;
+      z-index: 2000;
+      pointer-events: none;
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      max-width: 220px;
+      animation: tooltip-in 0.15s ease-out;
+      transform: translate(-50%, -100%);
+      margin-top: -12px;
+    }
+
+    @keyframes tooltip-in {
+      from { opacity: 0; transform: translate(-50%, -95%); }
+      to   { opacity: 1; transform: translate(-50%, -100%); }
+    }
+
+    .ach-tooltip-text {
+      font-family: var(--font-display);
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    /* ── Achievement Modal ────────────────────────────── */
+
+    .ach-modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(60, 40, 20, 0.4);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      animation: ach-fade-in 0.3s ease-out forwards;
+    }
+
+    @keyframes ach-fade-in {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    .ach-modal {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      box-shadow: var(--glass-shadow);
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      animation: ach-pop-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    @keyframes ach-pop-in {
+      from { opacity: 0; transform: scale(0.8) translateY(20px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .ach-modal-icon {
+      width: 100px;
+      height: 100px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+
+    .ach-modal-title {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    .ach-modal-desc {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 16px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .ach-modal-close {
+      margin-top: 10px;
+      padding: 10px 24px;
+      border-radius: var(--radius-chip);
+      background: var(--chip-bg);
+      border: none;
+      color: var(--text-primary);
+      font-family: var(--font-display);
+      font-style: italic;
+      cursor: pointer;
+      box-shadow: var(--chip-shadow);
+      transition: all 0.15s;
+    }
+
+    .ach-modal-close:hover {
+      background: var(--chip-bg-hover);
+      transform: translateY(-1px);
+    }
+
+    /* ── Animations ────────────────────────────────────── */
+
+    @keyframes fade-float-in {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-in {
+      animation: fade-float-in 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.2s; }
+    .delay-3 { animation-delay: 0.3s; }
+    .delay-4 { animation-delay: 0.4s; }
+    .delay-5 { animation-delay: 0.5s; }
+    .delay-6 { animation-delay: 0.6s; }
   `;
 
   constructor() {
@@ -262,6 +429,9 @@ export class ProgressScreen extends LitElement {
     this.statsState = null;
     this.achievementsState = [];
     this._activeFilter = 'all';
+    this._selectedAch = null;
+    this._hoveredAch = null;
+    this._mousePos = { x: 0, y: 0 };
   }
 
   firstUpdated() {
@@ -332,7 +502,7 @@ export class ProgressScreen extends LitElement {
     ];
 
     return html`
-      <div class="overview-grid">
+      <div class="overview-grid animate-in delay-2">
         ${items.map(i => html`
           <div class="ov-item">
             <div class="ov-val">${i.val}</div>
@@ -347,10 +517,10 @@ export class ProgressScreen extends LitElement {
     const { bestTimes } = this._getStats();
     const diffs = DIFFICULTIES.filter(d => bestTimes[d]);
     if (!diffs.length) {
-      return html`<div class="tech-empty">No puzzles completed yet.</div>`;
+      return html`<div class="tech-empty animate-in delay-3">No puzzles completed yet.</div>`;
     }
     return html`
-      <div class="times-row">
+      <div class="times-row animate-in delay-3">
         ${diffs.map((d, i) => html`
           ${i > 0 ? html`<div class="time-sep"></div>` : ''}
           <div class="time-item">
@@ -369,12 +539,12 @@ export class ProgressScreen extends LitElement {
       .slice(0, 5);
 
     if (!entries.length) {
-      return html`<div class="tech-empty">No technique data yet.</div>`;
+      return html`<div class="tech-empty animate-in delay-4">No technique data yet.</div>`;
     }
 
     const maxCount = entries[0][1];
     return html`
-      <div class="tech-list">
+      <div class="tech-list animate-in delay-4">
         ${entries.map(([name, count]) => html`
           <div class="tech-row">
             <div class="tech-name">${name}</div>
@@ -393,16 +563,21 @@ export class ProgressScreen extends LitElement {
   _renderAchievements() {
     const filtered = this._getFilteredAchievements();
     if (!filtered.length) {
-      return html`<div class="ach-empty">No achievements in this category.</div>`;
+      return html`<div class="ach-empty animate-in delay-6">No achievements in this category.</div>`;
     }
     return html`
-      <div class="ach-grid">
-        ${filtered.map(ach => {
+      <div class="ach-grid animate-in delay-6">
+        ${filtered.map((ach, idx) => {
           const unlocked = this._isUnlocked(ach);
           const secret   = ach.secret && !unlocked;
           const display  = secret ? { ...ach, id: 'hidden', name: '???' } : ach;
           return html`
-            <div class="ach-item" title="${secret ? '???' : ach.description}">
+            <div class="ach-item" 
+                 style="animation-delay: ${0.6 + (idx * 0.03)}s"
+                 @mouseenter="${(e) => { this._hoveredAch = display; this._updateMousePos(e); }}"
+                 @mousemove="${(e) => { this._updateMousePos(e); }}"
+                 @mouseleave="${() => { this._hoveredAch = null; }}"
+                 @click="${() => { this._selectedAch = { ...display, unlocked }; }}">
               ${achievementIcon(display, unlocked)}
               <div class="ach-name ${unlocked ? '' : 'locked'}">
                 ${display.name}
@@ -417,6 +592,34 @@ export class ProgressScreen extends LitElement {
     `;
   }
 
+  _updateMousePos(e) {
+    this._mousePos = { x: e.clientX, y: e.clientY };
+  }
+
+  _renderTooltip() {
+    if (!this._hoveredAch) return '';
+    return html`
+      <div class="ach-tooltip" style="left: ${this._mousePos.x}px; top: ${this._mousePos.y}px;">
+        <div class="ach-tooltip-text">${this._hoveredAch.description}</div>
+      </div>
+    `;
+  }
+
+  _renderAchModal() {
+    if (!this._selectedAch) return '';
+    const ach = this._selectedAch;
+    return html`
+      <div class="ach-modal-overlay" @click="${() => { this._selectedAch = null; }}">
+        <div class="ach-modal" @click="${e => e.stopPropagation()}">
+          ${achievementIconLarge(ach, ach.unlocked)}
+          <h2 class="ach-modal-title">${ach.name}</h2>
+          <p class="ach-modal-desc">${ach.description}</p>
+          <button class="ach-modal-close" @click="${() => { this._selectedAch = null; }}">Close</button>
+        </div>
+      </div>
+    `;
+  }
+
   render() {
     return html`
       <div class="petals-layer">
@@ -424,7 +627,7 @@ export class ProgressScreen extends LitElement {
       </div>
 
       <div class="screen">
-        <div class="topbar">
+        <div class="topbar animate-in delay-1">
           <button class="back-btn" @click="${this._onBack}">← Back</button>
           <div class="page-title">Progress</div>
           <div style="width:60px"></div>
@@ -432,23 +635,23 @@ export class ProgressScreen extends LitElement {
 
         <div class="body">
 
-          <div class="eyebrow">Overview</div>
+          <div class="eyebrow animate-in delay-2">Overview</div>
           ${this._renderOverview()}
 
-          <div class="divider"></div>
+          <div class="divider animate-in delay-3"></div>
 
-          <div class="eyebrow">Best Times</div>
+          <div class="eyebrow animate-in delay-3">Best Times</div>
           ${this._renderBestTimes()}
 
-          <div class="divider"></div>
+          <div class="divider animate-in delay-4"></div>
 
-          <div class="eyebrow">Techniques Used Most</div>
+          <div class="eyebrow animate-in delay-4">Techniques Used Most</div>
           ${this._renderTechniques()}
 
-          <div class="divider"></div>
+          <div class="divider animate-in delay-5"></div>
 
-          <div class="eyebrow">Achievements</div>
-          <div class="ach-filters">
+          <div class="eyebrow animate-in delay-5">Achievements</div>
+          <div class="ach-filters animate-in delay-5">
             ${FILTERS.map(f => html`
               <button
                 class="ach-filter ${this._activeFilter === f ? 'active' : ''}"
@@ -460,6 +663,9 @@ export class ProgressScreen extends LitElement {
 
         </div>
       </div>
+
+      ${this._renderAchModal()}
+      ${this._renderTooltip()}
     `;
   }
 }

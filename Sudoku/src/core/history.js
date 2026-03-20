@@ -19,10 +19,8 @@ const RECORDABLE_ACTIONS = [
   Actions.BOARD.SET_CANDIDATE,
   Actions.BOARD.CLEAR_CELL,
   Actions.BOARD.MOVE_PIECE,
-  Actions.RECON.PICK_UP_PIECE,
   Actions.RECON.PLACE_PIECE,
-  Actions.RECON.ROTATE_PIECE,
-  Actions.RECON.MIRROR_PIECE
+  Actions.RECON.RETURN_TO_TRAY
 ];
 
 export const historyReducer = (state = defaultState, action, currentGameSlice, previousGameSlice) => {
@@ -65,6 +63,9 @@ export const historyReducer = (state = defaultState, action, currentGameSlice, p
         _restored: { ...next, cells: restoredCells, timer: currentGameSlice.timer, mistakes: currentGameSlice.mistakes }
       };
     }
+    case Actions.GAME.START:
+      return defaultState;
+
     default: {
       if (IGNORED_ACTIONS.includes(action.type)) return state;
       if (!RECORDABLE_ACTIONS.includes(action.type)) return state;

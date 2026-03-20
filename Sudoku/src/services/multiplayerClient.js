@@ -1,1 +1,1 @@
-export { createRoom, joinRoom, leaveRoom, isConnected } from './multiplayer.js';
+export { createRoom, joinRoom, leaveRoom, isConnected, broadcastAction } from './multiplayer.js';
