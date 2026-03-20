@@ -3,6 +3,7 @@ import './board-container.js';
 import './title-screen.js';
 import './mode-select.js';
 import './multiplayer-entry.js';
+import './progress-screen.js';
 import './mp-lobby.js';
 import './mp-player-list.js';
 import './result-screen.js';
@@ -27,6 +28,8 @@ export class AppRoot extends LitElement {
     settingsState: { type: Object },
     multiplayerState: { type: Object },
     historyState: { type: Object },
+    statsState: { type: Object },
+    achievementsState: { type: Array },
     _pendingFlow: { type: String, state: true }
   };
 
@@ -111,6 +114,8 @@ export class AppRoot extends LitElement {
     this.settingsState = {};
     this.multiplayerState = {};
     this.historyState = {};
+    this.statsState = {};
+    this.achievementsState = [];
     this._pendingFlow = null;
     this._fromPopState = false;
   }
@@ -141,6 +146,8 @@ export class AppRoot extends LitElement {
       this.settingsState = state.settings;
       this.multiplayerState = state.multiplayer;
       this.historyState = state.history;
+      this.statsState = state.stats;
+      this.achievementsState = state.achievements;
 
       if (action && action.type === 'GAME/START') {
         _store.registerModifiers(getActiveModifiers(state.modifiers.active));
@@ -162,7 +169,9 @@ export class AppRoot extends LitElement {
     this.settingsState = state.settings;
     this.multiplayerState = state.multiplayer;
     this.historyState = state.history;
-    
+    this.statsState = state.stats;
+    this.achievementsState = state.achievements;
+
     if (this.gameState.cells && this.gameState.cells.length > 0) {
       _store.registerModifiers(getActiveModifiers(this.modifiersState.active));
     }
@@ -382,6 +391,16 @@ export class AppRoot extends LitElement {
         .settingsState="${this.settingsState}"
         @dispatch-action="${this._onDispatchAction}"
       ></mode-select>`;
+    }
+
+    if (view === 'ACHIEVEMENTS' || view === 'STATS') {
+      return html`<progress-screen
+        .uiState="${this.uiState}"
+        .settingsState="${this.settingsState}"
+        .statsState="${this.statsState}"
+        .achievementsState="${this.achievementsState}"
+        @dispatch-action="${this._onDispatchAction}"
+      ></progress-screen>`;
     }
 
     if (view === 'MULTIPLAYER') {

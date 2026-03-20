@@ -104,6 +104,13 @@
   --menu-item-color: #5a4030;
   --menu-item-hover: var(--text-primary);
 
+  /* Progress screen */
+  --progress-val-size: 28px;
+  --ach-icon-size: 44px;
+  --ach-locked-opacity: 0.32;
+  --tech-bar-fill: linear-gradient(90deg, var(--text-accent), #e09070);
+  --tech-bar-bg: rgba(190,150,110,0.18);
+
   /* Multiplayer entry — code input */
   --code-input-bg: rgba(253, 246, 240, 0.6);
   --code-input-border: rgba(200, 130, 90, 0.35);

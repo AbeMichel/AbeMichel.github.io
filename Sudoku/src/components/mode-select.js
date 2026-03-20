@@ -117,6 +117,31 @@ export class ModeSelect extends LitElement {
 
     .content { flex: 1; position: relative; }
 
+    .mode-prompt {
+      position: absolute;
+      top: 50%;
+      left: 32px;
+      transform: translateY(-50%);
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 22px;
+      color: var(--text-muted);
+      opacity: 0;
+      animation: prompt-in 0.6s ease 0.2s forwards;
+      pointer-events: none;
+    }
+
+    @keyframes prompt-in {
+      from { opacity: 0; transform: translateY(calc(-50% + 10px)); }
+      to   { opacity: 1; transform: translateY(-50%); }
+    }
+
+    .mode-prompt.hidden {
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      animation: none;
+    }
+
     .left-panel {
       position: absolute;
       left: 32px;
@@ -124,7 +149,7 @@ export class ModeSelect extends LitElement {
       width: 250px;
       opacity: 0;
       transform: translateX(-14px);
-      transition: opacity 0.3s ease, transform 0.3s ease;
+      transition: opacity 0.5s ease, transform 0.5s ease;
     }
     .left-panel.visible {
       opacity: 1;
@@ -328,7 +353,7 @@ export class ModeSelect extends LitElement {
 
   constructor() {
     super();
-    this._selectedMode = 'STANDARD';
+    this._selectedMode = null;
     this._selectedDifficulty = 'MEDIUM';
     this._ascension = 0;
     this._previewVisible = false;
@@ -356,7 +381,6 @@ export class ModeSelect extends LitElement {
 
   firstUpdated() {
     this._initPetals();
-    setTimeout(() => this._selectMode('STANDARD'), 100);
   }
 
   _initPetals() {
@@ -365,20 +389,37 @@ export class ModeSelect extends LitElement {
   }
 
   _selectMode(mode) {
-    this._selectedMode = mode;
+    // Fade out left panel
+    const panel = this.shadowRoot.getElementById('left-panel');
+    if (panel) panel.classList.remove('visible');
+
+    // Fade out preview
     const preview = this.shadowRoot.getElementById('preview');
     const inner = this.shadowRoot.getElementById('preview-inner');
-    this._previewVisible = false;
-    preview.classList.remove('visible');
+    if (preview) preview.classList.remove('visible');
+
+    // Update content
+    this._selectedMode = mode;
+    this.requestUpdate();
+
+    // Fade panel back in after content has updated
+    this.updateComplete.then(() => {
+      setTimeout(() => {
+        const p = this.shadowRoot.getElementById('left-panel');
+        if (p) p.classList.add('visible');
+      }, 200);
+    });
+
+    // Fade preview back in with background swap
     setTimeout(() => {
       const modeData = this._modes.find(m => m.mode === mode);
-      inner.style.background =
-        getComputedStyle(this).getPropertyValue(modeData.previewVar).trim()
-        || modeData.previewVar;
-      this._previewVisible = true;
-      preview.classList.add('visible');
+      if (inner) {
+        inner.style.background =
+          getComputedStyle(this).getPropertyValue(modeData.previewVar).trim()
+          || modeData.previewVar;
+      }
+      if (preview) preview.classList.add('visible');
     }, 180);
-    this.requestUpdate();
   }
 
   _changeAsc(delta) {
@@ -435,6 +476,8 @@ export class ModeSelect extends LitElement {
         </div>
 
         <div class="content">
+          <div class="mode-prompt ${this._selectedMode ? 'hidden' : ''}">Select a game mode</div>
+
           <div class="left-panel ${this._selectedMode ? 'visible' : ''}" id="left-panel">
             <div class="mode-title">${this._getSelectedMode()?.label}</div>
             <div class="mode-desc">${this._getSelectedMode()?.desc}</div>

@@ -291,7 +291,6 @@ export class TitleScreen extends LitElement {
       { label: 'Singleplayer',  action: () => this._go('MODE_SELECT') },
       { label: 'Multiplayer',   action: () => this._go('MULTIPLAYER') },
       { label: 'Achievements',  action: () => this._go('ACHIEVEMENTS') },
-      { label: 'Stats',         action: () => this._go('STATS') },
       { label: 'Settings',      action: () => this._dispatch({ type: 'UI/OPEN_SETTINGS' }) },
     ];
   }

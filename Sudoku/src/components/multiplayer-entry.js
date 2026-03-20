@@ -77,11 +77,24 @@ export class MultiplayerEntry extends LitElement {
 
     /* ── Section ────────────────────────────────────────── */
 
+    @keyframes section-in {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
     .section {
       display: flex;
       flex-direction: column;
       gap: 14px;
       padding: 32px 0;
+      animation: section-in 0.4s ease both;
+    }
+
+    .section:first-child { animation-delay: 0.05s; }
+    .section:last-child  { animation-delay: 0.18s; }
+
+    .divider {
+      animation: section-in 0.4s ease 0.12s both;
     }
 
     .section-title {
