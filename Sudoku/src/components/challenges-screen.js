@@ -58,9 +58,8 @@ const CHALLENGES = [
     category: 'other',
     label: 'The Lorelei',
     subtitle: 'As it was meant to be.',
-    seed: 1,
     description: '',
-    tags: ['Very Easy', 'Modifier'],
+    tags: ['Very Easy', 'Modifier', 'Daily'],
     action: { type: 'GAME/START', payload: { difficulty: 'VERY_EASY', mode: 'STANDARD', modifiers: ['ORDERED', 'NO_CANDIDATES'] } }
   },
 ];
