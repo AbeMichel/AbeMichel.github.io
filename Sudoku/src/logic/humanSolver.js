@@ -1,7 +1,7 @@
 import { TECHNIQUES, getTier } from '../config/techniques.js';
 
 // --- Candidate Utilities ---
-const getCandidates = (cells, regions) => {
+export const getCandidates = (cells, regions) => {
   const cands = cells.map(cell => {
     if (cell.v) return new Set();
     if (cell.c && cell.c.length > 0) return new Set(cell.c);
@@ -95,7 +95,7 @@ const boxPeers = (id, regions) => {
 };
 
 // Returns all peers of id (row ∪ col ∪ box) excluding id itself
-const allPeers = (id, regions) => {
+export const allPeers = (id, regions) => {
   const peers = new Set([...rowPeers(id), ...colPeers(id), ...boxPeers(id, regions)]);
   peers.delete(id);
   return [...peers];
@@ -1240,7 +1240,7 @@ const findChainsAIC = (cands, cells, regions) => {
               elims.push({ id, value: v });
             }
           }
-          if (elims.length > 0) return { elims, endNode: node };
+          if (elims.length > 0) return { elims, endNode: node, chainLength: depth };
         }
         if (depth >= X_MAX) return null;
 
@@ -1273,6 +1273,7 @@ const findChainsAIC = (cands, cells, regions) => {
         return {
           techniqueId: 'CHAINS_AIC',
           cellIds: [startNode, result.endNode],
+          chainLength: result.chainLength ?? 4,
           placement: null,
           eliminations: dedupeElims(result.elims),
           description: `X-Chain on ${v}: eliminate from cells seeing both ends.`
@@ -1308,7 +1309,7 @@ const findChainsAIC = (cands, cells, regions) => {
                 elims.push({ id, value: elimDigit });
               }
             }
-            if (elims.length > 0) return { elims, endNode: nb };
+            if (elims.length > 0) return { elims, endNode: nb, chainLength: depth + 1 };
           }
 
           if (depth < XY_MAX - 1) {
@@ -1326,6 +1327,7 @@ const findChainsAIC = (cands, cells, regions) => {
         return {
           techniqueId: 'CHAINS_AIC',
           cellIds: [startNode, result.endNode],
+          chainLength: result.chainLength ?? 6,
           placement: null,
           eliminations: dedupeElims(result.elims),
           description: `XY-Chain: eliminate ${elimDigit} from cells seeing both ends.`
@@ -1403,7 +1405,7 @@ const findALS = (cands, cells, regions) => {
   return null;
 };
 
-const checkers = {
+export const checkers = {
   'NAKED_SINGLE': findNakedSingle,
   'HIDDEN_SINGLE': findHiddenSingle,
   'POINTING_PAIR': (cands, cells, regions) => findPointingPairOrTriple(cands, cells, regions, 2, 'POINTING_PAIR'),
@@ -1455,28 +1457,35 @@ export const findNextStep = (cells, regions) => {
   return null;
 };
 
-const solveFully = (cells, regions) => {
+export const solveFully = (cells, regions, maxTier = 'VERY_HARD') => {
+  const TIERS = ['VERY_EASY', 'EASY', 'MEDIUM', 'HARD', 'VERY_HARD'];
+  const tierIdx = (t) => TIERS.indexOf(t);
+  const maxIdx = tierIdx(maxTier);
+
   let cands = getCandidates(cells, regions);
   let highestTier = 'VERY_EASY';
   const usedTechniques = [];
-  
+
   let stuck = false;
   while (!stuck) {
     stuck = true;
     for (const tech of TECHNIQUES) {
+      if (tierIdx(tech.tier) > maxIdx) continue;
       const checker = checkers[tech.id];
       if (checker) {
         const result = checker(cands, cells, regions);
         if (result) {
           usedTechniques.push(result.techniqueId);
-          const tierIdx = (t) => ['VERY_EASY', 'EASY', 'MEDIUM', 'HARD', 'VERY_HARD'].indexOf(t);
           if (tierIdx(tech.tier) > tierIdx(highestTier)) {
             highestTier = tech.tier;
           }
           if (result.placement) {
             const { id, value } = result.placement;
             cands[id].clear();
-            // In a real sim, we should also clear peers, but this is enough for grading stubs
+            // Propagate placement to all peers
+            for (const peerId of allPeers(id, regions)) {
+              cands[peerId].delete(value);
+            }
           } else if (result.eliminations) {
             result.eliminations.forEach(({ id, value }) => cands[id].delete(value));
           }
@@ -1486,7 +1495,9 @@ const solveFully = (cells, regions) => {
       }
     }
   }
-  return { highestTier, usedTechniques };
+
+  const solved = cands.every(s => s.size === 0);
+  return { solved, highestTier, usedTechniques };
 };
 
 if (typeof self !== 'undefined') self.onmessage = (e) => {

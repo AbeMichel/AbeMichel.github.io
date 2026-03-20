@@ -28,40 +28,55 @@ export const competitiveReducer = (state, action) => {
 
     case Actions.GAME.START: {
       if (action.payload.mpMode !== 'COMPETITIVE') return state;
-
-      const competitiveBoards = {};
-      const initialCells = state.game.cells || [];
-      
-      // Add local player
-      competitiveBoards[state.multiplayer.peerId] = {
-        cells: initialCells.map(c => ({ ...c })),
-        filledCount: 0,
-        totalCells: initialCells.length || 81,
-        finished: false,
-        finishTime: null
+      // Reset boards; actual cell initialization happens in GAME/LOAD once
+      // cells are available. Storing lastConfig here for Play Again support.
+      return {
+        ...state,
+        multiplayer: {
+          ...state.multiplayer,
+          competitiveBoards: {},
+          lastConfig: action.payload
+        },
+        ui: {
+          ...state.ui,
+          competitiveResult: null
+        }
       };
+    }
 
-      // Add all peers
-      state.multiplayer.peers.forEach(peer => {
-        competitiveBoards[peer.id] = {
-          cells: initialCells.map(c => ({ ...c })),
+    case 'GAME/LOAD': {
+      if (state.multiplayer?.mpMode !== 'COMPETITIVE') return state;
+      // state.game.cells is already populated by gameReducer (rootReducer runs
+      // gameReducer before competitiveReducer), so we read from state.game.cells.
+      const cells = state.game?.cells || [];
+      const peers = state.multiplayer?.peers || [];
+      const localId = state.multiplayer?.peerId;
+
+      const boards = {};
+      peers.forEach(peer => {
+        boards[peer.id] = {
+          cells: cells.map(c => ({ ...c })),
           filledCount: 0,
-          totalCells: initialCells.length || 81,
+          totalCells: cells.length || 81,
           finished: false,
           finishTime: null
         };
       });
+      if (localId && !boards[localId]) {
+        boards[localId] = {
+          cells: cells.map(c => ({ ...c })),
+          filledCount: 0,
+          totalCells: cells.length || 81,
+          finished: false,
+          finishTime: null
+        };
+      }
 
       return {
         ...state,
         multiplayer: {
           ...state.multiplayer,
-          competitiveBoards,
-          lastConfig: action.payload // Store for Play Again
-        },
-        ui: {
-          ...state.ui,
-          competitiveResult: null
+          competitiveBoards: boards
         }
       };
     }

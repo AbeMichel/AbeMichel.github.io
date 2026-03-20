@@ -162,7 +162,7 @@ export class ResultScreen extends LitElement {
   _quit() {
     leaveRoom();
     this._dispatch({ type: 'UI/CLOSE_WIN_MODAL' });
-    this._dispatch({ type: 'UI/SET_VIEW', payload: { view: 'MENU' } });
+    this._dispatch({ type: 'UI/SET_VIEW', payload: { view: 'TITLE' } });
   }
 
   _dispatch(detail) {
@@ -194,7 +194,7 @@ export class ResultScreen extends LitElement {
         <div class="actions">
           <button @click="${() => { this._dispatch({ type: 'UI/CLOSE_WIN_MODAL' }); this._dispatch({ type: 'GAME/START', payload: { seed, difficulty, mode: 'STANDARD' } }); }}">Play Again</button>
           <button @click="${() => this._dispatch({ type: 'UI/CLOSE_WIN_MODAL' })}">View Solution</button>
-          <button @click="${() => { this._dispatch({ type: 'UI/CLOSE_WIN_MODAL' }); this._dispatch({ type: 'UI/SET_VIEW', payload: { view: 'MENU' } }); }}">New Game</button>
+          <button @click="${() => { this._dispatch({ type: 'UI/CLOSE_WIN_MODAL' }); this._dispatch({ type: 'UI/SET_VIEW', payload: { view: 'TITLE' } }); }}">New Game</button>
         </div>
       </div>
     `;

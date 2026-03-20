@@ -376,9 +376,17 @@ export class BoardContainer extends LitElement {
 
     return html`
       <div style="display:flex;flex-direction:column;align-items:center;width:100%;padding:0 1rem;box-sizing:border-box;">
-        <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:20px;">
-          <div style="font-family:var(--font-display);font-size:28px;font-weight:500;color:var(--text-primary);text-shadow:0 1px 3px rgba(255,255,255,0.3);">Sudokus</div>
-          <div style="font-family:var(--font-display);font-style:italic;font-size:14px;color:var(--text-accent);margin-top:-2px;padding-left:3px;">by Abe</div>
+        <div style="display:flex;align-items:center;justify-content:center;width:100%;margin-bottom:20px;position:relative;">
+          <button @mousedown="${e => e.preventDefault()}" @click="${() => dispatch({ type: 'UI/SET_VIEW', payload: { view: 'TITLE' } })}" style="
+            position:absolute;left:0;
+            font-family:var(--font-display);font-style:italic;font-size:14px;
+            color:var(--text-secondary);background:none;border:none;
+            cursor:pointer;transition:color 0.2s;padding:0;
+          " onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-secondary)'">← Menu</button>
+          <div style="display:flex;flex-direction:column;align-items:center;">
+            <div style="font-family:var(--font-display);font-size:28px;font-weight:500;color:var(--text-primary);text-shadow:0 1px 3px rgba(255,255,255,0.3);">Sudokus</div>
+            <div style="font-family:var(--font-display);font-style:italic;font-size:14px;color:var(--text-accent);margin-top:-2px;padding-left:3px;">by Abe</div>
+          </div>
         </div>
 
         <div style="display:flex;align-items:center;gap:40px;margin-bottom:16px;">

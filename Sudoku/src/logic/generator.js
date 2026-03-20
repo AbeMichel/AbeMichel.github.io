@@ -2,6 +2,14 @@ import { createPRNG } from './prng.js';
 import { solve, hasUniqueSolution } from './solver.js';
 import { DIFFICULTY_DEFAULTS } from '../config/difficulty.js';
 
+export const generateSolutionGrid = (seed) => {
+  const prng = createPRNG(seed);
+  const emptyGrid = new Array(81).fill(0);
+  const firstRow = prng.shuffle([1,2,3,4,5,6,7,8,9]);
+  for (let i = 0; i < 9; i++) emptyGrid[i] = firstRow[i];
+  return solve(emptyGrid);
+};
+
 export const getDailyConfig = (dateString) => {
   const prng = createPRNG(dateString);
   const diffIdx = prng.nextInt(0, 4);

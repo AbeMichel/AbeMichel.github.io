@@ -40,7 +40,8 @@ export const mpReducer = (state = defaultState, action) => {
         status: 'CONNECTING',
         peers: [selfPeer],
         competitiveBoards: {},
-        lastConfig: null
+        lastConfig: null,
+        error: null
       };
     }
 
@@ -100,7 +101,10 @@ export const mpReducer = (state = defaultState, action) => {
       };
 
     case Actions.MP.DISCONNECT:
-      return { ...defaultState };
+      return { ...defaultState, playerName: state.playerName };
+
+    case 'MP/SET_ERROR':
+      return { ...state, error: action.payload };
 
     case Actions.MP.SET_PLAYER_NAME:
       return { ...state, playerName: action.payload.name };

@@ -1,7 +1,7 @@
 import { Actions } from '../core/actions.js';
 
 const defaultState = {
-  view: 'MENU',
+  view: 'TITLE',
   selectedId: null,
   inputMode: 'VALUE',
   activeModal: null,
@@ -10,7 +10,8 @@ const defaultState = {
   competitiveResult: null,
   showWinModal: false,
   viewingSolution: false,
-  showSettings: false
+  showSettings: false,
+  loading: false
 };
 
 export const uiReducer = (state = defaultState, action) => {
@@ -38,6 +39,8 @@ export const uiReducer = (state = defaultState, action) => {
       delete newFlashes[action.payload.id];
       return { ...state, flashingCells: newFlashes };
     }
+    case 'UI/SET_LOADING':
+      return { ...state, loading: action.payload };
     case 'UI/OPEN_SETTINGS':
       return { ...state, showSettings: true };
     case 'UI/CLOSE_SETTINGS':

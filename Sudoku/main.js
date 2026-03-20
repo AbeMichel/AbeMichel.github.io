@@ -42,4 +42,5 @@ initMultiplayer(store);
 initCompetitiveEffects(store);
 
 // 5. Initial View
-store.dispatch({ type: 'UI/SET_VIEW', payload: { view: 'MENU' } });
+store.dispatch({ type: 'UI/SET_VIEW', payload: { view: 'TITLE' } });
+

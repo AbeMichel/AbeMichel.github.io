@@ -1,5 +1,8 @@
 import { LitElement, html, css } from 'https://esm.sh/lit@3';
 import './board-container.js';
+import './title-screen.js';
+import './mode-select.js';
+import './multiplayer-entry.js';
 import './mp-lobby.js';
 import './mp-player-list.js';
 import './result-screen.js';
@@ -80,6 +83,24 @@ export class AppRoot extends LitElement {
       display: flex;
       justify-content: space-between;
     }
+
+    @keyframes overlay-in {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    .lobby-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(40, 28, 16, 0.38);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+      animation: overlay-in 0.25s ease forwards;
+    }
   `;
 
   constructor() {
@@ -91,11 +112,17 @@ export class AppRoot extends LitElement {
     this.multiplayerState = {};
     this.historyState = {};
     this._pendingFlow = null;
+    this._fromPopState = false;
   }
 
   connectedCallback() {
     super.connectedCallback();
     this._syncStore();
+    // Seed the history stack with the initial view so back never leaves the app
+    const initialView = _store?.getState().ui.view || 'TITLE';
+    history.replaceState({ view: initialView }, '');
+    this._boundPopState = this._handlePopState.bind(this);
+    window.addEventListener('popstate', this._boundPopState);
     this.updateComplete.then(() => {
       const canvas = this.shadowRoot.getElementById('petal-canvas');
       if (canvas) initPetals(canvas);
@@ -151,12 +178,31 @@ export class AppRoot extends LitElement {
       this._unsubscribe();
       this._unsubscribe = null;
     }
+    window.removeEventListener('popstate', this._boundPopState);
+  }
+
+  _handlePopState(e) {
+    const view = e.state?.view;
+    if (view && _store) {
+      this._fromPopState = true;
+      _store.dispatch({ type: 'UI/SET_VIEW', payload: { view } });
+    }
   }
 
   updated(changedProperties) {
     if (changedProperties.has('uiState')) {
       const oldUi = changedProperties.get('uiState');
-      if (this.uiState.view === 'GAME' && (!oldUi || oldUi.view !== 'GAME')) {
+      const newView = this.uiState.view;
+
+      if (oldUi && oldUi.view !== newView && newView !== 'LOADING') {
+        if (this._fromPopState) {
+          this._fromPopState = false;
+        } else {
+          history.pushState({ view: newView }, '');
+        }
+      }
+
+      if (newView === 'GAME' && (!oldUi || oldUi.view !== 'GAME')) {
         setTimeout(() => {
           const bc = this.shadowRoot.querySelector('board-container');
           bc?.focus();
@@ -213,8 +259,28 @@ export class AppRoot extends LitElement {
     this._pendingFlow = null;
   }
 
-  _onDispatchAction(e) {
-    if (_store) _store.dispatch(e.detail);
+  async _onDispatchAction(e) {
+    const action = e.detail;
+    if (action.type === 'MP/CREATE_ROOM') {
+      const { playerName } = action.payload;
+      _store.dispatch({ type: 'MP/SET_PLAYER_NAME', payload: { name: playerName } });
+      await createRoom(playerName, 'CO_OP', { difficulty: 'MEDIUM' });
+      _store.dispatch({ type: 'UI/SET_VIEW', payload: { view: 'LOBBY' } });
+      return;
+    }
+    if (action.type === 'MP/JOIN_ROOM') {
+      const { playerName, roomCode } = action.payload;
+      _store.dispatch({ type: 'MP/SET_PLAYER_NAME', payload: { name: playerName } });
+      _store.dispatch({ type: 'MP/SET_ERROR', payload: null });
+      try {
+        await joinRoom(roomCode, playerName);
+        _store.dispatch({ type: 'UI/SET_VIEW', payload: { view: 'LOBBY' } });
+      } catch (err) {
+        _store.dispatch({ type: 'MP/SET_ERROR', payload: err?.message || 'Room not found' });
+      }
+      return;
+    }
+    if (_store) _store.dispatch(action);
   }
 
   _formatTime(ms) {
@@ -237,6 +303,13 @@ export class AppRoot extends LitElement {
         box-shadow:var(--chip-shadow);
         transition:all 0.15s;
       ">${label}</button>`;
+
+    if (view === 'TITLE') {
+      return html`<title-screen
+        .multiplayerState="${this.multiplayerState}"
+        @dispatch-action="${this._onDispatchAction}"
+      ></title-screen>`;
+    }
 
     if (view === 'LOADING') {
       return html`
@@ -292,6 +365,7 @@ export class AppRoot extends LitElement {
               </form>
             ` : html`
               <div style="font-family:var(--font-display);font-style:italic;font-size:13px;color:var(--text-accent);margin-bottom:4px;">Try something different today</div>
+              ${menuBtn('Singleplayer', () => _store.dispatch({ type: 'UI/SET_VIEW', payload: { view: 'MODE_SELECT' } }))}
               ${menuBtn('Quick Play', () => this._startGame())}
               ${menuBtn('Reconstruction', () => this._startGame({ mode: 'RECONSTRUCTION' }))}
               ${menuBtn('Host Multiplayer', this._hostGame)}
@@ -302,16 +376,39 @@ export class AppRoot extends LitElement {
       `;
     }
 
+    if (view === 'MODE_SELECT') {
+      return html`<mode-select
+        .uiState="${this.uiState}"
+        .settingsState="${this.settingsState}"
+        @dispatch-action="${this._onDispatchAction}"
+      ></mode-select>`;
+    }
+
+    if (view === 'MULTIPLAYER') {
+      return html`<multiplayer-entry
+        .multiplayerState="${this.multiplayerState}"
+        .settingsState="${this.settingsState}"
+        @dispatch-action="${this._onDispatchAction}"
+      ></multiplayer-entry>`;
+    }
+
     if (view === 'LOBBY') {
       return html`
-        <div style="width:100%;">
-          <mp-lobby
-            .gameState="${this.gameState}"
-            .uiState="${this.uiState}"
+        <div style="position:relative;width:100%;min-height:100vh;">
+          <multiplayer-entry
             .multiplayerState="${this.multiplayerState}"
             .settingsState="${this.settingsState}"
             @dispatch-action="${this._onDispatchAction}"
-          ></mp-lobby>
+          ></multiplayer-entry>
+          <div class="lobby-overlay">
+            <mp-lobby
+              .gameState="${this.gameState}"
+              .uiState="${this.uiState}"
+              .multiplayerState="${this.multiplayerState}"
+              .settingsState="${this.settingsState}"
+              @dispatch-action="${this._onDispatchAction}"
+            ></mp-lobby>
+          </div>
         </div>
       `;
     }
@@ -365,6 +462,11 @@ export class AppRoot extends LitElement {
           .uiState="${this.uiState}"
           @dispatch-action="${this._onDispatchAction}"
         ></settings-modal>
+      ` : ''}
+      ${this.uiState?.loading ? html`
+        <div style="position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);">
+          <div style="font-family:var(--font-display);font-style:italic;font-size:18px;color:#fff;letter-spacing:0.02em;">Preparing your puzzle…</div>
+        </div>
       ` : ''}
       ${this.uiState?.viewingSolution ? html`
         <div style="position:fixed;bottom:32px;left:50%;transform:translateX(-50%);z-index:50;">

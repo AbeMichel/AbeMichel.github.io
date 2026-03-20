@@ -13,15 +13,16 @@ export class MpLobby extends LitElement {
 
   static styles = css`
     :host {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      width: 100%;
-      box-sizing: border-box;
+      display: block;
+    }
+
+    @keyframes card-in {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
     .lobby-card {
+      animation: card-in 0.3s ease 0.05s both;
       background: var(--glass-bg);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
@@ -153,7 +154,7 @@ export class MpLobby extends LitElement {
 
     .btn-secondary {
       background: var(--chip-bg);
-      color: var(--text-secondary);
+      color: var(--chip-color);
     }
 
     .btn-ready {
@@ -235,7 +236,7 @@ export class MpLobby extends LitElement {
   _leave() {
     leaveRoom();
     this.dispatchEvent(new CustomEvent('dispatch-action', {
-      detail: { type: 'UI/SET_VIEW', payload: { view: 'MENU' } },
+      detail: { type: 'UI/SET_VIEW', payload: { view: 'MULTIPLAYER' } },
       bubbles: true,
       composed: true
     }));
@@ -253,7 +254,8 @@ export class MpLobby extends LitElement {
       `;
     }
 
-    const allConfirmed = peers.every(p => p.isHost || p.confirmed);
+    const hasGuests = peers.filter(p => !p.isHost).length > 0;
+    const allConfirmed = hasGuests && peers.every(p => p.isHost || p.confirmed);
     const localPeer = peers.find(p => p.id === peerId);
 
     return html`
