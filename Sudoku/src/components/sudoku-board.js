@@ -35,6 +35,14 @@ export class SudokuBoard extends LitElement {
       display: contents; /* Grid logic is now on host */
       outline: none;
     }
+
+    @keyframes living-swap {
+      0%   { opacity: 0.5; transform: scale(0.97); }
+      100% { opacity: 1;   transform: scale(1); }
+    }
+    :host(.living-flash) {
+      animation: living-swap 0.35s ease-out forwards;
+    }
   `;
 
   constructor() {
@@ -157,6 +165,18 @@ export class SudokuBoard extends LitElement {
     }
   }
 
+  updated(changedProperties) {
+    if (changedProperties.has('modifiers')) {
+      const prev = changedProperties.get('modifiers');
+      const prevLastSwap = prev?.modState?.LIVING?.lastSwap;
+      const currLastSwap = this.modifiers?.modState?.LIVING?.lastSwap;
+      if (currLastSwap && currLastSwap !== prevLastSwap) {
+        this.classList.add('living-flash');
+        setTimeout(() => this.classList.remove('living-flash'), 350);
+      }
+    }
+  }
+
   firstUpdated() {
     this.focus();
   }
@@ -181,13 +201,29 @@ export class SudokuBoard extends LitElement {
       : [];
     const conflictIds = getConflictIds(this.gameState.cells, this.gameState.regions);
 
+    const activeModifiers = this.modifiers?.active || [];
+    const modState = this.modifiers?.modState || {};
+    const isCandidateOnly = activeModifiers.includes('CANDIDATE_ONLY');
+
+    // Blackout: per-cell revealed tracking
+    const isBlackout = activeModifiers.includes('BLACKOUT');
+    const blackoutRevealed = isBlackout ? (modState['BLACKOUT']?.revealed || []) : null;
+    const globalModClasses = isBlackout
+      ? activeModifiers.filter(id => id !== 'BLACKOUT')
+      : activeModifiers;
+
+    // Symbols: emoji substitution
+    const symbolsList = modState['SYMBOLS']?.symbols || null;
+
     return html`
       <div class="grid">
         ${repeat(this.gameState.cells, (cell) => cell.id, (cell) => {
           const borderClasses = getRegionBorderClasses(cell.id, this.gameState.regions);
-          const modifierClasses = this.modifiers ? this.modifiers.active : [];
-          const allModClasses = [...modifierClasses, ...borderClasses];
-          
+          const blackoutClass = blackoutRevealed !== null
+            ? [blackoutRevealed.includes(cell.id) ? 'mod-blackout-revealed' : 'mod-blackout-hidden']
+            : [];
+          const allModClasses = [...globalModClasses, ...blackoutClass, ...borderClasses];
+
           const regionColor = (this.settingsState?.regionColors) ? getRegionColor(cell.region) : '';
           const flashType = this.uiState.flashingCells?.[cell.id] || '';
 
@@ -202,6 +238,7 @@ export class SudokuBoard extends LitElement {
               .cellId="${cell.id}"
               .value="${cell.v || 0}"
               .candidates="${cell.c || []}"
+              .symbols="${symbolsList}"
               .fixed="${cell.fixed}"
               .regionIndex="${cell.region}"
               .regionColor="${regionColor}"
@@ -213,6 +250,7 @@ export class SudokuBoard extends LitElement {
               ?mistake="${!cell.fixed && cell.v > 0 && cell.v !== cell.solution}"
               .modClasses="${allModClasses}"
               ?readonly="${this.uiState?.viewingSolution}"
+              ?candidateOnly="${isCandidateOnly}"
             ></sudoku-cell>
           `;
         })}

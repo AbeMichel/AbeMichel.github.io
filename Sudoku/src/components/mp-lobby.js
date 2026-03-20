@@ -1,14 +1,16 @@
 import { LitElement, html, css } from 'https://esm.sh/lit@3';
 import './mp-player-list.js';
+import './modifier-picker.js';
 import { leaveRoom } from '../services/multiplayerClient.js';
 
 export class MpLobby extends LitElement {
   static properties = {
-    gameState: { type: Object },
-    uiState: { type: Object },
+    gameState:        { type: Object },
+    uiState:          { type: Object },
     multiplayerState: { type: Object },
-    settingsState: { type: Object },
-    _copyFeedback: { type: Boolean, state: true }
+    settingsState:    { type: Object },
+    _copyFeedback:    { type: Boolean, state: true },
+    _showModPicker:   { type: Boolean, state: true },
   };
 
   static styles = css`
@@ -111,6 +113,39 @@ export class MpLobby extends LitElement {
       font-family: var(--font-ui);
       font-size: 0.9rem;
     }
+
+    .mod-row {
+      margin-top: 0.75rem;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .mod-chip {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-accent);
+      background: rgba(192,90,58,0.1);
+      border: 1px solid rgba(192,90,58,0.25);
+      padding: 2px 9px;
+      border-radius: var(--radius-pill);
+    }
+    .mod-add-btn {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 12px;
+      color: var(--text-secondary);
+      background: transparent;
+      border: 1px dashed var(--glass-border);
+      border-radius: var(--radius-pill);
+      padding: 3px 12px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .mod-add-btn:hover:not(:disabled) { color: var(--text-primary); border-color: var(--text-secondary); }
+    .mod-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
     .player-list-container {
       background: var(--chip-bg);
@@ -216,21 +251,29 @@ export class MpLobby extends LitElement {
 
   _startGame() {
     if (!this.multiplayerState.isHost) return;
-    const { mpMode, difficulty } = this.multiplayerState.lobbyConfig || { mpMode: 'CO_OP', difficulty: 'MEDIUM' };
+    const { mpMode, difficulty, modifiers = [], modifierConfig = {} } =
+      this.multiplayerState.lobbyConfig || { mpMode: 'CO_OP', difficulty: 'MEDIUM' };
     const seed = String(Date.now());
     this.dispatchEvent(new CustomEvent('dispatch-action', {
       detail: {
         type: 'GAME/START',
-        payload: {
-          difficulty,
-          mpMode,
-          mode: mpMode === 'CO_OP' ? 'STANDARD' : 'STANDARD',
-          seed,
-        }
+        payload: { difficulty, mpMode, mode: 'STANDARD', seed, modifiers, modifierConfig }
       },
       bubbles: true,
       composed: true
     }));
+  }
+
+  _onModifierChange(e) {
+    this.dispatchEvent(new CustomEvent('dispatch-action', {
+      detail: {
+        type: 'MP/UPDATE_LOBBY_CONFIG',
+        payload: { modifiers: e.detail.modifiers, modifierConfig: e.detail.modifierConfig }
+      },
+      bubbles: true,
+      composed: true
+    }));
+    this._showModPicker = false;
   }
 
   _leave() {
@@ -257,6 +300,7 @@ export class MpLobby extends LitElement {
     const hasGuests = peers.filter(p => !p.isHost).length > 0;
     const allConfirmed = hasGuests && peers.every(p => p.isHost || p.confirmed);
     const localPeer = peers.find(p => p.id === peerId);
+    const activeMods = this.multiplayerState.lobbyConfig?.modifiers || [];
 
     return html`
       <div class="lobby-card">
@@ -295,7 +339,25 @@ export class MpLobby extends LitElement {
               </select>
             </div>
           </div>
+          <div class="mod-row">
+            ${activeMods.map(id => html`<span class="mod-chip">${id.toLowerCase().replace(/_/g, ' ')}</span>`)}
+            <button
+              class="mod-add-btn"
+              ?disabled="${!isHost}"
+              @click="${() => this._showModPicker = true}">
+              ${activeMods.length ? 'Edit modifiers' : '+ Modifiers'}
+            </button>
+          </div>
         </div>
+
+        ${this._showModPicker ? html`
+          <modifier-picker
+            .active="${activeMods}"
+            .config="${this.multiplayerState.lobbyConfig?.modifierConfig || {}}"
+            @modifier-change="${this._onModifierChange}"
+            @modifier-close="${() => this._showModPicker = false}"
+          ></modifier-picker>
+        ` : ''}
 
         <div class="section">
           <h3>Players (${peers.length})</h3>

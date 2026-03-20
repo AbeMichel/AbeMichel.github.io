@@ -4,7 +4,8 @@ export const NoCandidatesModifier = {
   id: 'NO_CANDIDATES',
 
   onAction: (state, action, dispatch) => {
-    if (action.type === Actions.BOARD.SET_CANDIDATE) {
+    if (action.type === Actions.BOARD.SET_CANDIDATE ||
+        action.type === Actions.BOARD.SET_ALL_CANDIDATES) {
       return null;
     }
     return action;

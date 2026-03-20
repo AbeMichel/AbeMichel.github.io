@@ -160,13 +160,16 @@ export const initGameEffects = (store) => {
     const isOpponentAction = state.multiplayer?.mpMode === 'COMPETITIVE' &&
       action._mp?.peerId && action._mp.peerId !== state.multiplayer?.peerId;
 
+    const isSmallNotepad = state.modifiers?.active?.includes('SMALL_NOTEPAD');
+
     if (!isOpponentAction && (action.type === Actions.BOARD.SET_VALUE ||
          action.type === Actions.BOARD.CLEAR_CELL ||
+         action.type === Actions.GAME.RESET ||
          action.type === 'INTERNAL/REFRESH_CANDIDATES' ||
          action.type === Actions.RECON.PLACE_PIECE ||
          action.type === Actions.RECON.PICK_UP_PIECE ||
          action.type === Actions.RECON.RETURN_TO_TRAY ||
-         action.type === Actions.RECON.RETURN_PIECE) && state.settings?.autoCandidates) {
+         action.type === Actions.RECON.RETURN_PIECE) && (state.settings?.autoCandidates || isSmallNotepad)) {
       runAutoCandidates(state, store);
     }
 

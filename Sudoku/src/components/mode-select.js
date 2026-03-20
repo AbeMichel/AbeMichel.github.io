@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'https://esm.sh/lit@3';
 import { initPetals } from '../utils/petals.js';
+import './modifier-picker.js';
 
 const difficulties = [
   { value: 'VERY_EASY', label: 'Very Easy' },
@@ -13,15 +14,18 @@ const ascLabels = [
   'Standard rules', 'No candidate marks', 'Timer counts down',
   'Mistakes are final', 'No hints allowed', 'Candidates hidden',
   'Fragile: errors reset', 'Ordered entry only', 'Decaying candidates',
-  'Living puzzle', 'Chaos regions', 'Maximum difficulty',
+  'Living puzzle (WIP)', 'Chaos regions', 'Maximum difficulty',
   'True ascension', 'Beyond madness', 'Enlightened chaos',
   'The void awaits', 'Absolute', 'Transcendent', 'Legendary', 'Mythic'
 ];
 
 export class ModeSelect extends LitElement {
   static properties = {
-    uiState: { type: Object },
-    settingsState: { type: Object }
+    uiState:          { type: Object },
+    settingsState:    { type: Object },
+    _showModPicker:   { state: true },
+    _modifiers:       { state: true },
+    _modifierConfig:  { state: true },
   };
 
   static styles = css`
@@ -119,16 +123,19 @@ export class ModeSelect extends LitElement {
 
     .mode-prompt {
       position: absolute;
-      top: 50%;
-      left: 32px;
+      top: 45%;
+      left: 0;
+      right: 0;
+      text-align: center;
       transform: translateY(-50%);
       font-family: var(--font-display);
       font-style: italic;
-      font-size: 22px;
+      font-size: 32px;
       color: var(--text-muted);
       opacity: 0;
       animation: prompt-in 0.6s ease 0.2s forwards;
       pointer-events: none;
+      letter-spacing: 0.02em;
     }
 
     @keyframes prompt-in {
@@ -234,10 +241,31 @@ export class ModeSelect extends LitElement {
       margin-top: 4px;
     }
 
+    .mod-btn {
+      appearance: none;
+      -webkit-appearance: none;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      padding: 8px 14px;
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 13px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      outline: none;
+      width: 100%;
+      text-align: left;
+      box-shadow: var(--shadow-hud);
+      transition: color 0.15s, background 0.15s;
+    }
+    .mod-btn:hover { color: var(--text-primary); }
+    .mod-btn.has-mods { color: var(--text-accent); }
+
     .begin-btn {
       position: absolute;
       right: 32px;
-      bottom: 8px;
+      bottom: 24px;
       z-index: 1;
       padding: 11px 34px;
       font-family: var(--font-display);
@@ -357,6 +385,9 @@ export class ModeSelect extends LitElement {
     this._selectedDifficulty = 'MEDIUM';
     this._ascension = 0;
     this._previewVisible = false;
+    this._showModPicker = false;
+    this._modifiers = [];
+    this._modifierConfig = {};
     this._modes = [
       {
         mode: 'STANDARD',
@@ -438,7 +469,9 @@ export class ModeSelect extends LitElement {
         mode: this._selectedMode,
         difficulty: this._selectedDifficulty,
         ascension: this._ascension,
-        seed: String(Date.now())
+        seed: String(Date.now()),
+        modifiers: this._modifiers,
+        modifierConfig: this._modifierConfig,
       }
     });
   }
@@ -495,6 +528,17 @@ export class ModeSelect extends LitElement {
                 </select>
               </div>
               <div>
+                <div class="ctl-label">Modifiers</div>
+                <button
+                  class="mod-btn ${this._modifiers.length ? 'has-mods' : ''}"
+                  @mousedown="${e => e.preventDefault()}"
+                  @click="${() => this._showModPicker = true}">
+                  ${this._modifiers.length
+                    ? `${this._modifiers.length} active ›`
+                    : 'None ›'}
+                </button>
+              </div>
+              <div>
                 <div class="ctl-label">Ascension</div>
                 <div class="asc-row">
                   <button class="asc-btn"
@@ -512,6 +556,19 @@ export class ModeSelect extends LitElement {
 
           <button class="begin-btn ${this._selectedMode ? 'visible' : ''}"
             @click="${this._onBegin}">Begin →</button>
+
+          ${this._showModPicker ? html`
+            <modifier-picker
+              .active="${this._modifiers}"
+              .config="${this._modifierConfig}"
+              @modifier-change="${e => {
+                this._modifiers = e.detail.modifiers;
+                this._modifierConfig = e.detail.modifierConfig;
+                this._showModPicker = false;
+              }}"
+              @modifier-close="${() => this._showModPicker = false}"
+            ></modifier-picker>
+          ` : ''}
 
           <div class="cards-row">
             ${this._modes.map(m => html`

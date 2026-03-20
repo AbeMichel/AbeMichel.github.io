@@ -1,78 +1,67 @@
 import { LitElement, html, css } from 'https://esm.sh/lit@3';
 import { keyed } from 'https://esm.sh/lit@3/directives/keyed.js';
+import { puzzleToGameState } from '../services/puzzleLoader.js';
 
 const CHALLENGES = [
   {
-    id: 'daily',
-    label: 'Daily Puzzle',
-    subtitle: 'A new puzzle each day',
-    description: 'A carefully chosen puzzle refreshed every day. Return daily to build your streak.',
-    tags: ['Standard', 'Daily'],
-    action: { type: 'GAME/LOAD_DAILY' }
+    id: 'daily_very_easy',
+    category: 'daily',
+    label: 'Very Easy',
+    subtitle: 'Daily Warm-up',
+    seed: 'DAILY',
+    description: 'A gentle start to your day. Pure logic, no advanced techniques required.',
+    tags: ['Very Easy', 'Daily'],
+    action: { type: 'GAME/START', payload: { difficulty: 'VERY_EASY', mode: 'STANDARD' } }
   },
   {
-    id: 'sprint',
-    label: 'Speed Sprint',
-    subtitle: 'Race the clock',
-    description: 'Solve an easy puzzle as quickly as possible. Great for warming up your pattern recognition.',
-    tags: ['Easy', 'Speed'],
+    id: 'daily_easy',
+    category: 'daily',
+    label: 'Easy',
+    subtitle: 'Quick Fix',
+    seed: 'DAILY',
+    description: 'Perfect for a quick mental break. Requires basic scanning and simple deductions.',
+    tags: ['Easy', 'Daily'],
     action: { type: 'GAME/START', payload: { difficulty: 'EASY', mode: 'STANDARD' } }
   },
   {
-    id: 'flawless',
-    label: 'Flawless',
-    subtitle: 'No mistakes allowed',
-    description: 'Complete a medium puzzle without a single error. Think twice before placing each number — there is no margin for error.',
-    tags: ['Medium', 'Precision'],
+    id: 'daily_medium',
+    category: 'daily',
+    label: 'Medium',
+    subtitle: 'Steady Challenge',
+    seed: 'DAILY',
+    description: 'A balanced puzzle that might require some intermediate logic like naked pairs.',
+    tags: ['Medium', 'Daily'],
     action: { type: 'GAME/START', payload: { difficulty: 'MEDIUM', mode: 'STANDARD' } }
   },
   {
-    id: 'hard',
-    label: 'Hard Mode',
-    subtitle: 'Advanced techniques required',
-    description: 'A hard difficulty puzzle that demands deeper logic. Naked pairs, hidden triples, X-wings — you will need them.',
-    tags: ['Hard'],
+    id: 'daily_hard',
+    category: 'daily',
+    label: 'Hard',
+    subtitle: 'Logic Test',
+    seed: 'DAILY',
+    description: 'For those who want a serious test. Be prepared for X-Wings and hidden triples.',
+    tags: ['Hard', 'Daily'],
     action: { type: 'GAME/START', payload: { difficulty: 'HARD', mode: 'STANDARD' } }
   },
   {
-    id: 'expert',
+    id: 'daily_very_hard',
+    category: 'daily',
     label: 'Expert',
-    subtitle: 'The ultimate test',
-    description: 'A very hard puzzle. The highest standard difficulty — master-level solving is required to crack this one.',
-    tags: ['Very Hard'],
+    subtitle: 'Master Class',
+    seed: 'DAILY',
+    description: 'The ultimate daily challenge. Only for those who have mastered advanced Sudoku techniques.',
+    tags: ['Very Hard', 'Daily'],
     action: { type: 'GAME/START', payload: { difficulty: 'VERY_HARD', mode: 'STANDARD' } }
   },
   {
-    id: 'chaos',
-    label: 'Chaos',
-    subtitle: 'Irregular regions',
-    description: 'The regions are no longer square. Solve a jigsaw sudoku where the boundaries twist and break convention.',
-    tags: ['Medium', 'Chaos'],
-    action: { type: 'GAME/START', payload: { difficulty: 'MEDIUM', mode: 'CHAOS' } }
-  },
-  {
-    id: 'chaos_hard',
-    label: 'Chaos Hard',
-    subtitle: 'Jigsaw at its worst',
-    description: 'Hard difficulty chaos mode. Irregular regions meet complex logic for a serious test of spatial reasoning.',
-    tags: ['Hard', 'Chaos'],
-    action: { type: 'GAME/START', payload: { difficulty: 'HARD', mode: 'CHAOS' } }
-  },
-  {
-    id: 'reconstruction',
-    label: 'Reconstruction',
-    subtitle: 'Piece it together',
-    description: 'Drag puzzle pieces onto the board to reconstruct the solution. A completely different kind of challenge that tests spatial thinking.',
-    tags: ['Medium', 'Reconstruction'],
-    action: { type: 'GAME/START', payload: { difficulty: 'MEDIUM', mode: 'RECONSTRUCTION' } }
-  },
-  {
-    id: 'reconstruction_hard',
-    label: 'Reconstruction Hard',
-    subtitle: 'Pieces with rotation',
-    description: 'Reconstruction mode at hard difficulty. Pieces can be rotated and mirrored, so orientation is part of the puzzle.',
-    tags: ['Hard', 'Reconstruction'],
-    action: { type: 'GAME/START', payload: { difficulty: 'HARD', mode: 'RECONSTRUCTION' } }
+    id: 'lorelei',
+    category: 'other',
+    label: 'The Lorelei',
+    subtitle: 'As it was meant to be.',
+    seed: 1,
+    description: '',
+    tags: ['Very Easy', 'Modifier'],
+    action: { type: 'GAME/START', payload: { difficulty: 'VERY_EASY', mode: 'STANDARD', modifiers: ['ORDERED', 'NO_CANDIDATES'] } }
   },
 ];
 
@@ -151,6 +140,27 @@ export class ChallengesScreen extends LitElement {
       width: 210px;
       flex-shrink: 0;
       padding-top: 4px;
+    }
+
+    .section-header {
+      font-family: var(--font-display);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-accent);
+      margin: 16px 0 8px 4px;
+      opacity: 0.8;
+    }
+
+    .section-header:first-child {
+      margin-top: 0;
+    }
+
+    .section-divider {
+      height: 1px;
+      background: var(--glass-border);
+      margin: 12px 16px 12px 4px;
+      opacity: 0.5;
     }
 
     .item {
@@ -303,11 +313,69 @@ export class ChallengesScreen extends LitElement {
   }
 
   _start(challenge) {
-    this._dispatch(challenge.action);
+    if (challenge.puzzle) {
+      // Pre-defined puzzle string
+      const record = {
+        id: challenge.id,
+        puzzle: challenge.puzzle,
+        solution: challenge.solution || challenge.puzzle, // Fallback if no solution provided
+        jigsaw_layout: challenge.jigsaw_layout || null,
+        difficulty: challenge.action.payload.difficulty || 'MEDIUM',
+        type: challenge.action.payload.mode === 'CHAOS' ? 'jigsaw' : 'classic',
+        techniques_used: [],
+        normalized_score: 0
+      };
+      const gameState = puzzleToGameState(record);
+      
+      // Dispatch START first to set mode/difficulty/modifiers
+      this._dispatch({
+        ...challenge.action,
+        payload: {
+          ...challenge.action.payload,
+          seed: challenge.id,
+          _skipGenerate: true
+        }
+      });
+      
+      // Then load the specific cells/regions
+      this._dispatch({
+        type: 'GAME/LOAD',
+        payload: {
+          ...gameState,
+          // Merge in any other relevant fields from action payload if needed
+        }
+      });
+      
+      this._dispatch({ type: 'UI/SET_VIEW', payload: { view: 'GAME' } });
+      return;
+    }
+
+    const action = { ...challenge.action };
+    let seed = challenge.seed;
+    if (seed === 'DAILY') {
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const yyyy = now.getFullYear();
+      seed = `${mm}-${dd}-${yyyy}`;
+    }
+    if (seed !== undefined && action.payload) {
+      action.payload = { ...action.payload, seed: String(seed) };
+    }
+    this._dispatch(action);
   }
 
   render() {
     const selected = CHALLENGES.find(c => c.id === this._selectedId) ?? CHALLENGES[0];
+    
+    // Process tags: replace 'Modifier' with actual modifier labels if available
+    const activeModifiers = selected.action?.payload?.modifiers || [];
+    const processedTags = selected.tags.flatMap(tag => {
+      if (tag === 'Modifier') {
+        return activeModifiers.map(m => m.toLowerCase().replace(/_/g, ' '));
+      }
+      return tag;
+    });
 
     return html`
       <div class="header">
@@ -322,7 +390,17 @@ export class ChallengesScreen extends LitElement {
 
       <div class="layout">
         <div class="sidebar">
-          ${CHALLENGES.map(c => html`
+          <div class="section-header">Daily</div>
+          ${CHALLENGES.filter(c => c.category === 'daily').map(c => html`
+            <div class="item ${c.id === this._selectedId ? 'is-selected' : ''}"
+                 @click="${() => { this._selectedId = c.id; }}">
+              ${c.label}
+            </div>
+          `)}
+          
+          <div class="section-divider"></div>
+          
+          ${CHALLENGES.filter(c => c.category !== 'daily').map(c => html`
             <div class="item ${c.id === this._selectedId ? 'is-selected' : ''}"
                  @click="${() => { this._selectedId = c.id; }}">
               ${c.label}
@@ -337,7 +415,7 @@ export class ChallengesScreen extends LitElement {
             <div class="challenge-title">${selected.label}</div>
             <div class="challenge-subtitle">${selected.subtitle}</div>
             <div class="tags">
-              ${selected.tags.map(t => html`<span class="tag">${t}</span>`)}
+              ${processedTags.map(t => html`<span class="tag">${t}</span>`)}
             </div>
             <div class="challenge-desc">${selected.description}</div>
             <button class="start-btn" @click="${() => this._start(selected)}">Start →</button>

@@ -20,9 +20,10 @@ export const LivingModifier = {
           indexB = band * 3 + j;
         }
 
-        dispatch(modTriggerAction('LIVING', { 
+        dispatch(modTriggerAction('LIVING', {
           swap: { type, indexA, indexB },
-          nextSwapAt: Date.now() + modState.interval 
+          nextSwapAt: Date.now() + modState.interval,
+          lastSwap: Date.now()
         }));
       }
     }

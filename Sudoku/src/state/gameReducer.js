@@ -61,6 +61,26 @@ export const gameReducer = (state = defaultState, action) => {
       return { ...state, isPaused: true };
     case Actions.GAME.RESUME:
       return { ...state, isPaused: false };
+    case Actions.GAME.RESET: {
+      return {
+        ...state,
+        timer: 0,
+        mistakes: 0,
+        status: 'PLAYING',
+        cells: state.cells.map(cell =>
+          cell.fixed ? cell : {
+            ...cell,
+            v: null,
+            c: [],
+            manualCandidates: [],
+            autoCandidates: [],
+            removedCandidates: [],
+            placedBy: null
+          }
+        )
+      };
+    }
+
     case Actions.GAME.WIN:
       return { ...state, status: 'WON' };
     case Actions.BOARD.SET_VALUE: {

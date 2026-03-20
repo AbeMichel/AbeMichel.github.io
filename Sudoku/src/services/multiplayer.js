@@ -226,23 +226,25 @@ function _handleOutgoingConnection(conn, playerName) {
       }
       _store.dispatch({
         type: Actions.MP.SYNC_STATE,
-        payload: { gameState }
+        payload: { gameState },
+        _mpOrigin: true
       });
       const localPeerId = _store.getState().multiplayer.peerId;
       data.payload.peers.forEach(p => {
         if (p.id === localPeerId) return; // own entry already set by MP/CONNECT
         _store.dispatch({
           type: Actions.MP.PEER_JOINED,
-          payload: { peerId: p.id, name: p.name, isHost: p.isHost, color: p.color, playerId: p.playerId }
+          payload: { peerId: p.id, name: p.name, isHost: p.isHost, color: p.color, playerId: p.playerId },
+          _mpOrigin: true
         });
       });
       if (data.payload.lobbyConfig) {
-        _store.dispatch({ type: 'MP/UPDATE_LOBBY_CONFIG', payload: data.payload.lobbyConfig });
+        _store.dispatch({ type: 'MP/UPDATE_LOBBY_CONFIG', payload: data.payload.lobbyConfig, _mpOrigin: true });
       }
-      _store.dispatch({ type: Actions.MP.SET_STATUS, payload: { status, mpMode: data.payload.mpMode } });
-      _store.dispatch({ type: Actions.UI.SET_VIEW, payload: { view: status === 'PLAYING' ? 'GAME' : 'LOBBY' } });
+      _store.dispatch({ type: Actions.MP.SET_STATUS, payload: { status, mpMode: data.payload.mpMode }, _mpOrigin: true });
+      _store.dispatch({ type: Actions.UI.SET_VIEW, payload: { view: status === 'PLAYING' ? 'GAME' : 'LOBBY' }, _mpOrigin: true });
     } else if (data.type === Actions.MP.ACTION_REJECTED) {
-      _store.dispatch({ type: Actions.UI.FLASH_CELL, payload: { id: data.payload.cellId, flashType: 'conflict' } });
+      _store.dispatch({ type: Actions.UI.FLASH_CELL, payload: { id: data.payload.cellId, flashType: 'conflict' }, _mpOrigin: true });
     } else if (data._mpOrigin) {
       // Don't re-apply actions we sent ourselves
       if (data._mp?.peerId === _store.getState().multiplayer.peerId) return;

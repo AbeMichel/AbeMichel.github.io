@@ -2,7 +2,7 @@ import { Actions } from '../core/actions.js';
 
 const defaultState = {
   darkMode: false,
-  regionColors: true,
+  regionColors: false,
   showPlayerColors: true,
   showOpponentBoard: true,
   highlightPeers: true,

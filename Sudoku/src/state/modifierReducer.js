@@ -49,21 +49,42 @@ export const modifierReducer = (state = defaultState, action, gameSlice) => {
         }
         nextState._reorderCells = cells;
       }
+
       return nextState;
     }
 
-    case Actions.GAME.START:
+    case Actions.GAME.START: {
+      // Payload may supply a new modifier list and per-modifier config overrides.
+      const newActive = action.payload?.modifiers || [];
+      const configs   = action.payload?.modifierConfig || {};
+      const activeMods = getActiveModifiers(newActive);
+      const newModState = {};
+      activeMods.forEach(mod => {
+        const base = mod.initialModState();
+        newModState[mod.id] = base === null ? null : { ...base, ...(configs[mod.id] || {}) };
+      });
+      return { ...state, active: newActive, modState: newModState, _configSnapshot: configs };
+    }
+
     case Actions.GAME.RESET: {
+      // Preserve config overrides but reinitialise runtime state.
+      const configs = state._configSnapshot || {};
       const activeMods = getActiveModifiers(state.active);
       const newModState = {};
       activeMods.forEach(mod => {
-        newModState[mod.id] = mod.initialModState();
+        const base = mod.initialModState();
+        if (base === null) {
+          newModState[mod.id] = null;
+        } else {
+          const merged = { ...base, ...(configs[mod.id] || {}) };
+          // Recalculate any interval-based countdown using the merged interval
+          if ('interval' in merged && 'nextSwapAt' in merged) {
+            merged.nextSwapAt = Date.now() + merged.interval;
+          }
+          newModState[mod.id] = merged;
+        }
       });
-      return {
-        ...state,
-        modState: newModState,
-        active: state.active // Preserve active mods
-      };
+      return { ...state, modState: newModState };
     }
 
     case Actions.BOARD.SET_VALUE: {

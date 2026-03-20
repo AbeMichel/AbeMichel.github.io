@@ -5,6 +5,7 @@ export class SudokuCell extends LitElement {
     cellId: { type: Number },
     value: { type: Number },
     candidates: { type: Array },
+    symbols: { type: Array },
     fixed: { type: Boolean, reflect: true },
     selected: { type: Boolean, reflect: true },
     highlighted: { type: Boolean },
@@ -17,7 +18,8 @@ export class SudokuCell extends LitElement {
     pieceBorderClasses: { type: Array },
     flashType: { type: String },
     placedByColor: { type: String },
-    readonly: { type: Boolean, reflect: true }
+    readonly: { type: Boolean, reflect: true },
+    candidateOnly: { type: Boolean, reflect: true }
   };
 
   static styles = css`
@@ -249,6 +251,30 @@ export class SudokuCell extends LitElement {
     :host([data-just-placed]) .value {
       animation: place-value 0.15s ease-out forwards;
     }
+
+    /* Blackout modifier */
+    :host(.mod-blackout-hidden) .value,
+    :host(.mod-blackout-hidden) .candidates,
+    :host(.mod-blackout-hidden) .cell::before {
+      visibility: hidden;
+    }
+    :host(.mod-blackout-hidden) .cell {
+      background: transparent !important;
+    }
+    :host(.mod-blackout-hidden) {
+      background-color: rgba(20, 12, 5, 0.55) !important;
+    }
+    :host(.mod-blackout-revealed) {
+      /* revealed cells look normal */
+    }
+
+    /* Candidate-only masking */
+    :host([candidateOnly]) .value {
+      visibility: hidden;
+    }
+    :host([candidateOnly]) .candidates {
+      /* keep candidates visible */
+    }
   `;
 
   constructor() {
@@ -256,6 +282,7 @@ export class SudokuCell extends LitElement {
     this.cellId = 0;
     this.value = 0;
     this.candidates = [];
+    this.symbols = null;
     this.fixed = false;
     this.selected = false;
     this.highlighted = false;
@@ -321,16 +348,17 @@ export class SudokuCell extends LitElement {
   render() {
     const cellStyle = this.pieceColor ? `--piece-tint: ${this.pieceColor};` : '';
     const innerStyle = this.regionColor ? `background-color: ${this.regionColor};` : '';
+    const display = (d) => this.symbols?.[d - 1] ?? d;
 
     return html`
       <div class="cell" style="${cellStyle}${innerStyle}">
         ${this.value !== 0 ? html`
-          <span class="value">${this.value}</span>
+          <span class="value">${display(this.value)}</span>
         ` : html`
           <div class="candidates">
             ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(digit => html`
               <div class="candidate-slot" @click="${(e) => this._handleCandidateClick(e, digit)}">
-                <span class="candidate-num ${this.candidates.includes(digit) ? 'is-active' : ''}">${digit}</span>
+                <span class="candidate-num ${this.candidates.includes(digit) ? 'is-active' : ''}">${display(digit)}</span>
               </div>
             `)}
           </div>
