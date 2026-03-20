@@ -7,9 +7,10 @@ import './progress-screen.js';
 import './mp-lobby.js';
 import './mp-player-list.js';
 import './result-screen.js';
+import './challenges-screen.js';
 import './settings-modal.js';
 import { getActiveModifiers } from '../modifiers/registry.js';
-import { createRoom, joinRoom } from '../services/multiplayerClient.js';
+import { createRoom, joinRoom, leaveRoom, isConnected } from '../services/multiplayerClient.js';
 import { initPetals } from '../utils/petals.js';
 
 let _store = null;
@@ -190,9 +191,17 @@ export class AppRoot extends LitElement {
     window.removeEventListener('popstate', this._boundPopState);
   }
 
+  _leaveMultiplayerIfActive() {
+    if (isConnected()) {
+      leaveRoom();
+      _store.dispatch({ type: 'MP/DISCONNECT' });
+    }
+  }
+
   _handlePopState(e) {
     const view = e.state?.view;
     if (view && _store) {
+      this._leaveMultiplayerIfActive();
       this._fromPopState = true;
       _store.dispatch({ type: 'UI/SET_VIEW', payload: { view } });
     }
@@ -288,6 +297,11 @@ export class AppRoot extends LitElement {
         _store.dispatch({ type: 'MP/SET_ERROR', payload: err?.message || 'Room not found' });
       }
       return;
+    }
+    // Leaving the game view while in a multiplayer session disconnects the player.
+    if (action.type === 'UI/SET_VIEW' && action.payload?.view !== 'GAME') {
+      const currentView = _store?.getState().ui?.view;
+      if (currentView === 'GAME') this._leaveMultiplayerIfActive();
     }
     if (_store) _store.dispatch(action);
   }
@@ -391,6 +405,15 @@ export class AppRoot extends LitElement {
         .settingsState="${this.settingsState}"
         @dispatch-action="${this._onDispatchAction}"
       ></mode-select>`;
+    }
+
+    if (view === 'CHALLENGES') {
+      return html`<challenges-screen
+        .statsState="${this.statsState}"
+        .settingsState="${this.settingsState}"
+        .achievementsState="${this.achievementsState}"
+        @dispatch-action="${this._onDispatchAction}"
+      ></challenges-screen>`;
     }
 
     if (view === 'ACHIEVEMENTS' || view === 'STATS') {

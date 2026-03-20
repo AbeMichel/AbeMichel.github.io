@@ -1,4 +1,9 @@
 import { LitElement, html, css } from 'https://esm.sh/lit@3';
+import { unsafeHTML } from 'https://esm.sh/lit@3/directives/unsafe-html.js';
+
+const ICON_UNDO = unsafeHTML(`<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 9v5h5m11 2c-.497-4.5-3.367-8-8-8c-2.73 0-5.929 2.268-7.294 5.5"/></svg>`);
+const ICON_REDO = unsafeHTML(`<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 9v5h-5M4 16c.497-4.5 3.367-8 8-8c2.73 0 5.929 2.268 7.294 5.5"/></svg>`);
+const ICON_SETTINGS = unsafeHTML(`<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M14.279 2.152C13.909 2 13.439 2 12.5 2s-1.408 0-1.779.152a2 2 0 0 0-1.09 1.083c-.094.223-.13.484-.145.863a1.62 1.62 0 0 1-.796 1.353a1.64 1.64 0 0 1-1.579.008c-.338-.178-.583-.276-.825-.308a2.03 2.03 0 0 0-1.49.396c-.318.242-.553.646-1.022 1.453c-.47.807-.704 1.21-.757 1.605c-.07.526.074 1.058.4 1.479c.148.192.357.353.68.555c.477.297.783.803.783 1.361s-.306 1.064-.782 1.36c-.324.203-.533.364-.682.556a2 2 0 0 0-.399 1.479c.053.394.287.798.757 1.605s.704 1.21 1.022 1.453c.424.323.96.465 1.49.396c.242-.032.487-.13.825-.308a1.64 1.64 0 0 1 1.58.008c.486.28.774.795.795 1.353c.015.38.051.64.145.863c.204.49.596.88 1.09 1.083c.37.152.84.152 1.779.152s1.409 0 1.779-.152a2 2 0 0 0 1.09-1.083c.094-.223.13-.483.145-.863c.02-.558.309-1.074.796-1.353a1.64 1.64 0 0 1 1.579-.008c.338.178.583.276.825.308c.53.07 1.066-.073 1.49-.396c.318-.242.553-.646 1.022-1.453c.47-.807.704-1.21.757-1.605a2 2 0 0 0-.4-1.479c-.148-.192-.357-.353-.68-.555c-.477-.297-.783-.803-.783-1.361s.306-1.064.782-1.36c.324-.203.533-.364.682-.556a2 2 0 0 0 .399-1.479c-.053-.394-.287-.798-.757-1.605s-.704-1.21-1.022-1.453a2.03 2.03 0 0 0-1.49-.396c-.242.032-.487.13-.825.308a1.64 1.64 0 0 1-1.58-.008a1.62 1.62 0 0 1-.795-1.353c-.015-.38-.051-.64-.145-.863a2 2 0 0 0-1.09-1.083M12.5 15c1.67 0 3.023-1.343 3.023-3S14.169 9 12.5 9s-3.023 1.343-3.023 3s1.354 3 3.023 3" clip-rule="evenodd"/></svg>`);
 import './sudoku-board.js';
 import './sudoku-recon.js';
 import './competitive-board.js';
@@ -313,14 +318,70 @@ export class BoardContainer extends LitElement {
     if (!this.gameState) return html`<div>Loading...</div>`;
 
     if (this.gameState.mode === 'STANDARD' && this.multiplayerState?.mpMode === 'COMPETITIVE') {
+      const totalSeconds = Math.floor((this.gameState?.timer || 0) / 1000);
+      const timer = `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
+      const mistakes = this.gameState?.mistakes ?? 0;
+      const canUndo = (this.historyState?.past?.length ?? 0) > 0;
+      const canRedo = (this.historyState?.future?.length ?? 0) > 0;
+      const compDispatch = (detail) => this.dispatchEvent(new CustomEvent('dispatch-action', { detail, bubbles: true, composed: true }));
+      const compHudBtn = (icon, type, label, enabled = true) => html`
+        <button aria-label="${label}" style="
+          width:36px;height:36px;border-radius:var(--radius-circle);
+          border:none;cursor:${enabled ? 'pointer' : 'default'};
+          background:var(--hud-btn-bg);
+          color:var(--text-primary);font-size:16px;
+          box-shadow:var(--hud-btn-shadow);
+          backdrop-filter:blur(4px);
+          transition:all 0.15s;
+          display:flex;align-items:center;justify-content:center;
+          opacity:${enabled ? 1 : 0.35};
+        " ?disabled="${!enabled}" @mousedown="${e => e.preventDefault()}" @click="${() => enabled && compDispatch({ type })}">
+          ${icon}
+        </button>`;
+
       return html`
-        <competitive-board
-          .gameState="${this.gameState}"
-          .uiState="${this.uiState}"
-          .modifiers="${this.modifiers}"
-          .settingsState="${this.settingsState}"
-          .multiplayerState="${this.multiplayerState}"
-        ></competitive-board>
+        <div style="display:flex;flex-direction:column;align-items:center;width:100%;padding:0 1rem;box-sizing:border-box;">
+          <div style="display:flex;align-items:center;justify-content:center;width:100%;margin-bottom:20px;position:relative;">
+            <button @mousedown="${e => e.preventDefault()}" @click="${() => compDispatch({ type: 'UI/SET_VIEW', payload: { view: 'TITLE' } })}" style="
+              position:absolute;left:0;
+              font-family:var(--font-display);font-style:italic;font-size:14px;
+              color:var(--text-secondary);background:none;border:none;
+              cursor:pointer;transition:color 0.2s;padding:0;
+            " onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-secondary)'">← Menu</button>
+            <div style="display:flex;flex-direction:column;align-items:center;">
+              <div style="font-family:var(--font-display);font-size:28px;font-weight:500;color:var(--text-primary);text-shadow:0 1px 3px rgba(255,255,255,0.3);">Sudokus</div>
+              <div style="font-family:var(--font-display);font-style:italic;font-size:14px;color:var(--text-accent);margin-top:-2px;padding-left:3px;">by Abe</div>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:40px;margin-bottom:16px;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:1px;min-width:52px;">
+              ${this.settingsState?.showTimer !== false ? html`
+                <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-secondary);font-family:var(--font-ui);">Time</div>
+                <div style="font-family:var(--font-display);font-size:24px;color:var(--text-primary);">${timer}</div>
+              ` : ''}
+            </div>
+            <div style="display:flex;gap:8px;">
+              ${compHudBtn(ICON_UNDO, 'HISTORY/UNDO', 'Undo', canUndo)}
+              ${compHudBtn(ICON_REDO, 'HISTORY/REDO', 'Redo', canRedo)}
+              ${compHudBtn(ICON_SETTINGS, 'UI/OPEN_SETTINGS', 'Settings')}
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:1px;min-width:52px;">
+              ${this.settingsState?.showMistakes !== false ? html`
+                <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-secondary);font-family:var(--font-ui);">Mistakes</div>
+                <div style="font-family:var(--font-display);font-size:24px;color:var(--text-primary);">${mistakes}</div>
+              ` : ''}
+            </div>
+          </div>
+
+          <competitive-board
+            .gameState="${this.gameState}"
+            .uiState="${this.uiState}"
+            .modifiers="${this.modifiers}"
+            .settingsState="${this.settingsState}"
+            .multiplayerState="${this.multiplayerState}"
+          ></competitive-board>
+        </div>
       `;
     }
 
@@ -331,12 +392,12 @@ export class BoardContainer extends LitElement {
       const canUndo = (this.historyState?.past?.length ?? 0) > 0;
       const canRedo = (this.historyState?.future?.length ?? 0) > 0;
       const reconDispatch = (detail) => this.dispatchEvent(new CustomEvent('dispatch-action', { detail, bubbles: true, composed: true }));
-      const reconHudBtn = (icon, type, enabled = true) => html`
-        <button style="
-          width:32px;height:32px;border-radius:var(--radius-circle);
+      const reconHudBtn = (icon, type, label, enabled = true) => html`
+        <button aria-label="${label}" style="
+          width:36px;height:36px;border-radius:var(--radius-circle);
           border:none;cursor:${enabled ? 'pointer' : 'default'};
           background:var(--hud-btn-bg);
-          color:var(--text-primary);font-size:13px;
+          color:var(--text-primary);font-size:16px;
           box-shadow:var(--hud-btn-shadow);
           backdrop-filter:blur(4px);
           transition:all 0.15s;
@@ -372,9 +433,9 @@ export class BoardContainer extends LitElement {
               ` : ''}
             </div>
             <div style="display:flex;gap:8px;">
-              ${reconHudBtn('↩', 'HISTORY/UNDO', canUndo)}
-              ${reconHudBtn('↪', 'HISTORY/REDO', canRedo)}
-              ${reconHudBtn('⚙', 'UI/OPEN_SETTINGS')}
+              ${reconHudBtn(ICON_UNDO, 'HISTORY/UNDO', 'Undo', canUndo)}
+              ${reconHudBtn(ICON_REDO, 'HISTORY/REDO', 'Redo', canRedo)}
+              ${reconHudBtn(ICON_SETTINGS, 'UI/OPEN_SETTINGS', 'Settings')}
             </div>
             <div style="display:flex;flex-direction:column;align-items:center;gap:1px;min-width:52px;">
               <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-secondary);font-family:var(--font-ui);">Moves</div>
@@ -457,12 +518,12 @@ export class BoardContainer extends LitElement {
 
     const dispatch = (detail) => this.dispatchEvent(new CustomEvent('dispatch-action', { detail, bubbles: true, composed: true }));
 
-    const hudBtn = (icon, type, enabled = true) => html`
-      <button style="
-        width:32px;height:32px;border-radius:var(--radius-circle);
+    const hudBtn = (icon, type, label, enabled = true) => html`
+      <button aria-label="${label}" style="
+        width:36px;height:36px;border-radius:var(--radius-circle);
         border:none;cursor:${enabled ? 'pointer' : 'default'};
         background:var(--hud-btn-bg);
-        color:var(--text-primary);font-size:13px;
+        color:var(--text-primary);font-size:16px;
         box-shadow:var(--hud-btn-shadow);
         backdrop-filter:blur(4px);
         transition:all 0.15s;
@@ -544,9 +605,9 @@ export class BoardContainer extends LitElement {
             ` : ''}
           </div>
           <div style="display:flex;gap:8px;">
-            ${hudBtn('↩', 'HISTORY/UNDO', canUndo && !this.uiState?.viewingSolution)}
-            ${hudBtn('↪', 'HISTORY/REDO', canRedo && !this.uiState?.viewingSolution)}
-            ${hudBtn('⚙', 'UI/OPEN_SETTINGS')}
+            ${hudBtn(ICON_UNDO, 'HISTORY/UNDO', 'Undo', canUndo && !this.uiState?.viewingSolution)}
+            ${hudBtn(ICON_REDO, 'HISTORY/REDO', 'Redo', canRedo && !this.uiState?.viewingSolution)}
+            ${hudBtn(ICON_SETTINGS, 'UI/OPEN_SETTINGS', 'Settings')}
           </div>
           <div style="display:flex;flex-direction:column;align-items:center;gap:1px;min-width:52px;">
             ${this.settingsState?.showMistakes !== false ? html`

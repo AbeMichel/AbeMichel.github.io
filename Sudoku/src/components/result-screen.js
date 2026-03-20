@@ -160,9 +160,13 @@ export class ResultScreen extends LitElement {
   }
 
   _quit() {
-    leaveRoom();
-    this._dispatch({ type: 'UI/CLOSE_WIN_MODAL' });
-    this._dispatch({ type: 'UI/SET_VIEW', payload: { view: 'TITLE' } });
+    if (this.multiplayerState?.isHost) {
+      // Host returns to their lobby (room stays alive)
+      this._dispatch({ type: 'MP/RETURN_TO_LOBBY' });
+    } else {
+      leaveRoom();
+      this._dispatch({ type: 'UI/SET_VIEW', payload: { view: 'TITLE' } });
+    }
   }
 
   _dispatch(detail) {
@@ -261,32 +265,73 @@ export class ResultScreen extends LitElement {
     `;
   }
 
+  _castVote(vote) {
+    const peerId = this.multiplayerState.peerId;
+    this._dispatch({ type: 'COMPETITIVE/CAST_VOTE', payload: { peerId, vote } });
+  }
+
+  _viewBoard() {
+    this._dispatch({ type: 'UI/CLOSE_WIN_MODAL' });
+  }
+
+  _renderVoteBtn(label, voteKey, disabled) {
+    const votes = this.uiState.competitiveVotes || {};
+    const peers = this.multiplayerState.peers || [];
+    const myVote = votes[this.multiplayerState.peerId];
+    const isMyVote = myVote === voteKey;
+    const voters = peers.filter(p => votes[p.id] === voteKey);
+
+    return html`
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <button
+          ?disabled="${disabled}"
+          style="opacity:${disabled ? 0.4 : 1};"
+          class="${isMyVote ? 'btn-danger' : ''}"
+          @click="${() => !disabled && this._castVote(voteKey)}"
+        >${label}${isMyVote ? ' ✓' : ''}</button>
+        ${voters.length ? html`
+          <div style="display:flex;gap:4px;">
+            ${voters.map(p => html`
+              <span title="${p.name}" style="
+                display:inline-block;width:8px;height:8px;border-radius:50%;
+                background:${p.color || 'var(--text-accent)'};
+              "></span>
+            `)}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
   render() {
     const result = this.uiState.competitiveResult;
     if (!result && this.multiplayerState?.mpMode === 'CO_OP') return this._renderCoop();
     if (!result) return this._renderSingleplayer();
 
-    const winnerPeer = this.multiplayerState.peers.find(p => p.id === result.winnerId) || 
+    const winnerPeer = this.multiplayerState.peers.find(p => p.id === result.winnerId) ||
                        (result.winnerId === this.multiplayerState.peerId ? { name: this.multiplayerState.playerName, color: '#42A5F5' } : null);
-    
+
     const sortedResults = [...result.results].sort((a, b) => {
       if (a.finished && !b.finished) return -1;
       if (!a.finished && b.finished) return 1;
       return (a.time || Infinity) - (b.time || Infinity);
     });
 
+    const connectedPeers = (this.multiplayerState.peers || []).filter(p => p.connected !== false);
+    const alone = connectedPeers.length <= 1;
+
     return html`
       <div class="result-card" style="--winner-color: ${winnerPeer?.color || 'var(--text-accent)'}">
         <div class="winner-text"><span class="winner-name">${result.winnerName}</span> wins!</div>
         <div class="winner-sub">Puzzle solved</div>
-        
+
         <table>
           <thead>
             <tr>
               <th>Player</th>
               <th>Time</th>
               <th>Mistakes</th>
-              <th>Status</th>
+              <th>Cells filled</th>
             </tr>
           </thead>
           <tbody>
@@ -296,21 +341,24 @@ export class ResultScreen extends LitElement {
                   <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${this.multiplayerState.peers.find(p => p.id === r.peerId)?.color || '#42A5F5'}; margin-right: 8px;"></span>
                   ${r.name}
                 </td>
-                <td class="time">${this._formatTime(r.time)}</td>
+                <td class="time">${r.finished ? this._formatTime(r.time) : '—'}</td>
                 <td>${r.mistakes}</td>
-                <td>${r.finished ? 'Solved ✓' : 'DNF'}</td>
+                <td>${r.filledCount ?? '—'}</td>
               </tr>
             `)}
           </tbody>
         </table>
 
+        ${alone ? html`
+          <div style="font-family:var(--font-display);font-style:italic;font-size:13px;color:var(--text-secondary);margin-top:1rem;text-align:center;">
+            All other players have left
+          </div>
+        ` : ''}
+
         <div class="actions">
-          ${this.multiplayerState.isHost ? html`
-            <button class="btn-primary" @click="${this._playAgain}">Play Again</button>
-          ` : html`
-            <button class="btn-primary" disabled>Waiting for host...</button>
-          `}
-          <button class="btn-secondary" @click="${this._changeSettings}">Change Settings</button>
+          ${this._renderVoteBtn('Play Again', 'PLAY_AGAIN', alone)}
+          ${this._renderVoteBtn('Change Settings', 'CHANGE_SETTINGS', alone)}
+          <button @click="${this._viewBoard}">View Board</button>
           <button class="btn-danger" @click="${this._quit}">Quit</button>
         </div>
       </div>

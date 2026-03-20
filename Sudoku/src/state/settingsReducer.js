@@ -8,7 +8,8 @@ const defaultState = {
   highlightPeers: true,
   showTimer: true,
   showMistakes: true,
-  autoCandidates: false
+  autoCandidates: false,
+  autoCandidatesOnStart: false
 };
 
 function loadSettings() {

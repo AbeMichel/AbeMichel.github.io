@@ -8,6 +8,7 @@ const defaultState = {
   paletteHue: 200,
   flashingCells: {},
   competitiveResult: null,
+  competitiveVotes: {},
   showWinModal: false,
   viewingSolution: false,
   showSettings: false,
@@ -52,11 +53,13 @@ export const uiReducer = (state = defaultState, action) => {
     case 'UI/SHOW_WIN_MODAL':
       return { ...state, showWinModal: true, viewingSolution: false };
     case Actions.GAME.START:
-      return { ...state, showWinModal: false, viewingSolution: false };
+      return { ...state, showWinModal: false, viewingSolution: false, competitiveVotes: {} };
     case Actions.COMPETITIVE.SET_RESULT:
-      return { ...state, competitiveResult: action.payload, showWinModal: true, viewingSolution: false };
+      return { ...state, competitiveResult: action.payload, competitiveVotes: {}, showWinModal: true, viewingSolution: false };
+    case Actions.COMPETITIVE.CAST_VOTE:
+      return { ...state, competitiveVotes: { ...state.competitiveVotes, [action.payload.peerId]: action.payload.vote } };
     case Actions.MP.RETURN_TO_LOBBY:
-      return { ...state, view: 'LOBBY', competitiveResult: null, showWinModal: false, viewingSolution: false };
+      return { ...state, view: 'LOBBY', competitiveResult: null, competitiveVotes: {}, showWinModal: false, viewingSolution: false };
     default:
       return state;
   }

@@ -26,6 +26,13 @@ export function initMultiplayer(store) {
     const isSyncable = SYNCABLE_ACTION_PREFIXES.some(p => action.type.startsWith(p));
     if (!isSyncable) return;
 
+    // Candidate actions are derived from each player's local settings.
+    // In competitive mode each board is independent so never sync them.
+    // In co-op the board is shared so they must sync.
+    const isCandidateAction = action.type === 'BOARD/SET_ALL_CANDIDATES' ||
+                              action.type === 'BOARD/RESTORE_MANUAL_CANDIDATES';
+    if (isCandidateAction && state.multiplayer?.mpMode === 'COMPETITIVE') return;
+
     if (_isHost) {
       _handleLocalActionHost(state, action);
     } else if (_peer && !state.multiplayer.isHost && state.multiplayer.status !== 'DISCONNECTED') {

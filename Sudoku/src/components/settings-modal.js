@@ -201,6 +201,7 @@ export class SettingsModal extends LitElement {
         ${this._row('Highlight peers', 'highlightPeers', s?.highlightPeers, 'Show row, column and box on selection')}
         ${this._row('Show timer', 'showTimer', s?.showTimer, '')}
         ${this._row('Show mistakes', 'showMistakes', s?.showMistakes, '')}
+        ${this._row('Auto candidates on start', 'autoCandidatesOnStart', s?.autoCandidatesOnStart, 'Enable auto candidates automatically for each new game')}
 
         <div class="section-label">Multiplayer</div>
         ${this._row('Show player colors', 'showPlayerColors', s?.showPlayerColors, 'Who placed what in co-op')}

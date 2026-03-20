@@ -155,7 +155,12 @@ export const initGameEffects = (store) => {
       }
     }
 
-    if ((action.type === Actions.BOARD.SET_VALUE ||
+    // Don't run auto candidates for opponent actions in competitive mode — those update
+    // competitiveBoards (not local cells) and would cause unnecessary re-renders/flicker.
+    const isOpponentAction = state.multiplayer?.mpMode === 'COMPETITIVE' &&
+      action._mp?.peerId && action._mp.peerId !== state.multiplayer?.peerId;
+
+    if (!isOpponentAction && (action.type === Actions.BOARD.SET_VALUE ||
          action.type === Actions.BOARD.CLEAR_CELL ||
          action.type === 'INTERNAL/REFRESH_CANDIDATES' ||
          action.type === Actions.RECON.PLACE_PIECE ||
@@ -165,15 +170,35 @@ export const initGameEffects = (store) => {
       runAutoCandidates(state, store);
     }
 
-    if (action.type === 'GAME/LOAD' && state.settings?.autoCandidates) {
-      runAutoCandidates(state, store);
+    if (action.type === 'GAME/LOAD') {
+      if (state.settings?.autoCandidatesOnStart) {
+        // Ensure auto candidates is on; if it already is, just run it
+        if (!state.settings?.autoCandidates) {
+          store.dispatch({ type: 'SETTINGS/SET', payload: { key: 'autoCandidates', value: true } });
+        } else {
+          runAutoCandidates(state, store);
+        }
+      } else {
+        // Reset auto candidates at the start of each new game so it doesn't carry over
+        if (state.settings?.autoCandidates) {
+          store.dispatch({ type: 'SETTINGS/SET', payload: { key: 'autoCandidates', value: false } });
+        }
+      }
     }
 
     if (action.type === 'SETTINGS/SET' && action.payload.key === 'autoCandidates') {
-      if (action.payload.value === true) {
-        runAutoCandidates(state, store);
-      } else {
-        store.dispatch({ type: Actions.BOARD.RESTORE_MANUAL_CANDIDATES });
+      if (!action._mpOrigin) {
+        // Only the initiating player runs candidates — the resulting BOARD actions sync to peers.
+        if (action.payload.value === true) {
+          runAutoCandidates(state, store);
+        } else {
+          store.dispatch({ type: Actions.BOARD.RESTORE_MANUAL_CANDIDATES });
+        }
+        // Sync the toggle itself to co-op peers so both UIs reflect the change.
+        if (state.multiplayer?.mpMode === 'CO_OP' &&
+            state.multiplayer.status === 'PLAYING') {
+          broadcastAction({ type: 'SETTINGS/SET', payload: action.payload, _mp: { peerId: state.multiplayer.peerId } });
+        }
       }
     }
 
