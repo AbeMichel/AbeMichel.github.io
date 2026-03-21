@@ -685,10 +685,15 @@ export class BoardContainer extends LitElement {
               <div style="font-family:var(--font-display);font-size:24px;color:var(--text-primary);">${timer}</div>
             ` : ''}
           </div>
-          <div style="display:flex;gap:8px;">
-            ${hudBtn(ICON_UNDO, 'HISTORY/UNDO', 'Undo', canUndo && !this.uiState?.viewingSolution)}
-            ${hudBtn(ICON_REDO, 'HISTORY/REDO', 'Redo', canRedo && !this.uiState?.viewingSolution)}
-            ${hudBtn(ICON_SETTINGS, 'UI/OPEN_SETTINGS', 'Settings')}
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+            <div style="display:flex;gap:8px;">
+              ${hudBtn(ICON_UNDO, 'HISTORY/UNDO', 'Undo', canUndo && !this.uiState?.viewingSolution)}
+              ${hudBtn(ICON_REDO, 'HISTORY/REDO', 'Redo', canRedo && !this.uiState?.viewingSolution)}
+              ${hudBtn(ICON_SETTINGS, 'UI/OPEN_SETTINGS', 'Settings')}
+            </div>
+            ${this.multiplayerState?.roomCode ? html`
+              <div style="font-family:var(--font-numbers);font-size:10px;color:var(--text-muted);letter-spacing:0.05em;">Room: ${this.multiplayerState.roomCode}</div>
+            ` : ''}
           </div>
           <div style="display:flex;flex-direction:column;align-items:center;gap:1px;min-width:52px;">
             ${this.settingsState?.showMistakes !== false ? html`

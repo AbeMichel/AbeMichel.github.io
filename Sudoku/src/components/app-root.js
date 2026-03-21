@@ -119,16 +119,17 @@ export class AppRoot extends LitElement {
     this.achievementsState = [];
     this._pendingFlow = null;
     this._fromPopState = false;
+    this._autoJoinHandled = false;
   }
-
   connectedCallback() {
     super.connectedCallback();
     this._syncStore();
     // Seed the history stack with the initial view so back never leaves the app
-    const initialView = _store?.getState().ui.view || 'TITLE';
+    const initialView = _store?.getState()?.ui?.view || 'TITLE';
     history.replaceState({ view: initialView }, '');
     this._boundPopState = this._handlePopState.bind(this);
     window.addEventListener('popstate', this._boundPopState);
+
     this.updateComplete.then(() => {
       const canvas = this.shadowRoot.getElementById('petal-canvas');
       if (canvas) initPetals(canvas);
@@ -179,6 +180,36 @@ export class AppRoot extends LitElement {
 
     if (state.settings.darkMode) {
       document.body.setAttribute('data-theme', 'dark');
+    }
+
+    this._handleAutoJoin(state);
+  }
+
+  _handleAutoJoin(state) {
+    if (this._autoJoinHandled) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const roomCode = params.get('room');
+    if (!roomCode) {
+      this._autoJoinHandled = true;
+      return;
+    }
+
+    const playerName = state.multiplayer.playerName;
+    if (playerName) {
+      this._autoJoinHandled = true;
+      // Clean URL
+      const newUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({ view: state.ui.view || 'TITLE' }, '', newUrl);
+      this._onDispatchAction({ detail: { type: 'MP/JOIN_ROOM', payload: { playerName, roomCode } } });
+    } else if (this._pendingFlow !== 'join') {
+      // Don't set _autoJoinHandled yet, we might get a name from persisted state dispatch in main.js
+      this._pendingFlow = 'join';
+      _store.dispatch({ type: 'UI/SET_VIEW', payload: { view: 'MENU' } });
+      setTimeout(() => {
+        const form = this.shadowRoot.querySelector('.mp-form');
+        if (form) form.elements['roomCode'].value = roomCode;
+      }, 100);
     }
   }
 

@@ -1,7 +1,10 @@
 import { LitElement, html, css } from 'https://esm.sh/lit@3';
+import { unsafeHTML } from 'https://esm.sh/lit@3/directives/unsafe-html.js';
 import './mp-player-list.js';
 import './modifier-picker.js';
 import { leaveRoom } from '../services/multiplayerClient.js';
+
+const ICON_SHARE = unsafeHTML(`<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8m-4-6l-4-4l-4 4m4-4v13"/></svg>`);
 
 export class MpLobby extends LitElement {
   static properties = {
@@ -56,10 +59,12 @@ export class MpLobby extends LitElement {
 
     .room-code {
       font-family: var(--font-numbers);
-      font-size: 1rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
       color: var(--text-primary);
       background: var(--chip-bg);
-      padding: 4px 10px;
+      padding: 4px 12px;
       border-radius: var(--radius-chip);
       cursor: pointer;
       box-shadow: var(--chip-shadow);
@@ -68,7 +73,26 @@ export class MpLobby extends LitElement {
 
     .room-code:hover {
       box-shadow: var(--chip-shadow-hover);
+      transform: translateY(-1px);
     }
+
+    .share-btn {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      border-radius: var(--radius-chip);
+      border: none;
+      cursor: pointer;
+      background: var(--chip-bg);
+      color: var(--chip-color);
+      box-shadow: var(--chip-shadow);
+      transition: all 0.15s;
+    }
+    .share-btn:hover { box-shadow: var(--chip-shadow-hover); transform: translateY(-1px); }
 
     .section {
       width: 100%;
@@ -224,6 +248,32 @@ export class MpLobby extends LitElement {
     setTimeout(() => { this._copyFeedback = false; }, 2000);
   }
 
+  async _shareLink() {
+    const url = new URL(window.location.href);
+    url.searchParams.set('room', this.multiplayerState.roomCode);
+    const shareData = {
+      title: 'Join my Sudoku game!',
+      text: `Enter room ${this.multiplayerState.roomCode} to play Sudoku 2.0 with me!`,
+      url: url.toString()
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        if (err.name !== 'AbortError') this._copyLink(url.toString());
+      }
+    } else {
+      this._copyLink(url.toString());
+    }
+  }
+
+  _copyLink(url) {
+    navigator.clipboard.writeText(url);
+    this._copyFeedback = true;
+    setTimeout(() => { this._copyFeedback = false; }, 2000);
+  }
+
   _onConfigChange(field, value) {
     if (!this.multiplayerState.isHost) return;
     this.dispatchEvent(new CustomEvent('dispatch-action', {
@@ -306,8 +356,13 @@ export class MpLobby extends LitElement {
       <div class="lobby-card">
         <div class="room-header">
           <h2>Multiplayer Lobby</h2>
-          <div class="room-code" @click="${this._copyCode}" title="Click to copy">
-            ${this._copyFeedback ? 'Copied!' : `Code: ${roomCode}`}
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="room-code" @click="${this._copyCode}" title="Click to copy code">
+              ${this._copyFeedback ? 'Copied!' : roomCode}
+            </div>
+            <button class="share-btn" @click="${this._shareLink}" title="Share invite link">
+              ${ICON_SHARE}
+            </button>
           </div>
         </div>
 

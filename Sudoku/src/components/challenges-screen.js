@@ -69,7 +69,8 @@ export class ChallengesScreen extends LitElement {
     statsState: { type: Object },
     settingsState: { type: Object },
     achievementsState: { type: Array },
-    _selectedId: { type: String }
+    _selectedId: { type: String },
+    _showPopup: { type: Boolean, state: true }
   };
 
   static styles = css`
@@ -263,6 +264,69 @@ export class ChallengesScreen extends LitElement {
     .start-btn:hover { filter: brightness(1.12); }
     .start-btn:active { box-shadow: var(--chip-shadow-active); transform: scale(0.97); }
 
+    /* Popup/Modal styles */
+    .popup-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(40, 28, 16, 0.38);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      animation: fade-in 0.2s ease-out;
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    .popup-content {
+      background: var(--modal-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      padding: 36px;
+      box-shadow: var(--glass-shadow);
+      width: min(88vw, 420px);
+      max-height: 85vh;
+      overflow-y: auto;
+      animation: scale-in 0.2s ease-out;
+      position: relative;
+    }
+
+    @keyframes scale-in {
+      from { transform: scale(0.96); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+
+    .popup-x-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 20px;
+      transition: color 0.15s;
+      padding: 0;
+    }
+    .popup-x-close:hover { color: var(--text-primary); }
+
+    .popup-content .start-btn {
+      width: 100%;
+      margin-top: 12px;
+    }
+
     @media (max-width: 640px) {
       :host { padding: 0 1rem; }
 
@@ -274,28 +338,33 @@ export class ChallengesScreen extends LitElement {
       .sidebar {
         width: 100%;
         display: flex;
-        flex-wrap: wrap;
+        flex-direction: column;
         gap: 4px;
         padding: 0 0 16px;
       }
 
       .item {
-        padding: 6px 12px;
+        padding: 14px 16px;
         border-radius: var(--radius-chip);
-        font-size: 13px;
-        background: transparent;
+        font-size: 15px;
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        box-shadow: var(--hud-btn-shadow);
+        white-space: normal;
+        margin-bottom: 4px;
       }
 
       .item.is-selected {
-        background: linear-gradient(to right, rgba(192,90,58,0.22) 0%, transparent 100%);
-        padding-left: 12px;
+        background: var(--glass-bg);
+        border-color: var(--glass-border);
+        color: var(--text-secondary);
+        padding-left: 16px;
       }
 
       .divider { display: none; }
 
       .detail {
-        padding: 8px 0 40px;
-        animation: detail-in 0.3s ease-out forwards;
+        display: none;
       }
 
       .challenge-title { font-size: 28px; }
@@ -305,13 +374,22 @@ export class ChallengesScreen extends LitElement {
   constructor() {
     super();
     this._selectedId = CHALLENGES[0].id;
+    this._showPopup = false;
   }
 
   _dispatch(detail) {
     this.dispatchEvent(new CustomEvent('dispatch-action', { detail, bubbles: true, composed: true }));
   }
 
+  _onItemClick(id) {
+    this._selectedId = id;
+    if (window.innerWidth <= 640) {
+      this._showPopup = true;
+    }
+  }
+
   _start(challenge) {
+    this._showPopup = false;
     if (challenge.puzzle) {
       // Pre-defined puzzle string
       const record = {
@@ -365,16 +443,30 @@ export class ChallengesScreen extends LitElement {
   }
 
   render() {
+    const ICON_X = html`<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 6L6 18M6 6l12 12"/></svg>`;
     const selected = CHALLENGES.find(c => c.id === this._selectedId) ?? CHALLENGES[0];
     
     // Process tags: replace 'Modifier' with actual modifier labels if available
     const activeModifiers = selected.action?.payload?.modifiers || [];
-    const processedTags = selected.tags.flatMap(tag => {
+    const processedTags = (tags) => tags.flatMap(tag => {
       if (tag === 'Modifier') {
         return activeModifiers.map(m => m.toLowerCase().replace(/_/g, ' '));
       }
       return tag;
     });
+
+    const detailTemplate = (c) => {
+      const pTags = processedTags(c.tags);
+      return html`
+        <div class="challenge-title">${c.label}</div>
+        <div class="challenge-subtitle">${c.subtitle}</div>
+        <div class="tags">
+          ${pTags.map(t => html`<span class="tag">${t}</span>`)}
+        </div>
+        <div class="challenge-desc">${c.description}</div>
+        <button class="start-btn" @click="${() => this._start(c)}">Start →</button>
+      `;
+    };
 
     return html`
       <div class="header">
@@ -392,7 +484,7 @@ export class ChallengesScreen extends LitElement {
           <div class="section-header">Daily</div>
           ${CHALLENGES.filter(c => c.category === 'daily').map(c => html`
             <div class="item ${c.id === this._selectedId ? 'is-selected' : ''}"
-                 @click="${() => { this._selectedId = c.id; }}">
+                 @click="${() => this._onItemClick(c.id)}">
               ${c.label}
             </div>
           `)}
@@ -401,7 +493,7 @@ export class ChallengesScreen extends LitElement {
           
           ${CHALLENGES.filter(c => c.category !== 'daily').map(c => html`
             <div class="item ${c.id === this._selectedId ? 'is-selected' : ''}"
-                 @click="${() => { this._selectedId = c.id; }}">
+                 @click="${() => this._onItemClick(c.id)}">
               ${c.label}
             </div>
           `)}
@@ -409,18 +501,19 @@ export class ChallengesScreen extends LitElement {
 
         <div class="divider"></div>
 
-        ${keyed(selected.id, html`
-          <div class="detail">
-            <div class="challenge-title">${selected.label}</div>
-            <div class="challenge-subtitle">${selected.subtitle}</div>
-            <div class="tags">
-              ${processedTags.map(t => html`<span class="tag">${t}</span>`)}
-            </div>
-            <div class="challenge-desc">${selected.description}</div>
-            <button class="start-btn" @click="${() => this._start(selected)}">Start →</button>
-          </div>
-        `)}
+        <div class="detail">
+          ${keyed(selected.id, detailTemplate(selected))}
+        </div>
       </div>
+
+      ${this._showPopup ? html`
+        <div class="popup-overlay" @click="${() => this._showPopup = false}">
+          <div class="popup-content" @click="${e => e.stopPropagation()}">
+            <button class="popup-x-close" @click="${() => this._showPopup = false}">${ICON_X}</button>
+            ${detailTemplate(selected)}
+          </div>
+        </div>
+      ` : ''}
     `;
   }
 }
