@@ -43,7 +43,14 @@ export function initMultiplayer(store) {
 
 export async function createRoom(playerName, mpMode, gameConfig) {
   return new Promise((resolve, reject) => {
-    _peer = new Peer(generateRoomCode());
+    _peer = new Peer(generateRoomCode(), {
+      config: {
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" }
+        ]
+      }
+    });
     
     _peer.on('open', (id) => {
       _isHost = true;
@@ -86,7 +93,14 @@ export async function createRoom(playerName, mpMode, gameConfig) {
 
 export async function joinRoom(roomCode, playerName) {
   return new Promise((resolve, reject) => {
-    _peer = new Peer();
+    _peer = new Peer({
+      config: {
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" }
+        ]
+      }
+    });
     _peer.on('open', (id) => {
       _isHost = false;
       _roomCode = roomCode;
