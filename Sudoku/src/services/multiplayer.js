@@ -42,6 +42,14 @@ export function initMultiplayer(store) {
 }
 
 async function getIceServers() {
+  const isLocal = window.location.hostname === "localhost" ||
+                  window.location.hostname === "127.0.0.1" ||
+                  window.location.hostname.startsWith("192.168.");
+  if (isLocal) {
+    console.log("Localhost detected: Skipping TURN server to save quota.");
+    return [];
+  }
+
   const res = await fetch("https://websiteapiworker.abemicheljob.workers.dev/");
   if (!res.ok) throw new Error("Failed to fetch ICE servers.");
   
