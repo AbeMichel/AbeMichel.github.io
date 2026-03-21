@@ -41,66 +41,112 @@ export function initMultiplayer(store) {
   });
 }
 
-export async function createRoom(playerName, mpMode, gameConfig) {
-  return new Promise((resolve, reject) => {
-    _peer = new Peer(generateRoomCode(), {
-      config: {
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" }
-        ]
-      }
-    });
-    
-    _peer.on('open', (id) => {
-      _isHost = true;
-      _roomCode = id;
+async function getIceServers() {
+  const res = await fetch("https://websiteapiworker.abemicheljob.workers.dev/");
+  if (!res.ok) throw new Error("Failed to fetch ICE servers.");
+  
+  const data = await res.json();
+  const rawServers = Array.isArray(data) ? data : data.iceServers;
+
+  // --- FILTERING LOGIC ---
+  // We prioritize: 1 STUN, 1 TURN (UDP), and 1 TURN (TLS/443) for firewalls.
+  const filtered = [];
+  
+  // 1. Keep a standard STUN server (usually just one is needed)
+  const stun = rawServers.find(s => s.urls.includes("stun:"));
+  if (stun) filtered.push(stun);
+
+  // 2. Keep a TURN UDP server (Fastest for gaming)
+  const turnUDP = rawServers.find(s => s.urls.includes("turn:") && !s.urls.includes("transport=tcp"));
+  if (turnUDP) filtered.push(turnUDP);
+
+  // 3. Keep a TURN TLS/TCP server (Best for school/office firewalls)
+  const turnTLS = rawServers.find(s => s.urls.includes("443") || s.urls.includes("transport=tcp"));
+  if (turnTLS && turnTLS !== turnUDP) filtered.push(turnTLS);
+
+  console.log("Reduced ICE Servers from", rawServers.length, "to", filtered.length);
+  return filtered;
+}
+
+export async function createRoom(playerName, mpMode, gameConfig, attempt = 1) {
+  const MAX_ATTEMPTS = 5;
+
+  return new Promise(async (resolve, reject) => {
+    try {
+      const data = await getIceServers();
+      const iceServers = Array.isArray(data) ? data : data.iceServers;
       
-      _store.dispatch({
-        type: Actions.MP.CONNECT,
-        payload: { peerId: id, isHost: true, playerName, roomCode: id, mpMode }
+      const roomCode = generateRoomCode();
+      console.log(`Attempt ${attempt}: Trying room code ${roomCode}`);
+
+      _peer = new Peer(roomCode, { 
+        config: { iceServers } 
       });
 
-      _store.dispatch({
-        type: Actions.MP.PEER_JOINED,
-        payload: {
-          peerId: id,
-          name: playerName,
-          isHost: true,
-          color: assignColor(0),
-          playerId: getPlayerId()
+      _peer.on('open', (id) => {
+        _isHost = true;
+        _roomCode = id;
+        
+        // Dispatching your initial state logic
+        _store.dispatch({
+          type: Actions.MP.CONNECT,
+          payload: { peerId: id, isHost: true, playerName, roomCode: id, mpMode }
+        });
+        
+        _store.dispatch({
+          type: Actions.MP.SET_STATUS,
+          payload: { status: 'LOBBY' }
+        });
+
+        resolve(id);
+      });
+
+      _peer.on('connection', (conn) => {
+        _handleIncomingConnection(conn);
+      });
+
+      _peer.on('error', (err) => {
+        // Check if the ID is taken
+        if (err.type === 'unavailable-id') {
+          console.warn(`Room code ${roomCode} is taken.`);
+          
+          if (attempt < MAX_ATTEMPTS) {
+            // Cleanup the failed peer instance before retrying
+            _peer.destroy(); 
+            // Retry recursively
+            resolve(createRoom(playerName, mpMode, gameConfig, attempt + 1));
+          } else {
+            reject(new Error("Failed to find an available room code after several attempts."));
+          }
+        } else {
+          // Other types of errors (Network, etc.) should just fail
+          console.error('PeerJS fatal error:', err);
+          reject(err);
         }
       });
 
-      _store.dispatch({
-        type: Actions.MP.SET_STATUS,
-        payload: { status: 'LOBBY' }
-      });
-
-      resolve(id);
-    });
-
-    _peer.on('connection', (conn) => {
-      _handleIncomingConnection(conn);
-    });
-
-    _peer.on('error', (err) => {
-      console.error('PeerJS error:', err);
+    } catch (err) {
+      console.error("Setup failed:", err);
       reject(err);
-    });
+    }
   });
 }
 
 export async function joinRoom(roomCode, playerName) {
-  return new Promise((resolve, reject) => {
-    _peer = new Peer({
-      config: {
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" }
-        ]
-      }
-    });
+  return new Promise(async (resolve, reject) => {
+    try {
+      // FIX: Ensure iceServers is an array, not {iceServers: []}
+      const data = await getIceServers();
+      const iceServers = Array.isArray(data) ? data : data.iceServers;
+
+      _peer = new Peer({ 
+        config: { iceServers: iceServers } 
+      });
+    } catch (err) {
+      reject(err);
+      return;
+    }
+
     _peer.on('open', (id) => {
       _isHost = false;
       _roomCode = roomCode;
@@ -110,11 +156,18 @@ export async function joinRoom(roomCode, playerName) {
         payload: { peerId: id, isHost: false, playerName, roomCode }
       });
 
+      // Initiate connection to host
       const conn = _peer.connect(roomCode);
       _handleOutgoingConnection(conn, playerName);
       
+      // FIX: Listen for the specific connection to open, not just the peer
       conn.on('open', () => {
+        console.log("Connected to host successfully");
         resolve(id);
+      });
+
+      conn.on('error', (err) => {
+        reject(new Error("Failed to connect to room: " + err));
       });
     });
 
