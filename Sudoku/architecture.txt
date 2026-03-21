@@ -67,7 +67,7 @@ The state is a single, serializable JSON object. No class instances or functions
     status: "PLAYING"      // "PLAYING" | "WON" | "LOST"
   },
   ui: {
-    view: "MENU",          // "MENU" | "GAME" | "LOADING"
+    view: "TITLE",          // "TITLE" | "GAME" | "LOADING"
     selectedId: 0,
     inputMode: "VALUE",    // "VALUE" | "CANDIDATE"
     activeModal: null,     // "SETTINGS" | "STATS" | "WIN"

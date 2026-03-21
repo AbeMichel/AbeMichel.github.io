@@ -205,7 +205,7 @@ export class AppRoot extends LitElement {
     } else if (this._pendingFlow !== 'join') {
       // Don't set _autoJoinHandled yet, we might get a name from persisted state dispatch in main.js
       this._pendingFlow = 'join';
-      _store.dispatch({ type: 'UI/SET_VIEW', payload: { view: 'MENU' } });
+      _store.dispatch({ type: 'UI/SET_VIEW', payload: { view: 'TITLE' } });
       setTimeout(() => {
         const form = this.shadowRoot.querySelector('.mp-form');
         if (form) form.elements['roomCode'].value = roomCode;
@@ -370,64 +370,6 @@ export class AppRoot extends LitElement {
         <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;">
           <div style="font-family:var(--font-display);color:var(--text-secondary);font-style:italic;">Loading…</div>
         </div>`;
-    }
-
-    if (view === 'MENU') {
-      return html`
-        <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;">
-          <div style="
-            background:var(--glass-bg);
-            backdrop-filter:blur(12px);
-            -webkit-backdrop-filter:blur(12px);
-            border:1px solid var(--glass-border);
-            border-radius:var(--radius-lg);
-            padding:32px 28px;
-            box-shadow:var(--glass-shadow);
-            min-width:260px;
-            display:flex;flex-direction:column;gap:8px;
-          ">
-            <div style="font-family:var(--font-display);font-size:26px;font-weight:500;color:var(--text-primary);line-height:1;">Sudokus</div>
-            <div style="font-family:var(--font-display);font-style:italic;font-size:14px;color:var(--text-accent);margin-top:-2px;margin-bottom:16px;">by Abe</div>
-            ${this._pendingFlow ? html`
-              <form class="mp-form" @submit="${this._submitForm}">
-                <input name="playerName" placeholder="Your name" required autocomplete="off" .value="${this.multiplayerState?.playerName || ''}" style="
-                  padding:8px 10px;border-radius:var(--radius-chip);
-                  border:1px solid var(--glass-border);
-                  background:var(--glass-bg);color:var(--text-primary);
-                  font-family:var(--font-ui);font-size:13px;width:100%;box-sizing:border-box;
-                ">
-                ${this._pendingFlow === 'join' ? html`
-                  <input name="roomCode" placeholder="Room code" required autocomplete="off" style="
-                    padding:8px 10px;border-radius:var(--radius-chip);
-                    border:1px solid var(--glass-border);
-                    background:var(--glass-bg);color:var(--text-primary);
-                    font-family:var(--font-ui);font-size:13px;width:100%;box-sizing:border-box;
-                  ">
-                ` : ''}
-                <div class="form-actions" style="display:flex;justify-content:space-between;gap:8px;margin-top:4px;">
-                  ${menuBtn('Cancel', this._cancelForm)}
-                  <button type="submit" style="
-                    width:100%;padding:10px 16px;
-                    font-family:var(--font-display);font-size:14px;font-style:italic;
-                    color:var(--text-primary);text-align:left;
-                    background:var(--chip-bg);
-                    border:none;border-radius:var(--radius-chip);cursor:pointer;
-                    box-shadow:var(--chip-shadow);
-                    transition:all 0.15s;
-                  ">${this._pendingFlow === 'host' ? 'Host Game' : 'Join Game'}</button>
-                </div>
-              </form>
-            ` : html`
-              <div style="font-family:var(--font-display);font-style:italic;font-size:13px;color:var(--text-accent);margin-bottom:4px;">Try something different today</div>
-              ${menuBtn('Singleplayer', () => _store.dispatch({ type: 'UI/SET_VIEW', payload: { view: 'MODE_SELECT' } }))}
-              ${menuBtn('Quick Play', () => this._startGame())}
-              ${menuBtn('Reconstruction', () => this._startGame({ mode: 'RECONSTRUCTION' }))}
-              ${menuBtn('Host Multiplayer', this._hostGame)}
-              ${menuBtn('Join Multiplayer', this._joinGame)}
-            `}
-          </div>
-        </div>
-      `;
     }
 
     if (view === 'MODE_SELECT') {
