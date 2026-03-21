@@ -30,6 +30,7 @@ export class AppRoot extends LitElement {
     multiplayerState: { type: Object },
     historyState: { type: Object },
     statsState: { type: Object },
+    challengesState: { type: Object },
     achievementsState: { type: Array },
     _pendingFlow: { type: String, state: true }
   };
@@ -66,26 +67,6 @@ export class AppRoot extends LitElement {
       margin: 0.5rem;
       padding: 0.5rem 1rem;
       cursor: pointer;
-    }
-
-    .mp-form {
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      gap: 0.5rem;
-      width: 260px;
-    }
-
-    .mp-form input {
-      padding: 0.5rem 0.75rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 1rem;
-    }
-
-    .mp-form .form-actions {
-      display: flex;
-      justify-content: space-between;
     }
 
     @keyframes overlay-in {
@@ -149,6 +130,7 @@ export class AppRoot extends LitElement {
       this.multiplayerState = state.multiplayer;
       this.historyState = state.history;
       this.statsState = state.stats;
+      this.challengesState = state.challenges;
       this.achievementsState = state.achievements;
 
       if (action && action.type === 'GAME/START') {
@@ -162,6 +144,8 @@ export class AppRoot extends LitElement {
           board?.focus();
         }, 50);
       }
+
+      this._handleAutoJoin(state);
     });
     
     const state = _store.getState();
@@ -172,6 +156,7 @@ export class AppRoot extends LitElement {
     this.multiplayerState = state.multiplayer;
     this.historyState = state.history;
     this.statsState = state.stats;
+    this.challengesState = state.challenges;
     this.achievementsState = state.achievements;
 
     if (this.gameState.cells && this.gameState.cells.length > 0) {
@@ -189,13 +174,15 @@ export class AppRoot extends LitElement {
     if (this._autoJoinHandled) return;
 
     const params = new URLSearchParams(window.location.search);
-    const roomCode = params.get('room');
-    if (!roomCode) {
+    const rawRoomCode = params.get('room');
+    if (!rawRoomCode) {
       this._autoJoinHandled = true;
       return;
     }
 
+    const roomCode = rawRoomCode.toUpperCase();
     const playerName = state.multiplayer.playerName;
+    
     if (playerName) {
       this._autoJoinHandled = true;
       // Clean URL
@@ -203,13 +190,10 @@ export class AppRoot extends LitElement {
       window.history.replaceState({ view: state.ui.view || 'TITLE' }, '', newUrl);
       this._onDispatchAction({ detail: { type: 'MP/JOIN_ROOM', payload: { playerName, roomCode } } });
     } else if (this._pendingFlow !== 'join') {
-      // Don't set _autoJoinHandled yet, we might get a name from persisted state dispatch in main.js
+      // If we don't have a name yet, go to TITLE where the welcome prompt will ask for one.
+      // Once the name is set, the reactive subscription will call this again and complete the join.
       this._pendingFlow = 'join';
       _store.dispatch({ type: 'UI/SET_VIEW', payload: { view: 'TITLE' } });
-      setTimeout(() => {
-        const form = this.shadowRoot.querySelector('.mp-form');
-        if (form) form.elements['roomCode'].value = roomCode;
-      }, 100);
     }
   }
 
@@ -278,36 +262,6 @@ export class AppRoot extends LitElement {
     _store.dispatch({ type: 'UI/SET_VIEW', payload: { view: 'GAME' } });
   }
 
-  _hostGame() {
-    this._pendingFlow = 'host';
-  }
-
-  _joinGame() {
-    this._pendingFlow = 'join';
-  }
-
-  _cancelForm() {
-    this._pendingFlow = null;
-  }
-
-  async _submitForm(e) {
-    e.preventDefault();
-    const form = e.target;
-    const name = form.elements['playerName'].value.trim();
-    if (!name) return;
-    _store.dispatch({ type: 'MP/SET_PLAYER_NAME', payload: { name } });
-    if (this._pendingFlow === 'host') {
-      await createRoom(name, 'CO_OP', { difficulty: 'MEDIUM' });
-      _store.dispatch({ type: 'UI/SET_VIEW', payload: { view: 'LOBBY' } });
-    } else if (this._pendingFlow === 'join') {
-      const code = form.elements['roomCode'].value.trim();
-      if (!code) return;
-      await joinRoom(code, name);
-      _store.dispatch({ type: 'UI/SET_VIEW', payload: { view: 'LOBBY' } });
-    }
-    this._pendingFlow = null;
-  }
-
   async _onDispatchAction(e) {
     const action = e.detail;
     if (action.type === 'MP/CREATE_ROOM') {
@@ -361,6 +315,7 @@ export class AppRoot extends LitElement {
     if (view === 'TITLE') {
       return html`<title-screen
         .multiplayerState="${this.multiplayerState}"
+        .gameState="${this.gameState}"
         @dispatch-action="${this._onDispatchAction}"
       ></title-screen>`;
     }
@@ -384,6 +339,7 @@ export class AppRoot extends LitElement {
       return html`<challenges-screen
         .statsState="${this.statsState}"
         .settingsState="${this.settingsState}"
+        .challengesState="${this.challengesState}"
         .achievementsState="${this.achievementsState}"
         @dispatch-action="${this._onDispatchAction}"
       ></challenges-screen>`;

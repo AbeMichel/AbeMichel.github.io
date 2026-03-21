@@ -68,6 +68,7 @@ export class ChallengesScreen extends LitElement {
   static properties = {
     statsState: { type: Object },
     settingsState: { type: Object },
+    challengesState: { type: Object },
     achievementsState: { type: Array },
     _selectedId: { type: String },
     _showPopup: { type: Boolean, state: true }
@@ -388,8 +389,32 @@ export class ChallengesScreen extends LitElement {
     }
   }
 
-  _start(challenge) {
+  _start(challenge, resume = false) {
     this._showPopup = false;
+
+    let seed = challenge.seed;
+    if (seed === 'DAILY') {
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const yyyy = now.getFullYear();
+      seed = `daily_${mm}-${dd}-${yyyy}`;
+    } else {
+      seed = challenge.id;
+    }
+
+    if (resume) {
+      this._dispatch({
+        ...challenge.action,
+        payload: {
+          ...challenge.action.payload,
+          seed: String(seed),
+          _resume: true
+        }
+      });
+      return;
+    }
+
     if (challenge.puzzle) {
       // Pre-defined puzzle string
       const record = {
@@ -428,14 +453,6 @@ export class ChallengesScreen extends LitElement {
     }
 
     const action = { ...challenge.action };
-    let seed = challenge.seed;
-    if (seed === 'DAILY') {
-      const now = new Date();
-      const mm = String(now.getMonth() + 1).padStart(2, '0');
-      const dd = String(now.getDate()).padStart(2, '0');
-      const yyyy = now.getFullYear();
-      seed = `${mm}-${dd}-${yyyy}`;
-    }
     if (seed !== undefined && action.payload) {
       action.payload = { ...action.payload, seed: String(seed) };
     }
@@ -457,14 +474,45 @@ export class ChallengesScreen extends LitElement {
 
     const detailTemplate = (c) => {
       const pTags = processedTags(c.tags);
+      
+      // Get challenge status
+      let seed = c.seed;
+      if (seed === 'DAILY') {
+        const now = new Date();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const yyyy = now.getFullYear();
+        seed = `daily_${mm}-${dd}-${yyyy}`;
+      } else {
+        seed = c.id;
+      }
+      
+      const statusData = this.challengesState?.challenges?.[seed] || { status: 'not_attempted' };
+      const status = statusData.status;
+
       return html`
         <div class="challenge-title">${c.label}</div>
         <div class="challenge-subtitle">${c.subtitle}</div>
         <div class="tags">
           ${pTags.map(t => html`<span class="tag">${t}</span>`)}
+          ${status !== 'not_attempted' ? html`
+            <span class="tag" style="background:var(--glass-bg);color:var(--text-accent);">
+              ${status === 'completed' ? 'Completed ✓' : 'In Progress'}
+            </span>
+          ` : ''}
         </div>
         <div class="challenge-desc">${c.description}</div>
-        <button class="start-btn" @click="${() => this._start(c)}">Start →</button>
+        
+        <div style="display:flex;gap:12px;">
+          ${status === 'in_progress' ? html`
+            <button class="start-btn" @click="${() => this._start(c, true)}">Resume →</button>
+            <button class="start-btn" style="background:var(--glass-bg);color:var(--text-primary);" @click="${() => this._start(c, false)}">Restart</button>
+          ` : (status === 'completed' ? html`
+            <button class="start-btn" style="background:var(--glass-bg);color:var(--text-primary);" @click="${() => this._start(c, false)}">Retry</button>
+          ` : html`
+            <button class="start-btn" @click="${() => this._start(c, false)}">Start →</button>
+          `)}
+        </div>
       `;
     };
 

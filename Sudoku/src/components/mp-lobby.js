@@ -415,11 +415,12 @@ export class MpLobby extends LitElement {
         ` : ''}
 
         <div class="section">
-          <h3>Players (${peers.length})</h3>
+          <h3>Players (${peers.filter(p => p.connected !== false).length})</h3>
           <div class="player-list-container">
             <mp-player-list
               .peers="${peers}"
               .localPeerId="${peerId}"
+              hideDisconnected
             ></mp-player-list>
           </div>
         </div>

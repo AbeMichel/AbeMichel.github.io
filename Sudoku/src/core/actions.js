@@ -70,6 +70,11 @@ export const Actions = Object.freeze({
     SET_RESULT:   'COMPETITIVE/SET_RESULT',
     PLAY_AGAIN:   'COMPETITIVE/PLAY_AGAIN',
     CAST_VOTE:    'COMPETITIVE/CAST_VOTE',
+  },
+  CHALLENGE: {
+    UPDATE_STATUS: 'CHALLENGE/UPDATE_STATUS',
+    SYNC_ALL: 'CHALLENGE/SYNC_ALL',
+    CLEAR_DAILIES: 'CHALLENGE/CLEAR_DAILIES',
   }
 });
 
@@ -157,3 +162,13 @@ export const competitiveSetResultAction = (winnerId, winnerName, results) => ({
   payload: { winnerId, winnerName, results }
 });
 export const competitivePlayAgainAction = () => ({ type: Actions.COMPETITIVE.PLAY_AGAIN });
+
+// Challenge Actions
+export const updateChallengeStatusAction = (id, status, gameState = null) => ({
+  type: Actions.CHALLENGE.UPDATE_STATUS,
+  payload: { id, status, gameState }
+});
+export const clearDailiesAction = (currentDate) => ({
+  type: Actions.CHALLENGE.CLEAR_DAILIES,
+  payload: { currentDate }
+});

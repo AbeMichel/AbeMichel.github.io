@@ -306,7 +306,6 @@ function _handleOutgoingConnection(conn, playerName) {
       });
       const localPeerId = _store.getState().multiplayer.peerId;
       data.payload.peers.forEach(p => {
-        if (p.id === localPeerId) return; // own entry already set by MP/CONNECT
         _store.dispatch({
           type: Actions.MP.PEER_JOINED,
           payload: { peerId: p.id, name: p.name, isHost: p.isHost, color: p.color, playerId: p.playerId },

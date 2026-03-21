@@ -4,7 +4,8 @@ export class MpPlayerList extends LitElement {
   static properties = {
     peers: { type: Array },
     localPeerId: { type: String },
-    compact: { type: Boolean }
+    compact: { type: Boolean },
+    hideDisconnected: { type: Boolean }
   };
 
   static styles = css`
@@ -98,9 +99,13 @@ export class MpPlayerList extends LitElement {
   render() {
     if (!this.peers) return html``;
 
+    const visiblePeers = this.hideDisconnected 
+      ? this.peers.filter(p => p.connected !== false)
+      : this.peers;
+
     return html`
       <div class="player-list">
-        ${this.peers.map(peer => html`
+        ${visiblePeers.map(peer => html`
           <div class="player-item ${peer.id === this.localPeerId ? 'is-local' : ''} ${peer.connected === false ? 'is-disconnected' : ''}">
             <div class="color-swatch" style="background-color: ${peer.color || '#ccc'}"></div>
             <span class="name">${peer.name || 'Anonymous'}</span>

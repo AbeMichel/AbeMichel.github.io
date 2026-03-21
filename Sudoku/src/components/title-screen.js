@@ -3,7 +3,9 @@ import { initPetals } from '../utils/petals.js';
 
 export class TitleScreen extends LitElement {
   static properties = {
-    multiplayerState: { type: Object }
+    multiplayerState: { type: Object },
+    gameState: { type: Object },
+    _showResumeModal: { type: Boolean, state: true }
   };
 
   static styles = css`
@@ -284,16 +286,29 @@ export class TitleScreen extends LitElement {
   constructor() {
     super();
     this.multiplayerState = null;
+    this.gameState = null;
     this._editing = false;
+    this._showResumeModal = false;
     this._editValue = '';
     this._welcomeValue = '';
     this._items = [
-      { label: 'Singleplayer',  action: () => this._go('MODE_SELECT') },
+      { label: 'Singleplayer',  action: () => this._handleSingleplayer() },
       { label: 'Multiplayer',   action: () => this._go('MULTIPLAYER') },
       { label: 'Challenges',   action: () => this._go('CHALLENGES') },
       { label: 'Achievements',  action: () => this._go('ACHIEVEMENTS') },
       { label: 'Settings',      action: () => this._dispatch({ type: 'UI/OPEN_SETTINGS' }) },
     ];
+  }
+
+  _handleSingleplayer() {
+    const hasProgress = this.gameState?.cells?.some(c => !c.fixed && c.v > 0);
+    const isPlaying = this.gameState?.status === 'PLAYING';
+    
+    if (isPlaying && hasProgress) {
+      this._showResumeModal = true;
+    } else {
+      this._go('MODE_SELECT');
+    }
   }
 
   firstUpdated() {
@@ -306,6 +321,7 @@ export class TitleScreen extends LitElement {
   }
 
   _go(view) {
+    this._showResumeModal = false;
     this._dispatch({ type: 'UI/SET_VIEW', payload: { view } });
   }
 
@@ -368,6 +384,21 @@ export class TitleScreen extends LitElement {
     this._saveName(this._editValue);
     this._editing = false;
     this.requestUpdate();
+  }
+
+  _formatTime(ms) {
+    const totalSeconds = Math.floor(ms / 1000);
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  }
+
+  _getCompletionPercentage() {
+    if (!this.gameState?.cells) return 0;
+    const nonFixed = this.gameState.cells.filter(c => !c.fixed);
+    if (nonFixed.length === 0) return 0;
+    const filled = nonFixed.filter(c => c.v > 0).length;
+    return Math.floor((filled / nonFixed.length) * 100);
   }
 
   render() {
@@ -440,6 +471,38 @@ export class TitleScreen extends LitElement {
               ?disabled="${!this._welcomeValue.trim()}"
               @click="${this._confirmWelcome}"
             >Let's go →</button>
+          </div>
+        </div>
+      ` : ''}
+
+      ${this._showResumeModal ? html`
+        <div class="welcome-overlay">
+          <div class="welcome-card" style="gap: 16px;">
+            <div class="welcome-title">Resume Puzzle?</div>
+            <div class="welcome-desc">You have an unfinished game in progress.</div>
+            
+            <div style="background: rgba(0,0,0,0.05); padding: 12px; border-radius: 8px; font-size: 14px; color: var(--text-secondary);">
+              <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                <span>Mode:</span>
+                <span style="color:var(--text-primary); font-weight:500;">${this.gameState.mode}</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                <span>Difficulty:</span>
+                <span style="color:var(--text-primary); font-weight:500;">${this.gameState.difficulty}</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                <span>Time:</span>
+                <span style="color:var(--text-primary); font-weight:500;">${this._formatTime(this.gameState.timer)}</span>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span>Filled:</span>
+                <span style="color:var(--text-primary); font-weight:500;">${this._getCompletionPercentage()}%</span>
+              </div>
+            </div>
+
+            <button class="welcome-btn" @click="${() => this._go('GAME')}">Continue Puzzle</button>
+            <button class="welcome-btn" style="background:var(--glass-bg); color:var(--text-primary);" @click="${() => this._go('MODE_SELECT')}">New Game</button>
+            <button class="welcome-btn" style="background:transparent; color:var(--text-muted); box-shadow:none; padding: 4px;" @click="${() => this._showResumeModal = false}">Cancel</button>
           </div>
         </div>
       ` : ''}

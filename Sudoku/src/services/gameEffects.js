@@ -63,6 +63,10 @@ const buildReconLoad = (cells, solution, seed, difficulty) => {
 };
 
 export const initGameEffects = (store) => {
+  // Clear dailies if date changed
+  const currentDate = new Date().toISOString().split('T')[0];
+  store.dispatch({ type: Actions.CHALLENGE.CLEAR_DAILIES, payload: { currentDate } });
+
   store.subscribe(async (state, action) => {
     if (!action) return;
 
@@ -101,10 +105,21 @@ export const initGameEffects = (store) => {
     }
 
     if (action.type === Actions.GAME.START && !action.payload._skipGenerate) {
-      const { mode, difficulty, seed, chaos, clues, mpMode } = action.payload;
+      const { mode, difficulty, seed, chaos, clues, mpMode, _resume } = action.payload;
       const resolvedMode = mode || 'STANDARD';
       const resolvedDifficulty = difficulty || 'MEDIUM';
       const resolvedSeed = seed || String(Date.now());
+
+      // Check if we have a saved challenge to resume
+      if (_resume && seed && state.challenges?.challenges?.[seed]?.gameState) {
+        const savedGame = state.challenges.challenges[seed].gameState;
+        store.dispatch({
+          type: 'GAME/LOAD',
+          payload: { ...savedGame }
+        });
+        store.dispatch({ type: Actions.UI.SET_VIEW, payload: { view: 'GAME' } });
+        return;
+      }
 
       if (resolvedMode === 'RECONSTRUCTION') {
         // Keep using generator — reconstruction needs custom piece placement
@@ -245,12 +260,20 @@ export const initGameEffects = (store) => {
     }
 
     if (action.type === Actions.GAME.WIN) {
-      const { timer, difficulty } = state.game;
+      const { timer, difficulty, seed } = state.game;
       const bestTimes = { ...state.stats.bestTimes };
       const currentBest = bestTimes[difficulty];
 
       if (currentBest === undefined || timer < currentBest) {
         bestTimes[difficulty] = timer;
+      }
+
+      // Update challenge status
+      if (seed) {
+        store.dispatch({
+          type: Actions.CHALLENGE.UPDATE_STATUS,
+          payload: { id: seed, status: 'completed' }
+        });
       }
 
       store.dispatch({
@@ -262,6 +285,34 @@ export const initGameEffects = (store) => {
           }
         }
       });
+    }
+
+    // Auto-save challenge progress
+    const relevantActions = [
+      Actions.BOARD.SET_VALUE, Actions.BOARD.SET_CANDIDATE, Actions.BOARD.CLEAR_CELL,
+      Actions.BOARD.CLEAR_CANDIDATES, Actions.BOARD.MOVE_PIECE,
+      Actions.GAME.TICK, Actions.GAME.RESET,
+      Actions.RECON.PLACE_PIECE, Actions.RECON.PICK_UP_PIECE,
+      Actions.RECON.ROTATE_PIECE, Actions.RECON.MIRROR_PIECE,
+      Actions.RECON.RETURN_PIECE, Actions.RECON.RETURN_TO_TRAY
+    ];
+
+    if (state.game?.status === 'PLAYING' && state.game?.seed && relevantActions.includes(action.type)) {
+      // We only want to save it as in_progress if it's a known challenge or was started as such
+      const isChallenge = !!state.challenges?.challenges?.[state.game.seed] || 
+                         action.type === Actions.GAME.START ||
+                         action.type === Actions.GAME.LOAD_DAILY;
+      
+      if (isChallenge) {
+        store.dispatch({
+          type: Actions.CHALLENGE.UPDATE_STATUS,
+          payload: { 
+            id: state.game.seed, 
+            status: 'in_progress', 
+            gameState: state.game 
+          }
+        });
+      }
     }
   });
 };

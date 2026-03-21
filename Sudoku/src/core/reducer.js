@@ -5,6 +5,7 @@ import { mpReducer } from '../state/mpReducer.js';
 import { statsReducer } from '../state/statsReducer.js';
 import { reconReducer } from '../state/reconReducer.js';
 import { settingsReducer } from '../state/settingsReducer.js';
+import { challengesReducer } from '../state/challengesReducer.js';
 import { competitiveReducer } from '../state/competitiveReducer.js';
 import { historyReducer } from './history.js';
 import { Actions } from './actions.js';
@@ -114,6 +115,7 @@ export const rootReducer = (state = {}, action) => {
     multiplayer: mpReducer(state.multiplayer, action),
     stats: statsReducer(state.stats, action),
     settings: settingsReducer(state.settings, action),
+    challenges: challengesReducer(state.challenges, action),
     achievements: state.achievements || defaultAchievements,
     history: state.history
   };

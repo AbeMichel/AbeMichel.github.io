@@ -5,6 +5,7 @@ const KEYS = {
   SETTINGS: 'sudoku2_settings',
   STATS: 'sudoku2_stats',
   ACHIEVEMENTS: 'sudoku2_achievements',
+  CHALLENGES: 'sudoku2_challenges',
   PLAYER_NAME: 'sudoku2_playerName',
   PLAYER_ID: 'sudoku2_playerId'
 };
@@ -31,12 +32,19 @@ export const initPersistence = (store) => {
       case Actions.GAME.RESET:
       case Actions.GAME.WIN:
       case Actions.GAME.PAUSE:
+      case Actions.UI.SET_VIEW:
         localStorage.setItem(KEYS.GAME, JSON.stringify(state.game));
+        localStorage.setItem(KEYS.CHALLENGES, JSON.stringify(state.challenges));
         if (action.type === Actions.GAME.WIN || action.type === Actions.GAME.START || action.type === Actions.GAME.RESET) {
           localStorage.setItem(KEYS.STATS, JSON.stringify(state.stats));
         }
         break;
       
+      case Actions.CHALLENGE.UPDATE_STATUS:
+      case Actions.CHALLENGE.CLEAR_DAILIES:
+        localStorage.setItem(KEYS.CHALLENGES, JSON.stringify(state.challenges));
+        break;
+
       case Actions.SYSTEM.SETTINGS_UPDATE:
         localStorage.setItem(KEYS.SETTINGS, JSON.stringify(state.settings));
         break;
@@ -75,6 +83,9 @@ export const loadPersistedState = () => {
 
     const achievements = localStorage.getItem(KEYS.ACHIEVEMENTS);
     if (achievements) state.achievements = JSON.parse(achievements);
+
+    const challenges = localStorage.getItem(KEYS.CHALLENGES);
+    if (challenges) state.challenges = JSON.parse(challenges);
 
     const playerName = localStorage.getItem(KEYS.PLAYER_NAME);
     if (playerName) state.playerName = JSON.parse(playerName);
