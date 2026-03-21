@@ -1,4 +1,4 @@
-# Sudoku 2.0 Technical Architecture
+# Sudokus By Abe Technical Architecture
 
 ## 1. File & Module Structure
 The project uses a flat ES module structure served directly from GitHub Pages. No build step is required. Lit is imported via CDN (e.g., `https://esm.sh/lit`).

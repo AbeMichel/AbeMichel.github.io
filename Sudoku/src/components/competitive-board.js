@@ -33,11 +33,39 @@ export class CompetitiveBoard extends LitElement {
       gap: 20px;
     }
 
-    .controls-col {
+    .desktop-controls {
       display: flex;
       flex-direction: column;
       gap: 10px;
       padding-top: 8px;
+    }
+
+    .mobile-controls {
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .mode-chips {
+      display: flex;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .number-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 7px;
+      width: 100%;
     }
 
     .vs-divider {
@@ -121,16 +149,24 @@ export class CompetitiveBoard extends LitElement {
       .game-area {
         flex-direction: column;
         align-items: center;
+        gap: 1.5rem;
       }
 
       .local-side {
         flex-direction: column;
         align-items: center;
+        width: 100%;
+        max-width: 540px;
+        gap: 16px;
       }
 
-      .controls-col {
-        padding-top: 0;
-        align-items: center;
+      .desktop-controls {
+        display: none;
+      }
+
+      .mobile-controls {
+        display: flex;
+        width: min(90vw, 540px);
       }
 
       .vs-divider {
@@ -138,12 +174,21 @@ export class CompetitiveBoard extends LitElement {
       }
 
       .opponent-board {
-        width: 200px;
-        height: 200px;
+        width: 100%;
+        max-width: 260px;
+        margin: 0 auto;
       }
 
       .bar-bg {
-        width: 200px;
+        width: 100%;
+        max-width: 260px;
+        margin: 0 auto;
+      }
+      
+      .opponents-side {
+        width: 100%;
+        padding: 0 1rem;
+        box-sizing: border-box;
       }
     }
   `;
@@ -173,9 +218,9 @@ export class CompetitiveBoard extends LitElement {
         </button>`;
     };
 
-    const numChip = (n) => html`
+    const numChip = (n, isMobile = false) => html`
       <button style="
-        width:44px;height:44px;border-radius:var(--radius-chip);
+        width:${isMobile ? '100%' : '44px'};aspect-ratio:1;border-radius:var(--radius-chip);
         border:none;cursor:pointer;
         font-family:var(--font-numbers);font-weight:700;font-size:20px;
         color:var(--chip-color);
@@ -191,6 +236,27 @@ export class CompetitiveBoard extends LitElement {
       }}">
         ${n}
       </button>`;
+
+    const autoToggle = () => html`
+      <div style="display:flex;align-items:center;gap:12px;padding:0 4px;">
+        <span style="font-family:var(--font-display);font-style:italic;font-size:12px;color:var(--text-secondary);white-space:nowrap;">Auto candidates</span>
+        <div @mousedown="${e => e.preventDefault()}" @click="${() => {
+          this._dispatch({ type: 'SETTINGS/SET', payload: { key: 'autoCandidates', value: !this.settingsState?.autoCandidates } });
+        }}" style="
+          width:36px;height:20px;border-radius:10px;
+          background:${this.settingsState?.autoCandidates ? 'rgba(208,104,64,0.6)' : 'rgba(180,130,90,0.25)'};
+          border:1px solid ${this.settingsState?.autoCandidates ? 'rgba(190,90,55,0.5)' : 'rgba(180,130,90,0.3)'};
+          position:relative;cursor:pointer;transition:background 0.2s;flex-shrink:0;
+        ">
+          <div style="
+            width:14px;height:14px;border-radius:50%;background:#fdf5ee;
+            position:absolute;top:2px;left:2px;
+            transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);
+            transform:${this.settingsState?.autoCandidates ? 'translateX(16px)' : 'translateX(0)'};
+            pointer-events:none;
+          "></div>
+        </div>
+      </div>`;
 
     const opponents = peers.filter(p => p.id !== peerId);
     let cols = 1;
@@ -214,13 +280,14 @@ export class CompetitiveBoard extends LitElement {
             .viewingSolution="${this.uiState?.viewingSolution ?? false}"
           ></sudoku-board>
 
-          <div class="controls-col">
+          <!-- Desktop controls -->
+          <div class="desktop-controls">
             <div style="display:flex;gap:6px;">
               ${modeChip('Value', 'VALUE')}
               ${modeChip('Candidate', 'CANDIDATE')}
             </div>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;">
-              ${[1,2,3,4,5,6,7,8,9].map(n => numChip(n))}
+              ${[1,2,3,4,5,6,7,8,9].map(n => numChip(n, false))}
             </div>
             <button style="
               height:36px;padding:0 14px;border-radius:var(--radius-chip);
@@ -236,25 +303,43 @@ export class CompetitiveBoard extends LitElement {
               } else if (cell.c?.length > 0) {
                 this._dispatch({ type: 'BOARD/CLEAR_CANDIDATES', payload: { id: selectedId } });
               }
-            }}">Erase</button>
+            }}"></button>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;padding:6px 2px;">
-              <span style="font-family:var(--font-display);font-style:italic;font-size:12px;color:var(--text-secondary);">Auto candidates</span>
-              <div @mousedown="${e => e.preventDefault()}" @click="${() => {
-                this._dispatch({ type: 'SETTINGS/SET', payload: { key: 'autoCandidates', value: !this.settingsState?.autoCandidates } });
-              }}" style="
-                width:36px;height:20px;border-radius:10px;
-                background:${this.settingsState?.autoCandidates ? 'rgba(208,104,64,0.6)' : 'rgba(180,130,90,0.25)'};
-                border:1px solid ${this.settingsState?.autoCandidates ? 'rgba(190,90,55,0.5)' : 'rgba(180,130,90,0.3)'};
-                position:relative;cursor:pointer;transition:background 0.2s;flex-shrink:0;
-              ">
-                <div style="
-                  width:14px;height:14px;border-radius:50%;background:#fdf5ee;
-                  position:absolute;top:2px;left:2px;
-                  transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);
-                  transform:${this.settingsState?.autoCandidates ? 'translateX(16px)' : 'translateX(0)'};
-                  pointer-events:none;
-                "></div>
+              ${autoToggle()}
+            </div>
+          </div>
+
+          <!-- Mobile controls -->
+          <div class="mobile-controls">
+            <div class="control-row">
+              <div class="mode-chips">
+                ${modeChip('Value', 'VALUE')}
+                ${modeChip('Candidate', 'CANDIDATE')}
               </div>
+            </div>
+            <div class="number-row">
+              ${[1,2,3,4,5].map(n => numChip(n, true))}
+            </div>
+            <div class="number-row">
+              ${[6,7,8,9].map(n => numChip(n, true))}
+              <button style="
+                width:100%;aspect-ratio:1;border-radius:var(--radius-chip);
+                border:none;cursor:pointer;
+                font-family:var(--font-display);font-size:12px;
+                color:var(--chip-color);background:var(--chip-bg);
+                box-shadow:var(--chip-shadow);transition:all 0.12s;
+              " @mousedown="${e => e.preventDefault()}" @click="${() => {
+                const cell = this.gameState?.cells?.[selectedId];
+                if (!cell || cell.fixed) return;
+                if (cell.v !== 0) {
+                  this._dispatch({ type: 'BOARD/CLEAR_CELL', payload: { id: selectedId, peerId } });
+                } else if (cell.c?.length > 0) {
+                  this._dispatch({ type: 'BOARD/CLEAR_CANDIDATES', payload: { id: selectedId } });
+                }
+              }}">Erase</button>
+            </div>
+            <div class="control-row" style="justify-content:center;margin-top:4px;">
+              ${autoToggle()}
             </div>
           </div>
         </div>

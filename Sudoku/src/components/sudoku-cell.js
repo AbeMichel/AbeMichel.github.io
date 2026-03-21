@@ -1,6 +1,8 @@
 import { LitElement, html, css } from 'https://esm.sh/lit@3';
 
 export class SudokuCell extends LitElement {
+  static isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
   static properties = {
     cellId: { type: Number },
     value: { type: Number },
@@ -197,7 +199,7 @@ export class SudokuCell extends LitElement {
       cursor: default;
     }
 
-    :host([selected]) .candidate-slot {
+    :host([selected]:not([is-touch])) .candidate-slot {
       cursor: pointer;
     }
 
@@ -213,13 +215,13 @@ export class SudokuCell extends LitElement {
       opacity: 1;
     }
 
-    :host([selected]) .candidate-slot:hover .candidate-num:not(.is-active) {
+    :host([selected]:not([is-touch])) .candidate-slot:hover .candidate-num:not(.is-active) {
       opacity: 1;
       color: rgba(90, 75, 55, 0.4);
       transition: color 0.1s ease;
     }
 
-    :host([selected]) .candidate-slot:hover .candidate-num.is-active {
+    :host([selected]:not([is-touch])) .candidate-slot:hover .candidate-num.is-active {
       color: var(--num-placed);
       filter: brightness(1.2);
     }
@@ -295,6 +297,9 @@ export class SudokuCell extends LitElement {
     this.pieceBorderClasses = [];
     this.readonly = false;
     this._handleClick = this._handleClick.bind(this);
+    if (SudokuCell.isTouch) {
+      this.setAttribute('is-touch', '');
+    }
   }
 
   connectedCallback() {
@@ -336,7 +341,7 @@ export class SudokuCell extends LitElement {
   }
 
   _handleCandidateClick(e, digit) {
-    if (!this.selected) return; // Let click bubble to _handleClick for selection
+    if (!this.selected || SudokuCell.isTouch) return; 
     e.stopPropagation();
     this.dispatchEvent(new CustomEvent('dispatch-action', {
       detail: { type: 'BOARD/SET_CANDIDATE', payload: { id: this.cellId, value: digit } },
