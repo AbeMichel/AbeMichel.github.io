@@ -19,59 +19,44 @@
     margin-top: 0;
 }
 
-.cereal-letter {
-    text-decoration: underline;
-}
-
-.cereal-word {
+/* .cereal-word {
     display: inline-flex;
 }
 
 .cereal-letter {
     position: relative;
     display: inline-block;
-    transition: color 0.15s ease;
-}
-
-.cereal-letter::after {
-    content: attr(data-emoji);
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%) scale(0.6);
-    opacity: 0;
-    color: var(--text-color);
-    pointer-events: none;
-    transition: opacity 0.2s ease, transform 0.2s ease;
     text-decoration: underline;
 }
 
+@keyframes cereal-bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-6px);
+    }
+}
+
 .cereal-link:hover .cereal-letter {
-    color: transparent;
+    --between-letter-delay: 0.07s;
 }
 
-.cereal-link:hover .cereal-letter::after {
-    opacity: 1;
-    transform: translateX(-50%) scale(1);
+.cereal-link:hover .cereal-letter {
+    animation: cereal-bounce 0.4s ease;
 }
 
-.cereal-link:hover .cereal-letter:nth-child(1)::after,
-.cereal-link:hover .cereal-letter:nth-child(1) { transition-delay: 0.00s; }
+.cereal-link:hover .cereal-letter:nth-child( 1) { animation-delay: calc(var(--between-letter-delay) *  1); }
+.cereal-link:hover .cereal-letter:nth-child( 2) { animation-delay: calc(var(--between-letter-delay) *  2); }
+.cereal-link:hover .cereal-letter:nth-child( 3) { animation-delay: calc(var(--between-letter-delay) *  3); }
+.cereal-link:hover .cereal-letter:nth-child( 4) { animation-delay: calc(var(--between-letter-delay) *  4); }
+.cereal-link:hover .cereal-letter:nth-child( 5) { animation-delay: calc(var(--between-letter-delay) *  5); }
+.cereal-link:hover .cereal-letter:nth-child( 6) { animation-delay: calc(var(--between-letter-delay) *  6); }
+.cereal-link:hover .cereal-letter:nth-child( 7) { animation-delay: calc(var(--between-letter-delay) *  7); }
+.cereal-link:hover .cereal-letter:nth-child( 8) { animation-delay: calc(var(--between-letter-delay) *  8); }
+.cereal-link:hover .cereal-letter:nth-child( 9) { animation-delay: calc(var(--between-letter-delay) *  9); }
+.cereal-link:hover .cereal-letter:nth-child(10) { animation-delay: calc(var(--between-letter-delay) * 10); } */
 
-.cereal-link:hover .cereal-letter:nth-child(2)::after,
-.cereal-link:hover .cereal-letter:nth-child(2) { transition-delay: 0.07s; }
-
-.cereal-link:hover .cereal-letter:nth-child(3)::after,
-.cereal-link:hover .cereal-letter:nth-child(3) { transition-delay: 0.14s; }
-
-.cereal-link:hover .cereal-letter:nth-child(4)::after,
-.cereal-link:hover .cereal-letter:nth-child(4) { transition-delay: 0.21s; }
-
-.cereal-link:hover .cereal-letter:nth-child(5)::after,
-.cereal-link:hover .cereal-letter:nth-child(5) { transition-delay: 0.28s; }
-
-.cereal-link:hover .cereal-letter:nth-child(6)::after,
-.cereal-link:hover .cereal-letter:nth-child(6) { transition-delay: 0.35s; }
 
 .headshot {
     max-width: 300px; 
