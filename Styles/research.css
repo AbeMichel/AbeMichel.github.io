@@ -20,3 +20,45 @@
     font-style: italic;
     margin-left: auto;
 }
+
+.project-entry {
+    width: fit-content;
+}
+
+.snap-script {
+    --block-height: 42px;
+
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.snap-block {
+    display: block;
+    height: var(--block-height);
+    width: auto;
+
+    transition: all 0.1s ease-in-out;
+}
+
+.snap-block + .snap-block {
+    margin-top: calc(var(--block-height) * -6 / 42);
+}
+
+.snap-logo {
+    --scale: 0.42;
+    height: calc(var(--block-height) * (200 / 42) * var(--scale));
+    margin-left: calc(var(--block-height) * (-19 / 42) * var(--scale));
+}
+
+.snap-logo + .snap-block {
+    margin-top: calc(var(--block-height) * -11.6 / 42);
+}
+
+.snap-block:hover {
+    filter: drop-shadow(0 4px 8px yellow);
+    position: relative;
+    z-index: 2;
+    transform: scale(1.01);
+    cursor: pointer;
+}

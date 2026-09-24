@@ -52,6 +52,12 @@ h1, h2, h3
     font-family: var(--font-stack-headings);
 }
 
+#particles-js {
+    position: absolute; 
+    width: 100vw; 
+    height: 100vh;
+}
+
 .vcenter-container {
     display: flex;
     align-items: center;
@@ -246,6 +252,7 @@ body.night-mode .background.night { opacity: 1; }
     max-width: 90vw;
     animation: bob 3s ease-in-out infinite;
     z-index: inherit;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0, 0.45));
     opacity: 1;
     transition: opacity 1s ease-in-out;
 }
@@ -287,6 +294,7 @@ body.night-mode .background.night { opacity: 1; }
     color: var(--text-color);
     font-family: var(--font-stack-nav);
     font-size: var(--nav-font-size);
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
     transition: color 0.2s ease-in-out;
     cursor: pointer;
     white-space: nowrap;
@@ -342,6 +350,17 @@ body.night-mode .background.night { opacity: 1; }
     box-shadow: 4px 4px 8px rgba(0.1, 0.2, 0.1, 0.5);
     overflow: hidden;
     z-index: 1;
+}
+
+.content-container {
+    --dot-spacing: 16px;
+    --dot-size: 1px;
+    background-color: var(--content-background-color);
+    background-image: radial-gradient(
+        color-mix(in srgb, var(--text-color) 15%, transparent) var(--dot-size),
+        transparent var(--dot-size)
+    );
+    background-size: var(--dot-spacing) var(--dot-spacing);
 }
 
 .content-container.shown {

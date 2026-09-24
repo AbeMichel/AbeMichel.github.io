@@ -1,37 +1,46 @@
 <div class="content-body">
-    <h1 style="margin-bottom: 0;">Hi!</h1>
-    <div style="display: flex; flex-direction: row; margin-top: 0;">
+    <h1 class="intro-hello">Hi!</h1>
+    <div class="intro-words">
         <p>
-            My name's Abraham Michel and I am a 1st year PhD student at North Carolina State University studying Computer Science. My research interests include CS education, mental health and belonging, intelligent tutoring systems, and game development. I'm a part of the 
-            <a href="https://cereal.wordpress.ncsu.edu/" target="_blank" rel="noopener noreferrer">CEREAL Lab</a>, lead by <a href="https://csc.ncsu.edu/people/vmcatete/" target="_blank" rel="noopener noreferrer">Dr. Veronica Cateté</a>.
+            My name's Abraham Michel and I am a 2nd year PhD student at North Carolina State University studying Computer Science. My research interests include CS education, mental health and belonging, intelligent tutoring systems, and game development. I'm a part of the 
+            <a href="https://cereal.wordpress.ncsu.edu/" target="_blank" rel="noopener noreferrer" class="cereal-link">
+                <span class="cereal-word">
+                    <span class="cereal-letter" data-emoji="🥣">C</span>
+                    <span class="cereal-letter" data-emoji="🥣">E</span>
+                    <span class="cereal-letter" data-emoji="🥣">R</span>
+                    <span class="cereal-letter" data-emoji="🥣">E</span>
+                    <span class="cereal-letter" data-emoji="🥣">A</span>
+                    <span class="cereal-letter" data-emoji="🥣">L</span>
+                </span> Lab
+            </a>, lead by <a href="https://csc.ncsu.edu/people/vmcatete/" target="_blank" rel="noopener noreferrer">Dr. Veronica Cateté</a>.
         </p>
-        <img src="Assets/MeteoraPic_Headshot.png" alt="Headshot of Abe Michel" style="max-width: 300px; max-height: 300px; width: 15vw; height: 15vw; aspect-ratio: 1;">
+        <img src="Assets/MeteoraPic_Headshot.png" alt="Headshot of Abe Michel" class="headshot spin-on-click">
     </div>
-    
+
     <div class="content-section">
         <h2 class="section-header">Awards</h2>
         <div class="section-body">
             <div class="award-entry">
                 <div class="award-header">
-                    <h3 class="title">Rechenmacher Creativity Award</h3>
+                    <h3 class="title creativity">Rechenmacher Creativity Award</h3>
                     <span class="year">2025</span>
                 </div>
             </div>
             <div class="award-entry">
                 <div class="award-header">
-                    <h3 class="title">Top Student in Computer Science Award</h3>
+                    <h3 class="title cs-award">Top Student in Computer Science Award</h3>
                     <span class="year">2025</span>
                 </div>
             </div>
             <div class="award-entry">
                 <div class="award-header">
-                    <h3 class="title">Top Student in Engineering Award</h3>
+                    <h3 class="title engineering-award">Top Student in Engineering Award</h3>
                     <span class="year">2025</span>
                 </div>
             </div>
             <div class="award-entry">
                 <div class="award-header">
-                    <h3 class="title">Michael R. Neavins Award</h3>
+                    <h3 class="title ra-award">Michael R. Neavins Award</h3>
                     <span class="year">2023</span>
                 </div>
             </div>
@@ -41,7 +50,7 @@
     <div class="content-section">
         <h2 class="section-header">Education</h2>
         <div class="section-body">
-            <div class="education-entry">
+            <div class="education-entry ncsu">
                 <div class="edu-header">
                     <div><h3>North Carolina State University</h3><span><em>Expected 2029</em></span></div>
                     <span class="location">Raleigh, NC</span>
@@ -50,7 +59,7 @@
                     <div class="major">Ph.D. in Computer Science</div>
                 </div>
             </div>
-            <div class="education-entry">
+            <div class="education-entry loras">
                 <div class="edu-header">
                     <h3>Loras College</h3>
                     <span class="location">Dubuque, IA</span>
@@ -65,17 +74,17 @@
 
     <div class="content-section">
         <h2 class="section-header">Games</h2>
-        
+
         <div class="section-body games-grid">
 
-            <a href="../Sudoku/" class="game-entry">
+            <!-- <a href="../Sudoku/" class="game-entry">
                 <div class="game-img-wrapper">
                     <img src="../Assets/Games/sudoku/puzzle.png" class="game-img" alt="sudoku screenshot of the page">
                 </div>
                 <div class="game-info">
                     <h3 class="game-title">Sudoku</h3>
                 </div>
-            </a>
+            </a> -->
 
             <a href="https://astronemone.itch.io/birdbath" class="game-entry" target="_blank" rel="noopener noreferrer">
                 <div class="game-img-wrapper">
@@ -90,7 +99,7 @@
             <a class="game-entry" href="../InteractivePortfolio/" target="_blank" rel="noopener noreferrer">
                 <div class="game-img-wrapper">
                     <img src="../Assets/Games/museum/museum_front.png" class="game-img" alt="Portfolio Museum"
-                         onerror="this.parentElement.innerHTML='<div class=\'game-img-placeholder\'>coming soon</div>'">
+                            onerror="this.parentElement.innerHTML='<div class=\'game-img-placeholder\'>coming soon</div>'">
                     <div class="game-award-banner">★ Rechenmacher Creativity Award</div>
                 </div>
                 <div class="game-info">
@@ -101,7 +110,7 @@
             <a class="game-entry" href="https://babrahamlincoln.itch.io/prismfall" target="_blank" rel="noopener noreferrer">
                 <div class="game-img-wrapper">
                     <img src="../Assets/Games/prismfall/titlecard.png" class="game-img" alt="Prismfall"
-                         onerror="this.parentElement.innerHTML='<div class=\'game-img-placeholder\'>coming soon</div>'">
+                            onerror="this.parentElement.innerHTML='<div class=\'game-img-placeholder\'>coming soon</div>'">
                 </div>
                 <div class="game-info">
                     <h3 class="game-title">Prismfall</h3>

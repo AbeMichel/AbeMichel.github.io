@@ -20,28 +20,29 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 
         <!-- Styles -->
-        <link rel="stylesheet" href="Styles/main.css"> 
-        <link rel="stylesheet" href="Styles/about.css"> 
-        <link rel="stylesheet" href="Styles/research.css"> 
-        <link rel="stylesheet" href="Styles/teaching.css"> 
+        <link rel="stylesheet" href="Styles/main.css">
+        <link rel="stylesheet" href="Styles/effects.css">
+        <link rel="stylesheet" href="Styles/about.css">
+        <link rel="stylesheet" href="Styles/research.css">
+        <link rel="stylesheet" href="Styles/teaching.css">
     </head>
     <body>
         <!-- <div id="particles-js"></div> -->
         <div class="background day"></div>
         <div class="background night"></div>
         <div class="background-overlay"></div>
-        
+
         <div class="centered-container">
             <nav class="menu-container">
-                <button class="nav-btn" data-section="about">About</button>
+                <button type="button" class="nav-btn" data-section="about">About</button>
                 <div class="sep"></div>
-                <button class="nav-btn" data-section="research">Research</button>
+                <button type="button" class="nav-btn" data-section="research">Research</button>
                 <div class="sep"></div>
-                <button class="nav-btn" data-section="teaching">Teaching</button>
+                <button type="button" class="nav-btn" data-section="teaching">Teaching</button>
                 <div class="sep"></div>
                 <!-- <button data-section="work">Work</button>
                 <div class="sep"></div> -->
-                <button class="nav-btn" data-section="cv">CV</button>                
+                <button type="button" class="nav-btn" data-section="cv">CV</button>
             </nav>
             <div class="logo-container">
                 <img src="./Assets/Icons/MyLogo.png" class="logo" alt="Abraham Michel Logo">
@@ -59,19 +60,21 @@
                 </div>
 
                 <a class="associated-link-icon icon github" href="https://github.com/AbeMichel" aria-label="Github Profile" target="_blank" rel="noopener noreferrer"></a>
-                
+
                 <a class="associated-link-icon icon linkedin" href="https://www.linkedin.com/in/abrahammichel/" aria-label="LinkedIn Profile" target="_blank" rel="noopener noreferrer"></a>
-                
+
                 <a class="associated-link-icon icon mail" href="mailto:abemicheljob@gmail.com?subject=Let's%20Connect!" aria-label="Email me"></a> <!-- TODO: Make better subject? -->
 
             </div>
         </div>
 
-        <script src="./Packages/particles.js/particles.js"></script>
-        <script src="./Packages/particles.js/app.js"></script>
+        <!-- <script src="./Packages/particles.js/particles.js"></script>
+        <script src="./Packages/particles.js/app.js"></script> -->
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
         <script src="Scripts/showContent.js"></script>
         <script src="Scripts/dayNightSwitcher.js"></script>
         <script src="Scripts/navSymbolHighlight.js"></script>
+        <script src="Scripts/spinOnClick.js"></script>
+        <script src="Scripts/greetingSwitcher.js"></script>
     </body>
 </html>

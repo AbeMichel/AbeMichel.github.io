@@ -1,7 +1,150 @@
+
+.intro-hello {
+    margin-bottom: 0;
+    cursor: pointer;
+    user-select: none;
+    transition: opacity 0.1s ease-in-out, text-shadow 0.2s ease-in-out;
+}
+.intro-hello:hover {
+    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+.intro-hello.text-swap {
+    opacity: 0;
+}
+
+.intro-words {
+    display: flex; 
+    flex-direction: row; 
+    margin-top: 0;
+}
+
+.cereal-letter {
+    text-decoration: underline;
+}
+
+.cereal-word {
+    display: inline-flex;
+}
+
+.cereal-letter {
+    position: relative;
+    display: inline-block;
+    transition: color 0.15s ease;
+}
+
+.cereal-letter::after {
+    content: attr(data-emoji);
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%) scale(0.6);
+    opacity: 0;
+    color: var(--text-color);
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    text-decoration: underline;
+}
+
+.cereal-link:hover .cereal-letter {
+    color: transparent;
+}
+
+.cereal-link:hover .cereal-letter::after {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+}
+
+.cereal-link:hover .cereal-letter:nth-child(1)::after,
+.cereal-link:hover .cereal-letter:nth-child(1) { transition-delay: 0.00s; }
+
+.cereal-link:hover .cereal-letter:nth-child(2)::after,
+.cereal-link:hover .cereal-letter:nth-child(2) { transition-delay: 0.07s; }
+
+.cereal-link:hover .cereal-letter:nth-child(3)::after,
+.cereal-link:hover .cereal-letter:nth-child(3) { transition-delay: 0.14s; }
+
+.cereal-link:hover .cereal-letter:nth-child(4)::after,
+.cereal-link:hover .cereal-letter:nth-child(4) { transition-delay: 0.21s; }
+
+.cereal-link:hover .cereal-letter:nth-child(5)::after,
+.cereal-link:hover .cereal-letter:nth-child(5) { transition-delay: 0.28s; }
+
+.cereal-link:hover .cereal-letter:nth-child(6)::after,
+.cereal-link:hover .cereal-letter:nth-child(6) { transition-delay: 0.35s; }
+
+.headshot {
+    max-width: 300px; 
+    max-height: 300px; 
+    width: 15vw; 
+    height: 15vw; 
+    aspect-ratio: 1;
+    filter: drop-shadow(5px 5px 8px rgba(0, 0, 0, 0.5));
+}
+
 .education-entry {
+    --effect-time: 0.3s;
+    --effect-function: ease;
+
+    position: relative;
+    padding: 0 0 0.25rem 0;
+
     margin-bottom: 1rem;
-    padding-bottom: 0.25rem;
     border-bottom: 1px solid var(--faded-text-color);
+
+    overflow: hidden;
+    z-index: 1;
+    transition: color var(--effect-time) var(--effect-function), 
+        text-shadow var(--effect-time) var(--effect-function), 
+        border-color var(--effect-time) var(--effect-function), 
+        border-radius var(--effect-time) var(--effect-function),
+        padding var(--effect-time) var(--effect-function);
+}
+
+.education-entry:hover {
+    border-color: transparent;
+    border-radius: 6px;
+
+    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.7);
+    padding: 0 1rem 0.25rem 1rem;
+}
+
+.education-entry::before,
+.education-entry::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.education-entry::before {
+    clip-path: polygon(0 0, 58% 0, 42% 100%, 0 100%);
+    transform: translateX(-101%);
+}
+
+.education-entry::after {
+    clip-path: polygon(58% 0, 100% 0, 100% 100%, 42% 100%);
+    transform: translateX(101%);
+}
+
+.education-entry:hover::before,
+.education-entry:hover::after {
+    transform: translateX(0);
+}
+
+.education-entry.ncsu::before {
+    background-color: #CC0000;
+}
+.education-entry.ncsu::after {
+    background-color: #202020;
+}
+
+.education-entry.loras::before {
+    background-color: #46166B;
+}
+.education-entry.loras::after {
+    background-color: #EAA710;
 }
 
 .edu-header {
@@ -49,6 +192,7 @@
     align-items: baseline;
     gap: 1rem;
     margin: 0;
+    cursor: default;
 }
 
 .award-header .title {
@@ -58,6 +202,171 @@
 
 .award-header .year {
     white-space: nowrap;
+}
+
+.creativity {
+    /* 1. Rainbow gradient & continuous movement in background */
+    background: linear-gradient(
+        90deg,
+        #ff0000,
+        #ff7f00,
+        #ffff00,
+        #00ff00,
+        #0000ff,
+        #4b0082,
+        #8b00ff,
+        #ff0000
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    animation: rainbowShift 4s linear infinite;
+
+    /* 3. Smooth transition when entering AND leaving hover state */
+    transition: -webkit-text-fill-color 0.4s ease, color 0.4s ease;
+}
+
+.creativity:hover {
+    /* 4. Fade solid text color to transparent to reveal rainbow */
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+}
+
+@keyframes rainbowShift {
+    0% {
+        background-position: 0% center;
+    }
+    100% {
+        background-position: -200% center;
+    }
+}
+
+.cs-award {
+    display: inline-block;
+    transition: color 0.1s ease;
+}
+
+.cs-award:hover {
+    animation: rgbGlitch 0.2s infinite;
+}
+
+@keyframes rgbGlitch {
+    0% {
+        text-shadow: -2px 0 #ff0055, 2px 0 #00ffff;
+        transform: translate(0, 0) skew(0deg);
+    }
+    20% {
+        text-shadow: 2px -1px #ff0055, -2px 1px #00ffff;
+        transform: translate(-1px, 1px) skew(-3deg);
+    }
+    40% {
+        text-shadow: -1px 2px #ff0055, 1px -2px #00ffff;
+        transform: translate(1px, -1px) skew(4deg);
+    }
+    60% {
+        text-shadow: 3px 0 #ff0055, -3px 0 #00ffff;
+        transform: translate(-1px, -1px) skew(-1deg);
+    }
+    80% {
+        text-shadow: -2px -1px #ff0055, 2px 1px #00ffff;
+        transform: translate(1px, 1px) skew(2deg);
+    }
+    100% {
+        text-shadow: -2px 0 #ff0055, 2px 0 #00ffff;
+        transform: translate(0, 0) skew(0deg);
+    }
+}
+
+.engineering-award {
+    position: relative;
+    display: inline-block;
+    padding: 4px 12px;
+    z-index: 1;
+    transition: color 0.3s ease;
+}
+
+/* Classic blueprint blue grid background */
+.engineering-award::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-color: #0c3156;
+    background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.2) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.2) 1px, transparent 1px);
+    background-size: 8px 8px;
+    border: 1px solid rgba(147, 197, 253, 0.4);
+    border-radius: 4px;
+    z-index: -1;
+    opacity: 0;
+    transform: scaleX(0.85);
+    transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* Precision laser beam line */
+.engineering-award::after {
+    content: "";
+    position: absolute;
+    top: -10%;
+    left: -20%;
+    width: 2px;
+    height: 120%;
+    background: #ffffff;
+    box-shadow: 0 0 6px #60a5fa;
+    opacity: 0;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.engineering-award:hover {
+    color: #ffffff;
+}
+
+.engineering-award:hover::before {
+    opacity: 1;
+    transform: scaleX(1);
+}
+
+.engineering-award:hover::after {
+    animation: laserScan 0.55s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes laserScan {
+    0% {
+        left: -10%;
+        opacity: 0;
+    }
+    15% {
+        opacity: 1;
+    }
+    85% {
+        opacity: 1;
+    }
+    100% {
+        left: 110%;
+        opacity: 0;
+    }
+}
+
+.ra-award {
+    display: inline-block;
+}
+
+.ra-award:hover {
+    animation: raBreath 2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+/* Squeezes inward horizontally first, then gently breathes out */
+@keyframes raBreath {
+    0% {
+        transform: scale(1, 1);
+    }
+    35% {
+        transform: scale(0.93, 1.04); /* Inward squeeze */
+    }
+    100% {
+        transform: scale(1.01, 1.01); /* Gentle breath out rest position */
+    }
 }
 
 /* ===== GAMES GRID ===== */
