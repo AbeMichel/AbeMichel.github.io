@@ -1,0 +1,169 @@
+:root {
+    --bg-color: #f3f4f6;
+    --card-bg: #fff;
+    --primary-color: #007aff;
+    --btn-text: #fff;
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    height: 100dvh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: sans-serif;
+    background: var(--bg-color);
+    overflow: hidden;
+}
+
+.content {
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+    gap: 28px;
+    padding: 32px;
+    background: var(--card-bg);
+    border-radius: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    width: 92%;
+    height: 92%;
+}
+
+.profile-img-container {
+    width: min(50vw, 50vh);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.profile-img,
+.btn-icon svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.profile-img {
+    object-fit: cover;
+}
+
+.separator {
+    width: 4px;
+    height: 75%;
+    background: var(--primary-color);
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.info {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex: 1;
+    min-width: 0;
+}
+
+.name {
+    margin: 0;
+    font-size: 4rem;
+    color: var(--text-primary);
+}
+
+.name-subcontent {
+    margin: 4px 0 0;
+    font-size: 1.5rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+}
+
+.buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    max-width: 420px;
+}
+
+.card-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 16px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    background: var(--primary-color);
+    color: var(--btn-text);
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.card-btn:hover {
+    opacity: 0.9;
+}
+
+.btn-icon {
+    display: flex;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.btn-icon svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Mobile: vertical layout with centered text */
+@media (max-width: 768px) {
+    .content {
+        flex-direction: column;
+        gap: 12px;
+        padding: 20px;
+    }
+
+    .separator {
+        width: 80%;
+        height: 3px;
+    }
+
+    .info {
+        align-items: center;
+        width: 100%;
+        gap: 12px;
+    }
+
+    .title-info {
+        text-align: center;
+    }
+
+    .name {
+        font-size: 1.5rem;
+    }
+
+    .name-subcontent {
+        font-size: 0.95rem;
+    }
+
+    .buttons {
+        gap: 10px;
+        max-width: 360px;
+    }
+
+    .card-btn {
+        padding: 10px 14px;
+        font-size: 0.9rem;
+    }
+}

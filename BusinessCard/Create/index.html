@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Business Card Creator</title>
+        <link rel="stylesheet" href="../businessCard.css">
+        <link rel="stylesheet" href="./create.css">
+    </head>
+    <body>
+        <aside class="editor-panel">
+            <h2 class="editor-title">Card Creator</h2>
+
+            <!-- Collapsible Details Section -->
+            <details class="section" open>
+                <summary>
+                    <span class="summary-title">Details</span>
+                    <label class="toggle-label" onclick="event.stopPropagation()">
+                        <input type="checkbox" id="toggle-details" checked> Show
+                    </label>
+                </summary>
+                <div class="section-body">
+                    <div class="input-group">
+                        <label for="input-name">Name</label>
+                        <input type="text" id="input-name" placeholder="John Doe">
+                    </div>
+                    <div class="input-group">
+                        <label for="input-title">Subtitle</label>
+                        <input type="text" id="input-title" placeholder="title, company">
+                    </div>
+                </div>
+            </details>
+
+            <!-- Collapsible Photo Section -->
+            <details class="section" open>
+                <summary>
+                    <span class="summary-title">Photo</span>
+                    <label class="toggle-label" onclick="event.stopPropagation()">
+                        <input type="checkbox" id="toggle-photo" checked> Show
+                    </label>
+                </summary>
+                <div class="section-body">
+                    <div class="input-group">
+                        <label for="img-file">Upload Image</label>
+                        <input type="file" id="img-file" accept="image/*">
+                    </div>
+                    <div class="input-group">
+                        <label for="img-url">Or Image URL</label>
+                        <input type="text" id="img-url" placeholder="https://example.com/photo.jpg">
+                        <span class="error-msg" id="img-url-error"></span>
+                    </div>
+                </div>
+            </details>
+
+            <!-- Collapsible Theme Colors Section -->
+            <details class="section" open>
+                <summary>
+                    <span class="summary-title">Theme Colors</span>
+                </summary>
+                <div class="section-body">
+                    <div class="color-grid">
+                        <label class="color-item">
+                            <input type="color" data-var="--bg-color">
+                            Page Bg
+                        </label>
+                        <label class="color-item">
+                            <input type="color" data-var="--card-bg">
+                            Card Bg
+                        </label>
+                        <label class="color-item">
+                            <input type="color" data-var="--primary-color">
+                            Primary
+                        </label>
+                        <label class="color-item">
+                            <input type="color" data-var="--btn-text">
+                            Btn Text
+                        </label>
+                        <label class="color-item">
+                            <input type="color" data-var="--text-primary">
+                            Name
+                        </label>
+                        <label class="color-item">
+                            <input type="color" data-var="--text-secondary">
+                            Subtitle
+                        </label>
+                    </div>
+                </div>
+            </details>
+
+            <!-- Collapsible Buttons & Links Section -->
+            <details class="section" open>
+                <summary>
+                    <span class="summary-title">Buttons &amp; Links</span>
+                </summary>
+                <div class="section-body">
+                    <ul class="reorder-list" id="reorder-list">
+                        <li class="reorder-item" draggable="true" data-id="contact">
+                            <div class="reorder-header">
+                                <span class="drag-handle" title="Drag to reorder">☰</span>
+                                <label class="btn-toggle-label">
+                                    <input type="checkbox" class="btn-toggle" checked> Add Contact (vCard)
+                                </label>
+                            </div>
+                        </li>
+
+                        <li class="reorder-item" draggable="true" data-id="phone">
+                            <div class="reorder-header">
+                                <span class="drag-handle" title="Drag to reorder">☰</span>
+                                <label class="btn-toggle-label">
+                                    <input type="checkbox" class="btn-toggle" checked> Phone
+                                </label>
+                            </div>
+                            <div class="btn-input-wrap">
+                                <input type="text" class="btn-val-input" placeholder="+1 (555) 555-5555">
+                            </div>
+                        </li>
+
+                        <li class="reorder-item" draggable="true" data-id="email">
+                            <div class="reorder-header">
+                                <span class="drag-handle" title="Drag to reorder">☰</span>
+                                <label class="btn-toggle-label">
+                                    <input type="checkbox" class="btn-toggle" checked> Email
+                                </label>
+                            </div>
+                            <div class="btn-input-wrap">
+                                <input type="text" class="btn-val-input" placeholder="johndoe@example.com">
+                            </div>
+                        </li>
+
+                        <li class="reorder-item" draggable="true" data-id="website">
+                            <div class="reorder-header">
+                                <span class="drag-handle" title="Drag to reorder">☰</span>
+                                <label class="btn-toggle-label">
+                                    <input type="checkbox" class="btn-toggle" checked> Website
+                                </label>
+                            </div>
+                            <div class="btn-input-wrap">
+                                <input type="url" class="btn-val-input" placeholder="www.example.com">
+                                <span class="error-msg"></span>
+                            </div>
+                        </li>
+
+                        <li class="reorder-item" draggable="true" data-id="address">
+                            <div class="reorder-header">
+                                <span class="drag-handle" title="Drag to reorder">☰</span>
+                                <label class="btn-toggle-label">
+                                    <input type="checkbox" class="btn-toggle" checked> Address
+                                </label>
+                            </div>
+                            <div class="btn-input-wrap">
+                                <input type="text" class="btn-val-input" placeholder="1234 Example Ave, EX, 12345">
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </details>
+
+            <!-- Collapsible Share Card Section -->
+            <details class="section" open>
+                <summary>
+                    <span class="summary-title">Share Card</span>
+                </summary>
+                <div class="section-body">
+                    <button type="button" id="copy-btn" class="editor-btn share-btn">Copy Shareable Link</button>
+                    <a id="preview-link" href="#" target="_blank" class="preview-external-link">Open Card in New Tab ↗</a>
+                </div>
+            </details>
+        </aside>
+
+        <!-- Live Preview -->
+        <main class="preview-pane" id="preview-area">
+            <div class="content">
+                <div class="profile-img-container">
+                    <img class="profile-img" src="../../Assets/MeteoraPic.jpg" alt="profile picture">
+                </div>
+                <div class="separator"></div>
+                <div class="info">
+                    <div class="title-info">
+                        <h1 class="name">John Doe</h1>
+                        <h2 class="name-subcontent">title, company</h2>
+                    </div>
+                    <div class="buttons">
+                        <button type="button" class="card-btn" id="contact">
+                            <span class="btn-icon contact">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <line x1="19" y1="8" x2="19" y2="14"></line>
+                                    <line x1="22" y1="11" x2="16" y2="11"></line>
+                                </svg>
+                            </span>
+                            <span class="btn-text">Add Contact</span>
+                        </button>
+                        <button type="button" class="card-btn" id="phone">
+                            <span class="btn-icon phone">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                                </svg>
+                            </span>
+                            <span class="btn-text">+1 (555) 555-5555</span>
+                        </button>
+                        <button type="button" class="card-btn" id="email">
+                            <span class="btn-icon email">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                    <polyline points="22,6 12,13 2,6"></polyline>
+                                </svg>
+                            </span>
+                            <span class="btn-text">johndoe@example.com</span>
+                        </button>
+                        <button type="button" class="card-btn" id="website">
+                            <span class="btn-icon website">
+                                <svg viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                                </svg>
+                            </span>
+                            <span class="btn-text">www.example.com</span>
+                        </button>
+                        <button type="button" class="card-btn" id="address">
+                            <span class="btn-icon address">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                    <circle cx="12" cy="10" r="3"></circle>
+                                </svg>
+                            </span>
+                            <span class="btn-text">1234 Example Ave, EX, 12345</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <script src="../codec.js"></script>
+        <script src="./create.js"></script>
+    </body>
+</html>
