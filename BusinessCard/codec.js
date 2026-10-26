@@ -40,14 +40,21 @@ const CardCodec = {
         }
     },
 
-    // Auto-convert GitHub blob web page URLs into direct raw image URLs
+    // Auto-convert URLs into valid, absolute image URLs (handling GitHub blobs and protocol-less domains)
     normalizeImageUrl(url) {
         if (!url) return '';
         url = url.trim();
         const ghBlobMatch = url.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/(.+)$/i);
-        return ghBlobMatch
-            ? `https://raw.githubusercontent.com/${ghBlobMatch[1]}/${ghBlobMatch[2]}/${ghBlobMatch[3]}`
-            : url;
+        if (ghBlobMatch) {
+            return `https://raw.githubusercontent.com/${ghBlobMatch[1]}/${ghBlobMatch[2]}/${ghBlobMatch[3]}`;
+        }
+        if (url.startsWith('.') || url.startsWith('/') || url.startsWith('data:') || url.startsWith('blob:')) {
+            return url;
+        }
+        if (!url.includes('://')) {
+            return `https://${url}`;
+        }
+        return url;
     },
 
     // Extracts currently visible content from card DOM

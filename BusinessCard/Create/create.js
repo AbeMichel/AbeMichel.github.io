@@ -195,11 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isValidUrl(urlVal)) {
                     urlInput.classList.remove('invalid');
                     urlError.classList.remove('visible');
-                    const normalized = CardCodec.normalizeImageUrl(
-                        (urlVal.startsWith('.') || urlVal.startsWith('/') || urlVal.includes('://'))
-                            ? urlVal
-                            : `https://${urlVal}`
-                    );
+                    const normalized = CardCodec.normalizeImageUrl(urlVal);
                     imgEl.src = normalized;
                     imgContainer.style.display = '';
                 } else {
