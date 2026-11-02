@@ -86,15 +86,15 @@
         padding var(--effect-time) var(--effect-function);
 }
 
-.education-entry:hover {
+/* .education-entry:hover {
     border-color: transparent;
     border-radius: 6px;
 
     text-shadow: 0 2px 5px rgba(0, 0, 0, 0.7);
     padding: 0 1rem 0.25rem 1rem;
-}
+} */
 
-.education-entry::before,
+/* .education-entry::before,
 .education-entry::after {
     content: '';
     position: absolute;
@@ -130,7 +130,7 @@
 }
 .education-entry.loras::after {
     background-color: #EAA710;
-}
+} */
 
 .edu-header {
     display: flex;
@@ -211,8 +211,7 @@
     transition: -webkit-text-fill-color 0.4s ease, color 0.4s ease;
 }
 
-.creativity:hover {
-    /* 4. Fade solid text color to transparent to reveal rainbow */
+/* .creativity:hover {
     -webkit-text-fill-color: transparent;
     color: transparent;
 }
@@ -224,14 +223,14 @@
     100% {
         background-position: -200% center;
     }
-}
+} */
 
 .cs-award {
     display: inline-block;
     transition: color 0.1s ease;
 }
 
-.cs-award:hover {
+/* .cs-award:hover {
     animation: rgbGlitch 0.2s infinite;
 }
 
@@ -260,7 +259,7 @@
         text-shadow: -2px 0 #ff0055, 2px 0 #00ffff;
         transform: translate(0, 0) skew(0deg);
     }
-}
+} */
 
 .engineering-award {
     position: relative;
@@ -271,7 +270,7 @@
 }
 
 /* Classic blueprint blue grid background */
-.engineering-award::before {
+/* .engineering-award::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -288,7 +287,6 @@
     transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-/* Precision laser beam line */
 .engineering-award::after {
     content: "";
     position: absolute;
@@ -331,28 +329,27 @@
         left: 110%;
         opacity: 0;
     }
-}
+} */
 
 .ra-award {
     display: inline-block;
 }
 
-.ra-award:hover {
+/* .ra-award:hover {
     animation: raBreath 2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
 
-/* Squeezes inward horizontally first, then gently breathes out */
 @keyframes raBreath {
     0% {
         transform: scale(1, 1);
     }
     35% {
-        transform: scale(0.93, 1.04); /* Inward squeeze */
+        transform: scale(0.93, 1.04);
     }
     100% {
-        transform: scale(1.01, 1.01); /* Gentle breath out rest position */
+        transform: scale(1.01, 1.01);
     }
-}
+} */
 
 /* ===== GAMES GRID ===== */
 
@@ -373,7 +370,7 @@
 
     background-color: rgba(0, 0, 0, 0.25);
     border-radius: 10px;
-    overflow: hidden; /* clip the image to the card */
+    overflow: hidden;
     padding: 0;
 
     transition: transform 0.25s ease, 
@@ -389,18 +386,12 @@
 
 /* ===== AWARD BANNER ===== */
 
-/*
- * Usage: add one or more <div class="game-award-banner">★ Award Name</div>
- * inside .game-img-wrapper. Each banner slides down from the top on hover.
- * Multiple awards stack automatically.
- */
-
 :root {
-    --award-color:      #E8A838; /* warm amber — cheerful in day mode   */
-    --award-color-text: #1a1500; /* near-black for contrast on amber     */
+    --award-color:      #E8A838;
+    --award-color-text: #1a1500;
 }
 body.night-mode {
-    --award-color:      #F0C060; /* lighter gold — pops on dark navy     */
+    --award-color:      #F0C060;
     --award-color-text: #1a1500;
 }
 
@@ -414,7 +405,6 @@ body.night-mode {
     overflow: hidden;
 }
 
-/* Small ★ indicator — always visible at the top-right corner */
 .game-img-wrapper:has(.game-award-banner)::after {
     content: "★";
     position: absolute;
@@ -428,7 +418,6 @@ body.night-mode {
     transition: opacity 0.2s ease;
 }
 
-/* Hide the ★ once hovered so the banner takes over */
 .game-entry:hover .game-img-wrapper:has(.game-award-banner)::after {
     opacity: 0;
 }
@@ -462,7 +451,6 @@ body.night-mode {
     pointer-events: none;
 }
 
-/* Stack multiple banners — each one offset by its index */
 .game-award-banner:nth-child(2) { transition-delay: 0.04s; }
 .game-award-banner:nth-child(3) { transition-delay: 0.08s; }
 
@@ -472,9 +460,9 @@ body.night-mode {
 
 .game-img {
     width: 100%;
-    height: auto;         /* natural height — no cropping */
+    height: auto;
     display: block;
-    object-fit: contain;  /* show the full image */
+    object-fit: contain;
     transition: transform 0.3s ease;
 }
 
@@ -502,7 +490,6 @@ body.night-mode {
     color: var(--faded-text-color);
 }
 
-/* Placeholder shown when no image src is set */
 .game-img-placeholder {
     width: 100%;
     padding: 30px 0;
