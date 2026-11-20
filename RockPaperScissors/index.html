@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rock Paper Scissors</title>
+    <link rel="stylesheet" href="main.css">
+</head>
+<body>
+    <main id="app">
+        <header>
+            <div id="status-container">
+                <h1 id="status-text">lets play</h1>
+            </div>
+            <p id="sub-status">pump fist to begin</p>
+        </header>
+
+        <section class="video-card">
+            <video id="webcam" autoplay playsinline muted></video>
+            <canvas id="canvas-overlay"></canvas>
+
+            <div id="start-prompt" style="display: none;">
+                <h2>Camera Permission</h2>
+                <p>Allow camera access to play using hand gestures</p>
+                <button id="start-btn" class="btn-start">Start Camera</button>
+            </div>
+        </section>
+
+        <footer>
+            <div class="indicator-dots">
+                <span class="dot" id="dot-1"></span>
+                <span class="dot" id="dot-2"></span>
+                <span class="dot" id="dot-3"></span>
+                <span class="dot" id="dot-4"></span>
+            </div>
+        </footer>
+    </main>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
